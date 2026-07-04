@@ -1,5 +1,5 @@
 # MetaMorphoStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/vaults/MetaMorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/vaults/MetaMorphoStakingVaultAdapter.sol)
 
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
@@ -10,7 +10,7 @@ MetaMorphoStakingVaultAdapter
 Adapter for MetaMorpho ERC-4626 vaults such as 0xBEEFE94c8aD530842bfE7d8B397938fFc1cb83b2.
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 
 ```solidity
@@ -32,31 +32,11 @@ IERC20 public immutable USDC
 ```
 
 
+## State Variables
 ### metaMorphoVault
 
 ```solidity
 IERC4626 public metaMorphoVault
-```
-
-
-### yieldShift
-
-```solidity
-IYieldShift public yieldShift
-```
-
-
-### yieldVaultId
-
-```solidity
-uint256 public yieldVaultId
-```
-
-
-### yieldSource
-
-```solidity
-bytes32 public yieldSource
 ```
 
 
@@ -70,21 +50,21 @@ uint256 public principalDeposited
 ## Functions
 ### constructor
 
-Initializes MetaMorpho adapter dependencies, roles, and yield routing config.
+Initializes MetaMorpho adapter dependencies and roles.
 
 Configures governance/manager roles, immutable USDC reference, and validates that the
 MetaMorpho ERC-4626 vault's asset matches USDC.
 
 **Notes:**
-- security: Validates non-zero dependencies, non-zero ids, and matching ERC-4626 asset.
+- security: Validates non-zero dependencies and matching ERC-4626 asset.
 
-- validation: Reverts on zero address, zero vault id, zero yield source, or asset mismatch.
+- validation: Reverts on zero address or asset mismatch.
 
-- state-changes: Initializes role assignments and adapter dependency/config pointers.
+- state-changes: Initializes role assignments and adapter dependency pointers.
 
 - events: No events emitted by constructor.
 
-- errors: Reverts with `ZeroAddress`, `InvalidVault`, `InvalidAmount`, or `InvalidAddress`.
+- errors: Reverts with `ZeroAddress` or `InvalidAddress`.
 
 - reentrancy: Not applicable - constructor only.
 
@@ -94,14 +74,7 @@ MetaMorpho ERC-4626 vault's asset matches USDC.
 
 
 ```solidity
-constructor(
-    address admin,
-    address usdc_,
-    address metaMorphoVault_,
-    address yieldShift_,
-    uint256 yieldVaultId_,
-    bytes32 yieldSource_
-) ;
+constructor(address admin, address usdc_, address metaMorphoVault_) ;
 ```
 **Parameters**
 
@@ -110,9 +83,6 @@ constructor(
 |`admin`|`address`|Admin address granted default-admin, governance, and manager roles.|
 |`usdc_`|`address`|USDC token address.|
 |`metaMorphoVault_`|`address`|MetaMorpho ERC-4626 vault address (asset must equal `usdc_`).|
-|`yieldShift_`|`address`|YieldShift contract address.|
-|`yieldVaultId_`|`uint256`|YieldShift vault id used when routing harvested yield.|
-|`yieldSource_`|`bytes32`|Yield source tag forwarded to YieldShift accounting.|
 
 
 ### depositUnderlying
@@ -207,22 +177,22 @@ function withdrawUnderlying(uint256 usdcAmount)
 |`usdcWithdrawn`|`uint256`|Actual USDC amount withdrawn and transferred to the caller.|
 
 
-### harvestYield
+### harvestYieldToVault
 
-Harvests accrued ERC-4626 share yield and routes it to YieldShift.
+Harvests accrued ERC-4626 share yield and transfers it as USDC to the caller (the vault).
 
-Computes yield as the underlying balance above tracked principal, caps it to the vault's
-liquid withdrawable amount, redeems it, and forwards it to YieldShift with the configured
-vault id and source tag. Returns zero when no yield is available.
+Transfers the realized USDC to `msg.sender` (the vault) so the caller can apply its own
+distribution policy. Caps to the vault's liquid withdrawable amount and leaves tracked
+principal unchanged.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
 
 - validation: Returns zero when no yield is available; reverts only on downstream failures.
 
-- state-changes: Leaves `principalDeposited` unchanged and routes yield through YieldShift.
+- state-changes: Leaves `principalDeposited` unchanged; transfers realized USDC to the caller.
 
-- events: Emits downstream transfer/yield events from dependencies.
+- events: Emits downstream transfer events from dependencies.
 
 - errors: Reverts with `InvalidAmount` on withdrawal mismatch or downstream failures.
 
@@ -234,18 +204,18 @@ vault id and source tag. Returns zero when no yield is available.
 
 
 ```solidity
-function harvestYield()
+function harvestYieldToVault()
     external
     override
     onlyRole(VAULT_MANAGER_ROLE)
     nonReentrant
-    returns (uint256 harvestedYield);
+    returns (uint256 realizedYield);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`harvestedYield`|`uint256`|Yield harvested and routed in USDC (6 decimals).|
+|`realizedYield`|`uint256`|USDC yield harvested and transferred to the caller (6 decimals).|
 
 
 ### totalUnderlying
@@ -316,108 +286,6 @@ function setMetaMorphoVault(address newMetaMorphoVault) external onlyRole(GOVERN
 |`newMetaMorphoVault`|`address`|New MetaMorpho ERC-4626 vault address.|
 
 
-### setYieldShift
-
-Updates YieldShift destination contract.
-
-Governance maintenance hook for yield routing dependency changes.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
-
-- validation: Reverts on zero address input.
-
-- state-changes: Updates `yieldShift` dependency pointer.
-
-- events: Emits `YieldShiftUpdated`.
-
-- errors: Reverts with `ZeroAddress` for invalid input.
-
-- reentrancy: No external calls after state change.
-
-- access: Restricted to governance role.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newYieldShift`|`address`|New YieldShift contract address.|
-
-
-### setYieldVaultId
-
-Updates destination vault id used when routing harvested yield.
-
-Governance maintenance hook aligning adapter output with YieldShift vault mapping.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
-
-- validation: Reverts when `newYieldVaultId` is zero.
-
-- state-changes: Updates `yieldVaultId`.
-
-- events: Emits `YieldVaultIdUpdated`.
-
-- errors: Reverts with `InvalidVault` for zero id.
-
-- reentrancy: No external calls after state change.
-
-- access: Restricted to governance role.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function setYieldVaultId(uint256 newYieldVaultId) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newYieldVaultId`|`uint256`|New YieldShift vault id.|
-
-
-### setYieldSource
-
-Updates the yield source tag forwarded to YieldShift accounting.
-
-Governance maintenance hook for adjusting the source label used in yield routing.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
-
-- validation: Reverts when `newYieldSource` is zero.
-
-- state-changes: Updates `yieldSource`.
-
-- events: Emits `YieldSourceUpdated`.
-
-- errors: Reverts with `InvalidAmount` for a zero source tag.
-
-- reentrancy: No external calls after state change.
-
-- access: Restricted to governance role.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function setYieldSource(bytes32 newYieldSource) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newYieldSource`|`bytes32`|New non-zero yield source tag.|
-
-
 ### _totalUnderlying
 
 Returns the USDC-equivalent value of this adapter's MetaMorpho shares.
@@ -457,23 +325,5 @@ function _totalUnderlying() internal view returns (uint256);
 
 ```solidity
 event MetaMorphoVaultUpdated(address indexed oldVault, address indexed newVault);
-```
-
-### YieldShiftUpdated
-
-```solidity
-event YieldShiftUpdated(address indexed oldYieldShift, address indexed newYieldShift);
-```
-
-### YieldVaultIdUpdated
-
-```solidity
-event YieldVaultIdUpdated(uint256 indexed oldVaultId, uint256 indexed newVaultId);
-```
-
-### YieldSourceUpdated
-
-```solidity
-event YieldSourceUpdated(bytes32 indexed oldSource, bytes32 indexed newSource);
 ```
 

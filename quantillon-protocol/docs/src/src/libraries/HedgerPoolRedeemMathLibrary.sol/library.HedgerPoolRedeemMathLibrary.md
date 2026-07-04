@@ -1,5 +1,5 @@
 # HedgerPoolRedeemMathLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/HedgerPoolRedeemMathLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/HedgerPoolRedeemMathLibrary.sol)
 
 **Title:**
 HedgerPoolRedeemMathLibrary
@@ -8,6 +8,41 @@ Externalized math helpers for redemption and realized PnL transitions
 
 
 ## Functions
+### version
+
+Returns the semantic version of this linked library.
+
+On-chain version of the standalone deployed library; bump per semver on any change.
+See deployments/{chainId}/versions.json for deployed-address provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### calculateRedeemPnL
 
 Computes realized PnL delta for a redemption share.

@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -15,7 +15,7 @@ Mock oracle that implements IChainlinkOracle interface but uses mock feeds
 Used for localhost testing - provides same interface as ChainlinkOracle
 
 
-## State Variables
+## Constants
 ### EMERGENCY_ROLE
 
 ```solidity
@@ -27,34 +27,6 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 
 ```solidity
 bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE")
-```
-
-
-### eurUsdPriceFeed
-
-```solidity
-AggregatorV3Interface public eurUsdPriceFeed
-```
-
-
-### usdcUsdPriceFeed
-
-```solidity
-AggregatorV3Interface public usdcUsdPriceFeed
-```
-
-
-### treasury
-
-```solidity
-address public treasury
-```
-
-
-### originalAdmin
-
-```solidity
-address private originalAdmin
 ```
 
 
@@ -93,6 +65,42 @@ uint256 public constant MAX_PRICE_DEVIATION = 500
 ```
 
 
+### MIN_BLOCKS_BETWEEN_UPDATES
+
+```solidity
+uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1
+```
+
+
+## State Variables
+### eurUsdPriceFeed
+
+```solidity
+AggregatorV3Interface public eurUsdPriceFeed
+```
+
+
+### usdcUsdPriceFeed
+
+```solidity
+AggregatorV3Interface public usdcUsdPriceFeed
+```
+
+
+### treasury
+
+```solidity
+address public treasury
+```
+
+
+### originalAdmin
+
+```solidity
+address private originalAdmin
+```
+
+
 ### lastValidEurUsdPrice
 
 ```solidity
@@ -111,13 +119,6 @@ uint256 public lastValidUsdcUsdPrice
 
 ```solidity
 uint256 public lastPriceUpdateBlock
-```
-
-
-### MIN_BLOCKS_BETWEEN_UPDATES
-
-```solidity
-uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1
 ```
 
 

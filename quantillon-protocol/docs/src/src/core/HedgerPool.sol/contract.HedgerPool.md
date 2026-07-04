@@ -1,8 +1,8 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/HedgerPool.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 HedgerPool
@@ -34,7 +34,7 @@ effectiveMargin = 0, hedger absorbs pro-rata losses on redemptions.
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 
 ```solidity
@@ -49,6 +49,100 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
+### TIME_PROVIDER
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+### MAX_REWARD_FEE_SPLIT
+Maximum allowed value for rewardFeeSplit
+
+
+```solidity
+uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18
+```
+
+
+### MAX_UINT96_VALUE
+
+```solidity
+uint96 public constant MAX_UINT96_VALUE = type(uint96).max
+```
+
+
+### MAX_POSITION_SIZE
+
+```solidity
+uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE
+```
+
+
+### MAX_MARGIN
+
+```solidity
+uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE
+```
+
+
+### MAX_ENTRY_PRICE
+
+```solidity
+uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE
+```
+
+
+### MAX_LEVERAGE
+
+```solidity
+uint256 public constant MAX_LEVERAGE = type(uint16).max
+```
+
+
+### MAX_MARGIN_RATIO
+
+```solidity
+uint256 public constant MAX_MARGIN_RATIO = 5000
+```
+
+
+### DEFAULT_MIN_MARGIN_RATIO_BPS
+
+```solidity
+uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500
+```
+
+
+### MAX_UINT128_VALUE
+
+```solidity
+uint128 public constant MAX_UINT128_VALUE = type(uint128).max
+```
+
+
+### MAX_TOTAL_MARGIN
+
+```solidity
+uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE
+```
+
+
+### MAX_TOTAL_EXPOSURE
+
+```solidity
+uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE
+```
+
+
+### MAX_REWARD_PERIOD
+
+```solidity
+uint256 public constant MAX_REWARD_PERIOD = 365 days
+```
+
+
+## State Variables
 ### usdc
 
 ```solidity
@@ -81,13 +175,6 @@ IQuantillonVault public vault
 
 ```solidity
 address public treasury
-```
-
-
-### TIME_PROVIDER
-
-```solidity
-TimeProvider public immutable TIME_PROVIDER
 ```
 
 
@@ -179,24 +266,6 @@ uint256 public rewardFeeSplit
 ```
 
 
-### MAX_REWARD_FEE_SPLIT
-Maximum allowed value for rewardFeeSplit
-
-
-```solidity
-uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18
-```
-
-
-### SINGLE_HEDGER_ROTATION_DELAY
-Delay before rotating the single hedger after proposal
-
-
-```solidity
-uint256 public constant SINGLE_HEDGER_ROTATION_DELAY = 24 hours
-```
-
-
 ### pendingSingleHedger
 Pending single-hedger address awaiting delayed activation
 
@@ -247,84 +316,43 @@ mapping(address => uint256) public hedgerLastRewardBlock
 ```
 
 
-### MAX_UINT96_VALUE
-
-```solidity
-uint96 public constant MAX_UINT96_VALUE = type(uint96).max
-```
-
-
-### MAX_POSITION_SIZE
-
-```solidity
-uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE
-```
-
-
-### MAX_MARGIN
-
-```solidity
-uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE
-```
-
-
-### MAX_ENTRY_PRICE
-
-```solidity
-uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE
-```
-
-
-### MAX_LEVERAGE
-
-```solidity
-uint256 public constant MAX_LEVERAGE = type(uint16).max
-```
-
-
-### MAX_MARGIN_RATIO
-
-```solidity
-uint256 public constant MAX_MARGIN_RATIO = 5000
-```
-
-
-### DEFAULT_MIN_MARGIN_RATIO_BPS
-
-```solidity
-uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500
-```
-
-
-### MAX_UINT128_VALUE
-
-```solidity
-uint128 public constant MAX_UINT128_VALUE = type(uint128).max
-```
-
-
-### MAX_TOTAL_MARGIN
-
-```solidity
-uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE
-```
-
-
-### MAX_TOTAL_EXPOSURE
-
-```solidity
-uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE
-```
-
-
-### MAX_REWARD_PERIOD
-
-```solidity
-uint256 public constant MAX_REWARD_PERIOD = 365 days
-```
-
-
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### onlyVault
 
 
@@ -591,6 +619,53 @@ function _enterHedgePositionCommit(
 |`positionId`|`uint256`|Created position identifier (single-position model => `1`)|
 
 
+### _packHedgeEventData
+
+Packs position fields into the bytes32 carried by hedge-position events
+
+Layout (MSB->LSB): [255:160] positionSize (uint96) | [159:64] margin (uint96)
+| [63:48] leverage (uint16) | [47:0] reserved. Used by HedgePositionOpened,
+HedgePositionClosed and MarginUpdated so indexers can read position state from the event.
+
+**Notes:**
+- security: No security implications - pure bit-packing of already-validated values
+
+- validation: No validation - caller supplies struct-typed values
+
+- state-changes: None - pure function
+
+- events: None
+
+- errors: None
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal - no access restrictions
+
+- oracle: Not applicable - no oracle dependency
+
+
+```solidity
+function _packHedgeEventData(uint96 positionSize_, uint96 margin_, uint16 leverage_)
+    internal
+    pure
+    returns (bytes32);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionSize_`|`uint96`|Position size to pack (uint96)|
+|`margin_`|`uint96`|Margin to pack (uint96)|
+|`leverage_`|`uint16`|Leverage to pack (uint16)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|Packed bytes32 event payload|
+
+
 ### _initializeOpenedPosition
 
 
@@ -691,7 +766,7 @@ Security features:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by flashLoanProtection modifier
+- reentrancy: Protected by reentrancy guard
 
 - access: Restricted to position owner
 
@@ -707,6 +782,45 @@ function addMargin(uint256 positionId, uint256 amount) external whenNotPaused no
 |----|----|-----------|
 |`positionId`|`uint256`|Unique identifier of the position|
 |`amount`|`uint256`|Amount of USDC to add as margin (6 decimals)|
+
+
+### _routeHedgeFee
+
+Routes a hedge fee between the HedgerPool reward reserve and the FeeCollector
+
+Shared by addMargin, position entry, and position exit so every hedge-fee path
+routes identically. The reserve share physically remains in this
+contract's USDC balance (the reward reserve); the collector share is forwarded to
+the FeeCollector. Assumes the gross fee USDC is already held by this contract.
+
+**Notes:**
+- security: Moves already-collected fee USDC only; no authority change
+
+- validation: No-op when fee is zero
+
+- state-changes: Increases FeeCollector allowance; reserve share stays as USDC balance
+
+- events: Emits RewardReserveFunded for the reserve share
+
+- errors: Propagates FeeCollector failures
+
+- reentrancy: Called within nonReentrant flows
+
+- access: Private helper
+
+- oracle: No oracle dependency
+
+
+```solidity
+function _routeHedgeFee(address funder, uint256 fee, string memory sourceType) private;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`funder`|`address`|Address credited as the reserve funder in the emitted event|
+|`fee`|`uint256`|Total fee amount in USDC (6 decimals)|
+|`sourceType`|`string`|Source tag forwarded to FeeCollector accounting|
 
 
 ### removeMargin
@@ -736,7 +850,7 @@ Security features:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by flashLoanProtection modifier
+- reentrancy: Protected by reentrancy guard
 
 - access: Restricted to position owner
 
@@ -914,7 +1028,7 @@ Security features:
 
 - state-changes: Updates hedger reward tracking and reward escrow state
 
-- events: Emits HedgingRewardsClaimed with reward details
+- events: None (the HedgingRewardsClaimed event was removed in v1.0.1)
 
 - errors: Throws custom errors for invalid conditions
 
@@ -1073,14 +1187,15 @@ can withdraw their own pending rewards.
 - validation: Reverts if `recipient` is the zero address or the caller has no
 pending rewards recorded.
 
-- state-changes: Sets `pendingRewardWithdrawals[msg.sender]` to zero and transfers
-the pending USDC amount to `recipient`.
+- state-changes: Reduces `pendingRewardWithdrawals[msg.sender]` by the paid amount and
+transfers that USDC to `recipient`.
 
 - events: No events emitted; off-chain indexers should track `pendingRewardWithdrawals`
 and standard ERC20 `Transfer` events.
 
-- errors: Reverts with `ZeroAddress` when `recipient` is zero, and `InvalidAmount`
-when there is no pending reward; SafeERC20 may bubble up token errors.
+- errors: Reverts with `ZeroAddress` when `recipient` is zero, `InvalidAmount` when
+there is no pending reward, and `InsufficientBalance` when the reward reserve
+is currently empty; SafeERC20 may bubble up token errors.
 
 - reentrancy: Protected by `nonReentrant`; external interaction is a single USDC transfer.
 
@@ -1125,7 +1240,7 @@ Formula breakdown:
 
 - access: Public - anyone can query effective collateral
 
-- oracle: Requires fresh oracle price data
+- oracle: Takes the EUR/USD price as a parameter; caller must supply fresh oracle data
 
 
 ```solidity
@@ -1260,6 +1375,13 @@ Security features:
 1. Role-based access control (EMERGENCY_ROLE)
 2. Position ownership validation
 
+WARNING (audit F-6): unlike the normal `exitHedgePosition` flow, this deliberately does
+NOT run `_validatePositionClosureSafety`. If invoked while QEURO is outstanding
+(`vault.totalMinted() > 0`) it withdraws the hedger's full margin and can leave QEURO
+under-collateralized, pushing redemptions into liquidation mode. This is an accepted
+emergency escape hatch; the `EmergencyPositionClosed` event carries `outstandingQeuro`
+so operators can detect and react when backing has been removed under an active supply.
+
 **Notes:**
 - security: Validates input parameters and enforces security checks
 
@@ -1267,7 +1389,7 @@ Security features:
 
 - state-changes: Closes position, updates hedger stats, withdraws USDC from vault
 
-- events: Emits EmergencyPositionClosed with position details
+- events: Emits EmergencyPositionClosed with margin withdrawn and outstanding QEURO
 
 - errors: Throws custom errors for invalid conditions
 
@@ -1384,18 +1506,22 @@ function recover(address token, uint256 amount) external;
 
 Sets the single hedger address allowed to open positions
 
-Replaces the previous multi-hedger whitelist model with a single hedger
+Single-hedger model. Bootstraps the hedger when none is set yet, otherwise performs a
+synchronous reassignment that is only permitted while the fixed positionId 1 is
+inactive (no live backing position). The legacy delayed multi-hedger rotation path
+has been retired (see `applySingleHedgerRotation`, now disabled); reassigning while a
+position is active would let a new hedger overwrite live exposure, so it reverts.
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
 
-- validation: Validates governance role and non-zero hedger address
+- validation: Validates governance role, non-zero hedger, and inactive position on reassign
 
 - state-changes: Updates singleHedger address
 
-- events: None
+- events: Emits `SingleHedgerRotationApplied`
 
-- errors: Throws ZeroAddress if hedger is zero
+- errors: Reverts with InvalidAddress on zero hedger, HedgerHasActivePosition if reassigning while position 1 is active
 
 - reentrancy: Not protected - governance function
 
@@ -1416,30 +1542,34 @@ function setSingleHedger(address hedger) external;
 
 ### applySingleHedgerRotation
 
-INFO-2: Applies a previously proposed single-hedger rotation after delay.
+Deprecated relic of the abandoned multi-hedger rotation; always reverts.
 
-Finalizes the delayed rotation configured via `setSingleHedger`.
+The protocol is single-hedger-only. The former delayed rotation could overwrite the
+live backing position (fixed positionId 1) and corrupt aggregate accounting, so it is
+disabled. Hedger reassignment now happens synchronously via `setSingleHedger`, only
+while position 1 is inactive. Retained (reverting) for ABI compatibility; the
+`pendingSingleHedger` / `singleHedgerPendingAt` storage fields are now vestigial.
 
 **Notes:**
-- security: Restricted to governance and guarded by pending-state + delay checks.
+- security: No state changes; unconditional revert.
 
-- validation: Requires a pending hedger and elapsed `SINGLE_HEDGER_ROTATION_DELAY`.
+- validation: None.
 
-- state-changes: Updates `singleHedger` and clears pending rotation fields.
+- state-changes: None.
 
-- events: Emits `SingleHedgerRotationApplied`.
+- events: None.
 
-- errors: Reverts when no pending rotation exists or delay has not elapsed.
+- errors: Always reverts with `NotActive`.
 
 - reentrancy: Not applicable - no external calls.
 
-- access: Restricted to `GOVERNANCE_ROLE`.
+- access: Open (reverts for all callers).
 
 - oracle: No oracle interaction.
 
 
 ```solidity
-function applySingleHedgerRotation() external;
+function applySingleHedgerRotation() external pure;
 ```
 
 ### fundRewardReserve
@@ -1994,12 +2124,6 @@ event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, by
 event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
 ```
 
-### HedgingRewardsClaimed
-
-```solidity
-event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
-```
-
 ### ETHRecovered
 
 ```solidity
@@ -2014,19 +2138,35 @@ MED-2: Emitted when USDC is deposited into the reward reserve
 event RewardReserveFunded(address indexed funder, uint256 amount);
 ```
 
-### SingleHedgerRotationProposed
-
-```solidity
-event SingleHedgerRotationProposed(
-    address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt
-);
-```
-
 ### SingleHedgerRotationApplied
 
 ```solidity
 event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 ```
+
+### EmergencyPositionClosed
+F-6: Emitted when EMERGENCY_ROLE force-closes a position.
+
+When `outstandingQeuro` is non-zero the closure withdraws hedger margin while QEURO is
+still outstanding, which reduces protocol collateralization and may push redemptions
+into liquidation mode. This is an intentional emergency escape hatch; the event exists
+so monitoring/alerting can detect when backing has been removed under an active supply.
+
+
+```solidity
+event EmergencyPositionClosed(
+    address indexed hedger, uint256 indexed positionId, uint256 marginWithdrawn, uint256 outstandingQeuro
+);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger whose position was force-closed|
+|`positionId`|`uint256`|Closed position id|
+|`marginWithdrawn`|`uint256`|Margin (USDC, 6 decimals) returned to the hedger from the vault|
+|`outstandingQeuro`|`uint256`|QEURO still outstanding at closure time (18 decimals); non-zero means under-backed|
 
 ## Structs
 ### CoreParams

@@ -1,8 +1,8 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/QTIToken.sol)
 
 **Inherits:**
-Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 QTIToken
@@ -25,7 +25,7 @@ Main characteristics:
 Vote-escrow mechanics:
 - Users can lock QTI tokens for governance power
 - Longer locks = higher voting power (up to 4x multiplier)
-- Minimum lock: 7 days, Maximum lock: 4 years
+- Minimum lock: 7 days, Maximum lock: 365 days (1 year)
 - Voting power decreases linearly over time
 - Locked tokens cannot be transferred until unlock
 
@@ -52,7 +52,7 @@ Tokenomics:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 Role for governance operations (proposal creation, execution)
 
@@ -173,6 +173,20 @@ uint256 public constant MAX_TIME_ELAPSED = 10 * 365 days
 ```
 
 
+### PROPOSAL_EXECUTION_DELAY
+Mandatory delay between a proposal's voting end and its execution
+
+Post-vote governance timelock. A passed proposal cannot execute until this delay has
+elapsed after `endTime`, giving the community time to react to a malicious proposal
+before it self-executes role-gated changes. Fixed (not a storage variable) to avoid a
+storage-layout change on the live proxy; adjustable later via upgrade if needed.
+
+
+```solidity
+uint256 public constant PROPOSAL_EXECUTION_DELAY = 2 days
+```
+
+
 ### TOTAL_SUPPLY_CAP
 Total supply cap (100 million QTI)
 
@@ -186,6 +200,18 @@ uint256 public constant TOTAL_SUPPLY_CAP = 100_000_000 * 1e18
 ```
 
 
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+## State Variables
 ### locks
 Vote-escrow locks per user address
 
@@ -381,18 +407,43 @@ mapping(uint256 => bool) public proposalScheduled
 ```
 
 
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
+## Functions
+### version
 
-Used to replace direct block.timestamp usage for testability and consistency
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+function version() external pure virtual override returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### flashLoanProtection
 
 Modifier to protect against flash loan attacks
@@ -469,7 +520,7 @@ Sets up the governance token with initial configuration and assigns roles to adm
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -505,11 +556,11 @@ Longer lock periods generate more voting power via time-weighted calculations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -546,11 +597,11 @@ Releases locked QTI tokens and removes voting power when lock period has expired
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -580,11 +631,11 @@ Efficiently locks multiple amounts with different lock times in a single transac
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -920,7 +971,7 @@ Efficiently unlocks tokens for multiple users in a single transaction
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1008,7 +1059,7 @@ Efficiently transfers tokens to multiple recipients in a single transaction
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: No access restrictions
 
@@ -1053,11 +1104,11 @@ Calculates current voting power with linear decay over time
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1093,11 +1144,11 @@ Updates voting power based on current time and lock duration
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1127,11 +1178,11 @@ Returns comprehensive lock information for a user
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1182,7 +1233,7 @@ Creates a new governance proposal with specified parameters and voting period
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -1227,11 +1278,11 @@ Allows users to vote on governance proposals with their voting power
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1262,11 +1313,11 @@ Efficiently votes on multiple proposals in a single transaction
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1304,7 +1355,7 @@ Executes a proposal that has passed voting and meets quorum requirements
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1334,11 +1385,11 @@ Returns execution status and timing information for a proposal
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1379,11 +1430,11 @@ Returns the execution hash required to execute a scheduled proposal
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1419,11 +1470,11 @@ Allows proposer or admin to cancel a proposal before execution
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1453,11 +1504,11 @@ Returns comprehensive proposal information including voting results
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1512,11 +1563,11 @@ Returns voting information for a specific user on a specific proposal
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1558,7 +1609,7 @@ Updates governance parameters including proposal threshold, voting period, and q
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1596,11 +1647,11 @@ Updates the treasury address for protocol fee collection
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1632,11 +1683,11 @@ Includes bounds checking to prevent timestamp manipulation.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1681,6 +1732,48 @@ function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|multiplier Voting power multiplier|
+
+
+### _effectiveLockDuration
+
+Derives the effective lock duration of a (merged) position from its unlock time
+
+Used by lock()/batchLock() so a top-up recomputes voting power over the FULL merged
+position against its remaining lock duration, clamped to [MIN_LOCK_TIME, MAX_LOCK_TIME].
+For a fresh lock this returns exactly the supplied lockTime, preserving prior behavior.
+
+**Notes:**
+- security: Pure-ish read of TimeProvider; no external state mutation
+
+- validation: Clamps to [MIN_LOCK_TIME, MAX_LOCK_TIME] so the multiplier stays in range
+
+- state-changes: No state changes
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: No reentrancy protection needed
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _effectiveLockDuration(uint256 unlockTime) internal view returns (uint256 duration);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`unlockTime`|`uint256`|Absolute unlock timestamp of the merged position|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`duration`|`uint256`|Effective remaining lock duration in seconds, clamped to valid bounds|
 
 
 ### _updateVotingPower
@@ -1740,11 +1833,11 @@ Always returns 18 for standard ERC20 compatibility
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1774,11 +1867,11 @@ Emergency function to halt all contract operations when needed
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1802,11 +1895,11 @@ Resumes normal contract operations after emergency is resolved
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1830,11 +1923,11 @@ Recovers accidentally sent tokens to the treasury address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1865,11 +1958,11 @@ SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1893,11 +1986,11 @@ Returns comprehensive governance information including totals and parameters
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

@@ -1,5 +1,5 @@
 # VaultErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/VaultErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/VaultErrorLibrary.sol)
 
 **Title:**
 VaultErrorLibrary
@@ -11,69 +11,23 @@ Vault-specific errors for QuantillonVault and related operations
 
 Main characteristics:
 - Errors specific to vault operations
-- Collateralization and emergency mode errors
-- Pool health and balance errors
-- Yield distribution errors
+- Fee validation errors
 
 **Note:**
 security-contact: team@quantillon.money
 
 
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
+
+
 ## Errors
-### PoolNotHealthy
-
-```solidity
-error PoolNotHealthy();
-```
-
-### PoolRatioInvalid
-
-```solidity
-error PoolRatioInvalid();
-```
-
-### PoolSizeZero
-
-```solidity
-error PoolSizeZero();
-```
-
-### PoolImbalance
-
-```solidity
-error PoolImbalance();
-```
-
-### CannotRecoverUSDC
-
-```solidity
-error CannotRecoverUSDC();
-```
-
-### CannotRecoverAToken
-
-```solidity
-error CannotRecoverAToken();
-```
-
-### CannotRecoverCriticalToken
-
-```solidity
-error CannotRecoverCriticalToken(string tokenName);
-```
-
-### AavePoolNotHealthy
-
-```solidity
-error AavePoolNotHealthy();
-```
-
-### WouldBreachMinimum
-
-```solidity
-error WouldBreachMinimum();
-```
-
 ### FeeTooHigh
 
 ```solidity

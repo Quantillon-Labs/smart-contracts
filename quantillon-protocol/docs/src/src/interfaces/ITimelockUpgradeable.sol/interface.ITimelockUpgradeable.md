@@ -1,5 +1,5 @@
 # ITimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/ITimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/ITimelockUpgradeable.sol)
 
 **Title:**
 ITimelockUpgradeable
@@ -31,7 +31,7 @@ Sets up the timelock with initial configuration and assigns roles to admin
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -65,11 +65,11 @@ Initiates a secure upgrade proposal with timelock delay and multi-sig requiremen
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -101,11 +101,11 @@ Allows multi-sig signers to approve pending upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -135,11 +135,11 @@ Allows multi-sig signers to revoke their approval for pending upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -169,11 +169,11 @@ Executes a previously approved upgrade after timelock delay
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -203,11 +203,11 @@ Allows proposer or admin to cancel a pending upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -237,11 +237,11 @@ Performs immediate upgrade in emergency situations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -272,11 +272,11 @@ Adds a new multi-sig signer to the approval process
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -306,11 +306,11 @@ Removes a multi-sig signer from the approval process
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -340,11 +340,11 @@ Enables or disables emergency mode for immediate upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -375,11 +375,11 @@ Returns detailed information about a pending upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -415,11 +415,11 @@ Checks if the timelock delay has passed and upgrade can be executed
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -489,11 +489,11 @@ Checks if a specific signer has approved a specific upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -530,11 +530,11 @@ Returns array of all authorized multi-sig signers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -564,11 +564,11 @@ Maps implementation address to pending upgrade information
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -623,11 +623,11 @@ Returns true if the address is authorized as a multi-sig signer
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -663,11 +663,11 @@ Returns the count of authorized multi-sig signers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -697,11 +697,11 @@ Returns true if the signer has approved the specific upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -738,11 +738,11 @@ Returns the count of approvals for a specific upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -778,11 +778,11 @@ Indicates if emergency mode is currently active
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -812,11 +812,11 @@ Minimum delay required for upgrades (in seconds)
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -846,11 +846,11 @@ Maximum delay that can be set for upgrades (in seconds)
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -880,11 +880,11 @@ Minimum number of approvals required to execute an upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -914,11 +914,11 @@ Maximum number of multi-sig signers that can be added
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -948,11 +948,11 @@ Role that can propose upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -982,11 +982,11 @@ Role that can execute upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1016,11 +1016,11 @@ Role that can perform emergency upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1050,11 +1050,11 @@ Role that can manage multi-sig signers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

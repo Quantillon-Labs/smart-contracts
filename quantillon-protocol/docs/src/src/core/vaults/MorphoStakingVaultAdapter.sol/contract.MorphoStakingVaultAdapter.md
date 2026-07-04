@@ -1,5 +1,5 @@
 # MorphoStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/vaults/MorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/vaults/MorphoStakingVaultAdapter.sol)
 
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
@@ -10,7 +10,7 @@ MorphoStakingVaultAdapter
 Generic external vault adapter for Morpho-like third-party vaults.
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 
 ```solidity
@@ -32,24 +32,11 @@ IERC20 public immutable USDC
 ```
 
 
+## State Variables
 ### morphoVault
 
 ```solidity
 IMockMorphoVault public morphoVault
-```
-
-
-### yieldShift
-
-```solidity
-IYieldShift public yieldShift
-```
-
-
-### yieldVaultId
-
-```solidity
-uint256 public yieldVaultId
 ```
 
 
@@ -68,15 +55,15 @@ Initializes Morpho adapter dependencies and roles.
 Configures governance/operator roles and immutable USDC reference.
 
 **Notes:**
-- security: Validates non-zero dependency addresses and vault id.
+- security: Validates non-zero dependency addresses.
 
-- validation: Reverts on zero address or zero `yieldVaultId_`.
+- validation: Reverts on zero address.
 
 - state-changes: Initializes role assignments and adapter dependency pointers.
 
 - events: No events emitted by constructor.
 
-- errors: Reverts with `ZeroAddress` or `InvalidVault` on invalid inputs.
+- errors: Reverts with `ZeroAddress` on invalid inputs.
 
 - reentrancy: Not applicable - constructor only.
 
@@ -86,7 +73,7 @@ Configures governance/operator roles and immutable USDC reference.
 
 
 ```solidity
-constructor(address admin, address usdc_, address morphoVault_, address yieldShift_, uint256 yieldVaultId_) ;
+constructor(address admin, address usdc_, address morphoVault_) ;
 ```
 **Parameters**
 
@@ -95,8 +82,6 @@ constructor(address admin, address usdc_, address morphoVault_, address yieldShi
 |`admin`|`address`|Admin address granted governance and manager roles.|
 |`usdc_`|`address`|USDC token address.|
 |`morphoVault_`|`address`|Mock Morpho vault address.|
-|`yieldShift_`|`address`|YieldShift contract address.|
-|`yieldVaultId_`|`uint256`|YieldShift vault id used when routing harvested yield.|
 
 
 ### depositUnderlying
@@ -189,22 +174,23 @@ function withdrawUnderlying(uint256 usdcAmount)
 |`usdcWithdrawn`|`uint256`|Actual USDC withdrawn and transferred to caller.|
 
 
-### harvestYield
+### harvestYieldToVault
 
-Harvests accrued yield from Morpho and routes it to YieldShift.
+Harvests accrued yield from Morpho and transfers it as USDC to the caller (the vault).
 
-Withdraws only the amount above tracked principal, then forwards to YieldShift.
+Withdraws only the amount above tracked principal, then transfers it to `msg.sender`
+(the vault) so the caller can apply its own distribution policy.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
 
-- validation: Reverts only on downstream failures; returns zero when no yield is available.
+- validation: Returns zero when no yield is available; reverts only on downstream failures.
 
-- state-changes: Leaves principal unchanged and routes yield through YieldShift.
+- state-changes: Leaves `principalDeposited` unchanged; transfers realized USDC to the caller.
 
-- events: Emits downstream transfer/yield events from dependencies.
+- events: Emits downstream transfer events from dependencies.
 
-- errors: Reverts on downstream withdrawal, approval, or addYield failures.
+- errors: Reverts on downstream withdrawal or transfer failures.
 
 - reentrancy: Protected by `nonReentrant`.
 
@@ -214,18 +200,18 @@ Withdraws only the amount above tracked principal, then forwards to YieldShift.
 
 
 ```solidity
-function harvestYield()
+function harvestYieldToVault()
     external
     override
     onlyRole(VAULT_MANAGER_ROLE)
     nonReentrant
-    returns (uint256 harvestedYield);
+    returns (uint256 realizedYield);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`harvestedYield`|`uint256`|USDC yield harvested and routed (6 decimals).|
+|`realizedYield`|`uint256`|USDC yield harvested and transferred to the caller (6 decimals).|
 
 
 ### totalUnderlying
@@ -296,90 +282,10 @@ function setMorphoVault(address newMorphoVault) external onlyRole(GOVERNANCE_ROL
 |`newMorphoVault`|`address`|New Morpho vault address.|
 
 
-### setYieldShift
-
-Updates YieldShift destination contract.
-
-Governance maintenance hook for yield routing dependency changes.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
-
-- validation: Reverts on zero address input.
-
-- state-changes: Updates `yieldShift` dependency pointer.
-
-- events: Emits `YieldShiftUpdated`.
-
-- errors: Reverts with `ZeroAddress` for invalid input.
-
-- reentrancy: No external calls after state change.
-
-- access: Restricted to governance role.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newYieldShift`|`address`|New YieldShift contract address.|
-
-
-### setYieldVaultId
-
-Updates destination vault id used when routing harvested yield.
-
-Governance maintenance hook aligning adapter output with YieldShift vault mapping.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
-
-- validation: Reverts when `newYieldVaultId` is zero.
-
-- state-changes: Updates `yieldVaultId`.
-
-- events: Emits `YieldVaultIdUpdated`.
-
-- errors: Reverts with `InvalidVault` for zero id.
-
-- reentrancy: No external calls after state change.
-
-- access: Restricted to governance role.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function setYieldVaultId(uint256 newYieldVaultId) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newYieldVaultId`|`uint256`|New YieldShift vault id.|
-
-
 ## Events
 ### MorphoVaultUpdated
 
 ```solidity
 event MorphoVaultUpdated(address indexed oldVault, address indexed newVault);
-```
-
-### YieldShiftUpdated
-
-```solidity
-event YieldShiftUpdated(address indexed oldYieldShift, address indexed newYieldShift);
-```
-
-### YieldVaultIdUpdated
-
-```solidity
-event YieldVaultIdUpdated(uint256 indexed oldVaultId, uint256 indexed newVaultId);
 ```
 

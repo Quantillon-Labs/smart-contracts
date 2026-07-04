@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
@@ -323,7 +323,7 @@ Aggregates interest differential and yield‑shift rewards into a single payout.
 
 - state-changes: Decreases internal reward pools and updates last‑claim markers.
 
-- events: Emits `HedgingRewardsClaimed`.
+- events: None (the HedgingRewardsClaimed event was removed in v1.0.1).
 
 - errors: Reverts with protocol‑specific reward errors.
 
@@ -667,7 +667,7 @@ mode is enabled.
 
 - state-changes: Updates single‑hedger configuration state.
 
-- events: Emits `SingleHedgerRotationProposed`.
+- events: Emits `SingleHedgerRotationApplied`.
 
 - errors: Reverts on invalid hedger address.
 
@@ -1515,24 +1515,10 @@ event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, by
 event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
 ```
 
-### HedgingRewardsClaimed
-
-```solidity
-event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
-```
-
 ### RewardReserveFunded
 
 ```solidity
 event RewardReserveFunded(address indexed funder, uint256 amount);
-```
-
-### SingleHedgerRotationProposed
-
-```solidity
-event SingleHedgerRotationProposed(
-    address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt
-);
 ```
 
 ### SingleHedgerRotationApplied

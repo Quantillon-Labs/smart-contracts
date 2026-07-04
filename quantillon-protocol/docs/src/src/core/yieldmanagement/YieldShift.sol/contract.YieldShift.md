@@ -1,8 +1,8 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 YieldShift
@@ -81,7 +81,7 @@ Integration points:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 
 ```solidity
@@ -103,6 +103,46 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+### MIN_HOLDING_PERIOD
+
+```solidity
+uint256 public constant MIN_HOLDING_PERIOD = 7 days
+```
+
+
+### TWAP_PERIOD
+
+```solidity
+uint256 public constant TWAP_PERIOD = 24 hours
+```
+
+
+### MAX_TIME_ELAPSED
+
+```solidity
+uint256 public constant MAX_TIME_ELAPSED = 365 days
+```
+
+
+### MAX_HISTORY_LENGTH
+
+```solidity
+uint256 public constant MAX_HISTORY_LENGTH = 1000
+```
+
+
+## State Variables
 ### usdc
 
 ```solidity
@@ -125,6 +165,11 @@ IHedgerPool public hedgerPool
 
 
 ### mockAaveVault
+**Note:**
+deprecated: Vestigial state: `mockAaveVault` is never read or called by YieldShift
+logic (user yield accrues via creditVaultYield -> stQEURO). Retained only to preserve the
+live proxy's storage layout and ABI; do not wire or rely on it.
+
 
 ```solidity
 IMockAaveVault public mockAaveVault
@@ -135,17 +180,6 @@ IMockAaveVault public mockAaveVault
 
 ```solidity
 IStQEUROFactory public stQEUROFactory
-```
-
-
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
-
-Used to replace direct block.timestamp usage for testability and consistency
-
-
-```solidity
-TimeProvider public immutable TIME_PROVIDER
 ```
 
 
@@ -174,27 +208,6 @@ uint256 public adjustmentSpeed
 
 ```solidity
 uint256 public targetPoolRatio
-```
-
-
-### MIN_HOLDING_PERIOD
-
-```solidity
-uint256 public constant MIN_HOLDING_PERIOD = 7 days
-```
-
-
-### TWAP_PERIOD
-
-```solidity
-uint256 public constant TWAP_PERIOD = 24 hours
-```
-
-
-### MAX_TIME_ELAPSED
-
-```solidity
-uint256 public constant MAX_TIME_ELAPSED = 365 days
 ```
 
 
@@ -324,13 +337,6 @@ PoolSnapshot[] public hedgerPoolHistory
 ```
 
 
-### MAX_HISTORY_LENGTH
-
-```solidity
-uint256 public constant MAX_HISTORY_LENGTH = 1000
-```
-
-
 ### yieldShiftHistory
 
 ```solidity
@@ -353,6 +359,42 @@ bool public enforceSourceVaultBinding
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### constructor
 
 Constructor for YieldShift implementation
@@ -486,7 +528,7 @@ Recalculates and applies new yield distribution ratios based on current pool sta
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -527,46 +569,6 @@ function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external
 |`vaultId`|`uint256`|Registered vault identifier used to resolve the target stQEURO token|
 |`yieldAmount`|`uint256`|Amount of yield to add (6 decimals)|
 |`source`|`bytes32`|Source identifier for the yield|
-
-
-### claimUserYield
-
-Claim user yield
-
-Claims yield for a user after holding period requirements are met
-
-**Notes:**
-- security: Validates caller is authorized and holding period is met
-
-- validation: Validates user has pending yield and meets holding period
-
-- state-changes: Updates user pending yield and transfers USDC
-
-- events: Emits YieldClaimed event
-
-- errors: Throws if caller is unauthorized or holding period not met
-
-- reentrancy: Protected by nonReentrant modifier
-
-- access: Restricted to user or user pool
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function claimUserYield(address user) external nonReentrant returns (uint256 yieldAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user to claim yield for|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield claimed|
 
 
 ### claimHedgerYield
@@ -706,11 +708,11 @@ Returns current pool sizes and ratio for yield shift calculations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -745,11 +747,11 @@ SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -765,40 +767,6 @@ function _getEligiblePoolMetrics()
 |`userPoolSize`|`uint256`|Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)|
 |`hedgerPoolSize`|`uint256`|Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)|
 |`poolRatio`|`uint256`|Ratio of eligible pool sizes|
-
-
-### _calculateHoldingPeriodDiscount
-
-Calculate holding period discount based on recent deposit activity
-
-Returns a percentage (in basis points) representing eligible deposits
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`discountBps`|`uint256`|Discount in basis points (10000 = 100%)|
 
 
 ### _isWithinTolerance
@@ -860,11 +828,11 @@ Called by UserPool to track user deposit timing for yield calculations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -894,11 +862,11 @@ Shows how yield is allocated between different pools and stakeholders
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -933,11 +901,11 @@ Provides detailed analytics about pool performance and utilization
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -973,11 +941,11 @@ Uses algorithms to determine best yield distribution strategy
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1008,11 +976,11 @@ Provides details about different yield-generating mechanisms
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1048,11 +1016,11 @@ Uses the latest in-period snapshot (or current shift) to avoid O(n) scans.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1094,11 +1062,11 @@ Uses aggregate pools directly to avoid cross-contract reads.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1419,11 +1387,11 @@ Called by pools to update individual yield allocations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1455,11 +1423,11 @@ Emergency function to manually distribute yield during critical situations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1490,11 +1458,11 @@ Emergency function to halt yield distribution during critical situations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1518,11 +1486,11 @@ Restarts yield distribution when emergency is resolved
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1548,11 +1516,11 @@ Checks if a yield source is authorized for a specific yield type
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 - security: Validates input parameters and enforces security checks
 
@@ -1564,11 +1532,11 @@ Checks if a yield source is authorized for a specific yield type
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1605,11 +1573,11 @@ Automated function to maintain optimal yield distribution
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1633,11 +1601,11 @@ Emergency function to bypass normal update conditions and force distribution
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1661,11 +1629,11 @@ Calculates time weighted average of pool history over a specified period
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1706,11 +1674,11 @@ Records current pool metrics as a snapshot for historical tracking
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1734,11 +1702,11 @@ SECURITY: Uses eligible pool sizes that respect holding period requirements
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1770,11 +1738,11 @@ Adds a pool snapshot to the history array with size management
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1806,11 +1774,11 @@ Emergency function to recover tokens that are not part of normal operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1841,11 +1809,11 @@ Emergency function to recover ETH that shouldn't be in the contract
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1861,12 +1829,6 @@ OPTIMIZED: Indexed timestamp for efficient time-based filtering
 event YieldDistributionUpdated(
     uint256 newYieldShift, uint256 userYieldAllocation, uint256 hedgerYieldAllocation, uint256 indexed timestamp
 );
-```
-
-### UserYieldClaimed
-
-```solidity
-event UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp);
 ```
 
 ### HedgerYieldClaimed

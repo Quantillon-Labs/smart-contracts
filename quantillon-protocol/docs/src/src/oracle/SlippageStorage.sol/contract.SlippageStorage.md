@@ -1,8 +1,8 @@
 # SlippageStorage
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/SlippageStorage.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/SlippageStorage.sol)
 
 **Inherits:**
-[ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+[ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 SlippageStorage
@@ -23,7 +23,7 @@ Key features:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### SOURCE_LIGHTER
 Source ID for Lighter DEX (maps to legacy _snapshot slot for backward compat)
 
@@ -96,6 +96,16 @@ uint16 public constant MAX_DEVIATION_THRESHOLD = 500
 ```
 
 
+### TIME_PROVIDER
+Shared time provider for deterministic timestamp reads
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+## State Variables
 ### _snapshot
 Current slippage snapshot (2 packed storage slots)
 
@@ -150,16 +160,43 @@ uint8 public override enabledSources
 ```
 
 
-### TIME_PROVIDER
-Shared time provider for deterministic timestamp reads
+## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+function version() external pure virtual override returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### constructor
 
 Disables initializers to prevent direct implementation contract use

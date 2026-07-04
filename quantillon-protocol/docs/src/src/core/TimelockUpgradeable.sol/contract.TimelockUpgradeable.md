@@ -1,8 +1,8 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
-Initializable, AccessControlUpgradeable, PausableUpgradeable
+Initializable, AccessControlUpgradeable, PausableUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 TimelockUpgradeable
@@ -18,7 +18,7 @@ Replaces unrestricted upgrade capability with governance-controlled upgrades
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### UPGRADE_DELAY
 Minimum delay for upgrades (48 hours)
 
@@ -100,6 +100,18 @@ bytes32 public constant MULTISIG_MANAGER_ROLE = keccak256("MULTISIG_MANAGER_ROLE
 ```
 
 
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+## State Variables
 ### pendingUpgrades
 Pending upgrades by implementation address
 
@@ -181,18 +193,43 @@ address[] internal _pendingUpgradesList
 ```
 
 
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
+## Functions
+### version
 
-Used to replace direct block.timestamp usage for testability and consistency
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+function version() external pure virtual override returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### onlyMultisigSigner
 
 
@@ -252,7 +289,7 @@ Sets up access control roles and pausability. Can only be called once.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -286,7 +323,7 @@ Proposes an upgrade with timelock delay and multi-sig approval requirements
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to UPGRADE_PROPOSER_ROLE
 
@@ -324,7 +361,7 @@ Allows multi-sig signers to approve pending upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to multi-sig signers
 
@@ -358,7 +395,7 @@ Allows multi-sig signers to revoke their approval for pending upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to multi-sig signers
 
@@ -392,7 +429,7 @@ Executes an upgrade after timelock delay and sufficient multi-sig approvals
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to UPGRADE_EXECUTOR_ROLE
 
@@ -426,7 +463,7 @@ Allows proposer or admin to cancel pending upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to proposer or admin
 
@@ -460,7 +497,7 @@ Performs emergency upgrade bypassing timelock and multi-sig requirements
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to emergency upgrader role
 
@@ -495,7 +532,7 @@ Adds a new multi-sig signer to the timelock system
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to MULTISIG_MANAGER_ROLE
 
@@ -529,7 +566,7 @@ Removes a multi-sig signer from the timelock system
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to MULTISIG_MANAGER_ROLE
 
@@ -563,7 +600,7 @@ Toggles emergency mode for emergency upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to EMERGENCY_UPGRADER_ROLE
 
@@ -937,7 +974,7 @@ Pauses the timelock contract
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -965,7 +1002,7 @@ Unpauses the timelock contract
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 

@@ -1,8 +1,8 @@
 # FeeCollector
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/FeeCollector.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/FeeCollector.sol)
 
 **Inherits:**
-AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable
+AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 FeeCollector
@@ -31,7 +31,7 @@ Features:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 Governance role for fee distribution and configuration
 
@@ -70,6 +70,7 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
+## State Variables
 ### treasury
 Treasury address for fee distribution
 
@@ -159,6 +160,42 @@ mapping(address => uint256) public feeCollectionCount
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### onlyFeeSource
 
 Ensures only authorized contracts can collect fees
@@ -194,6 +231,38 @@ Used by onlyFeeSource modifier; checks GOVERNANCE_ROLE, TREASURY_ROLE, or _isAut
 
 ```solidity
 function _onlyFeeSource() internal view;
+```
+
+### constructor
+
+Locks the implementation so it cannot be initialized directly
+
+Disables initializers on the implementation contract; only proxies may be
+initialized. Brings FeeCollector in line with the other core contracts,
+which all call _disableInitializers() (F-3/F-4 audit fix).
+
+**Notes:**
+- security: Prevents implementation-contract initialization
+
+- validation: No input validation required - constructor
+
+- state-changes: Disables initializers on the implementation
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - constructor
+
+- access: No access restrictions
+
+- oracle: No oracle dependencies
+
+- oz-upgrades-unsafe-allow: constructor
+
+
+```solidity
+constructor() ;
 ```
 
 ### initialize

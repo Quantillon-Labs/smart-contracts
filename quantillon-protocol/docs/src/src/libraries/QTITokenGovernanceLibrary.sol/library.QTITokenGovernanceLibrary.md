@@ -1,5 +1,5 @@
 # QTITokenGovernanceLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/QTITokenGovernanceLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/QTITokenGovernanceLibrary.sol)
 
 **Title:**
 QTITokenGovernanceLibrary
@@ -12,7 +12,7 @@ Library for QTIToken governance calculations and validations
 Extracts calculation logic from QTIToken to reduce contract size
 
 
-## State Variables
+## Constants
 ### MAX_LOCK_TIME
 Maximum lock time for QTI tokens (1 year)
 
@@ -41,6 +41,41 @@ uint256 public constant MAX_VE_QTI_MULTIPLIER = 4
 
 
 ## Functions
+### version
+
+Returns the semantic version of this linked library.
+
+On-chain version of the standalone deployed library; bump per semver on any change.
+See deployments/{chainId}/versions.json for deployed-address provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### calculateVotingPowerMultiplier
 
 Calculate voting power multiplier based on lock time
@@ -379,67 +414,6 @@ function validateAndCalculateTotalAmount(uint256[] calldata amounts, uint256[] c
 |Name|Type|Description|
 |----|----|-----------|
 |`totalAmount`|`uint256`|Total amount of QTI to be locked|
-
-
-### processBatchLocks
-
-Process batch locks and calculate totals
-
-Processes batch lock operations and calculates total voting power and amounts
-
-**Notes:**
-- security: Prevents overflow in batch calculations
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function processBatchLocks(
-    uint256[] calldata amounts,
-    uint256[] calldata lockTimes,
-    uint256 currentTimestamp,
-    uint256 existingUnlockTime
-)
-    external
-    pure
-    returns (
-        uint256 totalNewVotingPower,
-        uint256 totalNewAmount,
-        uint256 finalUnlockTime,
-        uint256 finalLockTime,
-        uint256[] memory veQTIAmounts
-    );
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amounts`|`uint256[]`|Array of QTI amounts to lock|
-|`lockTimes`|`uint256[]`|Array of lock durations|
-|`currentTimestamp`|`uint256`|Current timestamp|
-|`existingUnlockTime`|`uint256`|Existing unlock time if already locked|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalNewVotingPower`|`uint256`|Total new voting power from all locks|
-|`totalNewAmount`|`uint256`|Total new amount locked|
-|`finalUnlockTime`|`uint256`|Final unlock time after all locks|
-|`finalLockTime`|`uint256`|Final lock time|
-|`veQTIAmounts`|`uint256[]`|Array of calculated voting power amounts|
 
 
 ### updateLockInfo

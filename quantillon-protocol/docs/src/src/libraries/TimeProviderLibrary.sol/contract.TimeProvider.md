@@ -1,8 +1,8 @@
 # TimeProvider
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/TimeProviderLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/TimeProviderLibrary.sol)
 
 **Inherits:**
-Initializable, AccessControlUpgradeable, UUPSUpgradeable
+Initializable, AccessControlUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 TimeProvider
@@ -17,7 +17,7 @@ SECURITY CONSIDERATIONS:
 - All time adjustments are logged for transparency
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 Role identifier for governance operations
 
@@ -63,6 +63,7 @@ uint256 public constant MAX_TIME_DRIFT = 1 hours
 ```
 
 
+## State Variables
 ### timeOffset
 Current time offset applied to block.timestamp
 
@@ -102,6 +103,42 @@ uint256 public adjustmentCounter
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### whenNotEmergency
 
 Ensures the contract is not in emergency mode
@@ -613,11 +650,11 @@ Authorizes contract upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

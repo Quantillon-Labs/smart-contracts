@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IChainlinkOracle.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)
@@ -37,7 +37,7 @@ Sets up the oracle with initial configuration and assigns roles to admin
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -74,11 +74,11 @@ Updates the price bounds for EUR/USD validation with security checks
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -109,11 +109,11 @@ Updates the USDC price tolerance for validation with security checks
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -143,7 +143,7 @@ Updates the addresses of both Chainlink price feeds with validation
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -178,7 +178,7 @@ Resets the circuit breaker state to allow normal price operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -206,11 +206,11 @@ Activates circuit breaker to switch to fallback price mode for safety
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -234,11 +234,11 @@ Pauses the oracle contract to halt all price operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -262,11 +262,11 @@ Resumes oracle operations after being paused
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -290,11 +290,11 @@ Allows recovery of ERC20 tokens accidentally sent to the oracle contract
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -325,11 +325,11 @@ Allows recovery of ETH accidentally sent to the oracle contract
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

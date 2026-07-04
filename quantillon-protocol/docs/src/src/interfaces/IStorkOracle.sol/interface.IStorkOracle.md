@@ -1,5 +1,5 @@
 # IStorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IStorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IStorkOracle.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)
@@ -81,7 +81,7 @@ Updates the price bounds for EUR/USD validation with security checks
 
 - errors: Throws if minPrice >= maxPrice or invalid bounds
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -116,7 +116,7 @@ Updates the USDC price tolerance for validation with security checks
 
 - errors: Throws if tolerance is invalid or out of bounds
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -150,7 +150,7 @@ Updates the addresses and feed IDs of both Stork price feeds with validation
 
 - errors: Throws if feed address is zero or invalid
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -186,7 +186,7 @@ Resets the circuit breaker state to allow normal price operations
 
 - errors: No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -214,7 +214,7 @@ Activates circuit breaker to switch to fallback price mode for safety
 
 - errors: No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -242,7 +242,7 @@ Pauses the oracle contract to halt all price operations
 
 - errors: No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to EMERGENCY_ROLE
 
@@ -270,7 +270,7 @@ Resumes oracle operations after being paused
 
 - errors: No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to EMERGENCY_ROLE
 
@@ -298,7 +298,7 @@ Allows recovery of ERC20 tokens accidentally sent to the oracle contract
 
 - errors: Throws if token is zero address or transfer fails
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -333,7 +333,7 @@ Allows recovery of ETH accidentally sent to the oracle contract
 
 - errors: Throws if transfer fails
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 

@@ -1,5 +1,5 @@
 # TokenErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/TokenErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/TokenErrorLibrary.sol)
 
 **Title:**
 TokenErrorLibrary
@@ -19,6 +19,16 @@ Main characteristics:
 security-contact: team@quantillon.money
 
 
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
+
+
 ## Errors
 ### MintingDisabled
 
@@ -30,18 +40,6 @@ error MintingDisabled();
 
 ```solidity
 error BlacklistedAddress();
-```
-
-### CannotRecoverQEURO
-
-```solidity
-error CannotRecoverQEURO();
-```
-
-### CannotRecoverQTI
-
-```solidity
-error CannotRecoverQTI();
 ```
 
 ### NewCapBelowCurrentSupply

@@ -1,5 +1,5 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/TokenLibrary.sol)
 
 **Title:**
 TokenLibrary
@@ -15,6 +15,16 @@ This library provides core token validation functions:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Functions
@@ -35,11 +45,11 @@ Ensures minting doesn't exceed maximum supply and validates parameters
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -72,11 +82,11 @@ Ensures sufficient balance and validates parameters for burning
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

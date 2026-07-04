@@ -1,5 +1,5 @@
 # YieldShiftOptimizationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/YieldShiftOptimizationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/YieldShiftOptimizationLibrary.sol)
 
 **Title:**
 YieldShiftOptimizationLibrary
@@ -12,7 +12,7 @@ Library for YieldShift pool metrics, historical data, and utility functions
 Extracts utility functions from YieldShift to reduce contract size
 
 
-## State Variables
+## Constants
 ### MIN_HOLDING_PERIOD
 
 ```solidity
@@ -42,6 +42,41 @@ uint256 public constant MAX_HISTORY_LENGTH = 100
 
 
 ## Functions
+### version
+
+Returns the semantic version of this linked library.
+
+On-chain version of the standalone deployed library; bump per semver on any change.
+See deployments/{chainId}/versions.json for deployed-address provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### getCurrentPoolMetrics
 
 Get current pool metrics
@@ -138,51 +173,6 @@ function getEligiblePoolMetrics(
 |`poolRatio`|`uint256`|Ratio of eligible pool sizes|
 
 
-### calculateEligibleUserPoolSize
-
-Calculate eligible user pool size excluding recent deposits
-
-Only counts deposits older than MIN_HOLDING_PERIOD
-
-**Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateEligibleUserPoolSize(uint256 totalUserPoolSize, uint256 currentTime, uint256 lastUpdateTime)
-    external
-    pure
-    returns (uint256 eligibleSize);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalUserPoolSize`|`uint256`|Current total user pool size|
-|`currentTime`|`uint256`|Current timestamp|
-|`lastUpdateTime`|`uint256`|Last update timestamp|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
-
-
 ### _calculateEligibleUserPoolSize
 
 Internal function to calculate eligible user pool size
@@ -218,51 +208,6 @@ function _calculateEligibleUserPoolSize(uint256 totalUserPoolSize, uint256 curre
 |Name|Type|Description|
 |----|----|-----------|
 |`totalUserPoolSize`|`uint256`|Current total user pool size|
-|`currentTime`|`uint256`|Current timestamp|
-|`lastUpdateTime`|`uint256`|Last update timestamp|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
-
-
-### calculateEligibleHedgerPoolSize
-
-Calculate eligible hedger pool size excluding recent deposits
-
-Only counts deposits older than MIN_HOLDING_PERIOD
-
-**Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize, uint256 currentTime, uint256 lastUpdateTime)
-    external
-    pure
-    returns (uint256 eligibleSize);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalHedgerPoolSize`|`uint256`|Current total hedger pool size|
 |`currentTime`|`uint256`|Current timestamp|
 |`lastUpdateTime`|`uint256`|Last update timestamp|
 
@@ -316,50 +261,6 @@ function _calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize, uint256 c
 |Name|Type|Description|
 |----|----|-----------|
 |`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
-
-
-### calculateHoldingPeriodDiscount
-
-Calculate holding period discount based on recent deposit activity
-
-Returns a percentage (in basis points) representing eligible deposits
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateHoldingPeriodDiscount(uint256 currentTime, uint256 lastUpdateTime)
-    external
-    pure
-    returns (uint256 discountBps);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`currentTime`|`uint256`|Current timestamp|
-|`lastUpdateTime`|`uint256`|Last update timestamp|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`discountBps`|`uint256`|Discount in basis points (10000 = 100%)|
 
 
 ### _calculateHoldingPeriodDiscount

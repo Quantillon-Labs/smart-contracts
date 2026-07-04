@@ -1,5 +1,5 @@
 # CommonErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/CommonErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/CommonErrorLibrary.sol)
 
 **Title:**
 CommonErrorLibrary
@@ -17,6 +17,16 @@ Main characteristics:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Errors
@@ -104,12 +114,6 @@ error ConfigValueTooHigh();
 error ConfigValueTooLow();
 ```
 
-### ConfigInvalid
-
-```solidity
-error ConfigInvalid();
-```
-
 ### NotAdmin
 
 ```solidity
@@ -158,28 +162,10 @@ error AlreadyInitialized();
 error NotInitialized();
 ```
 
-### AlreadyActive
-
-```solidity
-error AlreadyActive();
-```
-
 ### NotActive
 
 ```solidity
 error NotActive();
-```
-
-### AlreadyPaused
-
-```solidity
-error AlreadyPaused();
-```
-
-### NotPaused
-
-```solidity
-error NotPaused();
 ```
 
 ### BelowThreshold
@@ -198,12 +184,6 @@ error NoChangeDetected();
 
 ```solidity
 error DivisionByZero();
-```
-
-### MultiplicationOverflow
-
-```solidity
-error MultiplicationOverflow();
 ```
 
 ### PercentageTooHigh
@@ -230,28 +210,10 @@ error InvalidCondition();
 error ETHTransferFailed();
 ```
 
-### TokenTransferFailed
-
-```solidity
-error TokenTransferFailed();
-```
-
-### CannotSendToZero
-
-```solidity
-error CannotSendToZero();
-```
-
 ### NoETHToRecover
 
 ```solidity
 error NoETHToRecover();
-```
-
-### NoTokensToRecover
-
-```solidity
-error NoTokensToRecover();
 ```
 
 ### CannotRecoverOwnToken
@@ -302,24 +264,6 @@ error PositionNotActive();
 error LiquidationCooldown();
 ```
 
-### InvalidYieldShift
-
-```solidity
-error InvalidYieldShift();
-```
-
-### AdjustmentSpeedTooHigh
-
-```solidity
-error AdjustmentSpeedTooHigh();
-```
-
-### TargetRatioTooHigh
-
-```solidity
-error TargetRatioTooHigh();
-```
-
 ### InvalidRatio
 
 ```solidity
@@ -332,34 +276,16 @@ error InvalidRatio();
 error NotGovernance();
 ```
 
-### NotEmergency
-
-```solidity
-error NotEmergency();
-```
-
 ### NotEmergencyRole
 
 ```solidity
 error NotEmergencyRole();
 ```
 
-### NotLiquidator
-
-```solidity
-error NotLiquidator();
-```
-
 ### NotLiquidatorRole
 
 ```solidity
 error NotLiquidatorRole();
-```
-
-### NotHedger
-
-```solidity
-error NotHedger();
 ```
 
 ### NotVaultManager
@@ -384,24 +310,6 @@ error InsufficientYield();
 
 ```solidity
 error InvalidShiftRange();
-```
-
-### YieldBelowThreshold
-
-```solidity
-error YieldBelowThreshold();
-```
-
-### YieldNotAvailable
-
-```solidity
-error YieldNotAvailable();
-```
-
-### YieldDistributionFailed
-
-```solidity
-error YieldDistributionFailed();
 ```
 
 ### YieldCalculationError
@@ -482,6 +390,12 @@ error QuorumNotMet();
 error ProposalAlreadyCanceled();
 ```
 
+### ExecutionTimeNotReached
+
+```solidity
+error ExecutionTimeNotReached();
+```
+
 ### LockTimeTooShort
 
 ```solidity
@@ -528,11 +442,5 @@ error NotWhitelisted();
 
 ```solidity
 error InsufficientVotingPower();
-```
-
-### NotInLiquidationMode
-
-```solidity
-error NotInLiquidationMode();
 ```
 

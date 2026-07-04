@@ -1,8 +1,8 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/QuantillonVault.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 QuantillonVault
@@ -70,7 +70,7 @@ Integration points:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 Role for governance operations (parameter updates, emergency actions)
 
@@ -171,6 +171,45 @@ uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18
 ```
 
 
+### MAX_HEDGER_REWARD_FEE_SPLIT
+Maximum value allowed for hedgerRewardFeeSplit
+
+
+```solidity
+uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
+```
+
+
+### DEV_MODE_DELAY
+MED-1: Minimum delay before a proposed dev-mode change takes effect
+
+
+```solidity
+uint256 private constant DEV_MODE_DELAY = 48 hours
+```
+
+
+### DEV_MODE_DELAY_BLOCKS
+MED-1: Canonical block delay for dev-mode proposals (12s block target)
+
+
+```solidity
+uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
+```
+
+
+### MAX_FUNDING_RATE_ANNUAL_BPS
+Maximum settable annualized hedger funding rate (basis points).
+
+Upper bound for `fundingRateAnnualBps` to bound the hedger carve-out.
+
+
+```solidity
+uint256 private constant MAX_FUNDING_RATE_ANNUAL_BPS = 5000
+```
+
+
+## State Variables
 ### qeuro
 QEURO token contract for minting and burning
 
@@ -374,15 +413,6 @@ uint256 public hedgerRewardFeeSplit
 ```
 
 
-### MAX_HEDGER_REWARD_FEE_SPLIT
-Maximum value allowed for hedgerRewardFeeSplit
-
-
-```solidity
-uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
-```
-
-
 ### minCollateralizationRatioForMinting
 Minimum collateralization ratio required for minting QEURO (in 1e18 precision, NOT basis points)
 
@@ -474,24 +504,6 @@ bool public devModeEnabled
 ```
 
 
-### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
-
-
-```solidity
-uint256 private constant DEV_MODE_DELAY = 48 hours
-```
-
-
-### DEV_MODE_DELAY_BLOCKS
-MED-1: Canonical block delay for dev-mode proposals (12s block target)
-
-
-```solidity
-uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
-```
-
-
 ### pendingDevMode
 MED-1: Pending dev-mode value awaiting the timelock delay
 
@@ -519,7 +531,77 @@ uint256 private lastPriceUpdateTime
 ```
 
 
+### fundingRateAnnualBps
+Annualized funding rate (basis points) reserved for hedgers from harvested vault yield.
+
+Hedger-first carve-out: hedgerShare = fundingRateAnnualBps * notional * dt / (10000 * 365 days).
+Governance-set; 0 at commercial launch. This is an ABSOLUTE funding cost, NOT a share of yield.
+
+
+```solidity
+uint256 internal fundingRateAnnualBps
+```
+
+
+### lastYieldHarvestByVaultId
+Timestamp of the last yield harvest+distribution per vault id (funding accrual clock).
+
+Set lazily on the first `harvestAndDistributeVaultYield` call for a vault id.
+
+
+```solidity
+mapping(uint256 => uint256) internal lastYieldHarvestByVaultId
+```
+
+
+### hedgerYieldRecipient
+Recipient of the hedger funding share routed during yield distribution.
+
+Falls back to `treasury` when unset (address(0)).
+
+
+```solidity
+address internal hedgerYieldRecipient
+```
+
+
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.1.0").|
+
+
 ### flashLoanProtection
 
 Modifier to protect against flash loan attacks
@@ -631,7 +713,7 @@ This function configures:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -1644,7 +1726,7 @@ Safety constraints:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1716,7 +1798,7 @@ Safety constraints:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1746,19 +1828,19 @@ Updates the oracle contract address for price feeds
 **Notes:**
 - security: Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- validation: Reverts if the new oracle is the zero address
 
-- state-changes: Updates contract state variables
+- state-changes: Updates the oracle address
 
-- events: Emits relevant events for state changes
+- events: Emits OracleUpdated(oldOracle, newOracle)
 
-- errors: Throws custom errors for invalid conditions
+- errors: Throws InvalidOracle if the new oracle is the zero address
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected - single state write, no external calls
 
-- access: Restricted to authorized roles
+- access: Restricted to GOVERNANCE_ROLE
 
-- oracle: Requires fresh oracle price data
+- oracle: Sets the oracle address; does not read price data
 
 
 ```solidity
@@ -1788,7 +1870,7 @@ Updates the HedgerPool contract address for collateralization checks
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1822,7 +1904,7 @@ Updates the UserPool contract address for user deposit tracking
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -2069,48 +2151,207 @@ function creditVaultYield(uint256 vaultId, uint256 usdcAmount)
 |`qeuroMinted`|`uint256`|Net QEURO minted into the stQEURO vault.|
 
 
-### harvestVaultYield
+### _creditVaultYield
 
-Harvests yield from a specific external vault adapter.
+Credits already-held USDC into an stQEURO vault as freshly minted QEURO backing.
 
-Governance-triggered wrapper around adapter `harvestYield`.
+Shared core used by `creditVaultYield` (after pulling USDC from the caller) and by
+`harvestAndDistributeVaultYield` (after realizing adapter yield into this contract).
+Assumes `usdcAmount` USDC is already held by this contract; performs no transfer-in.
 
 **Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`; protected by `nonReentrant`.
+- security: Caller must enforce access control, pause, and reentrancy guards.
 
-- validation: Reverts when vault id is invalid/inactive or adapter is unset.
+- validation: Reverts on invalid vault ids, empty share supply, invalid prices, or unsafe collateralization.
 
-- state-changes: Adapter-side yield state may update; vault emits harvest event.
+- state-changes: Updates price cache, totalUsdcHeld, totalMinted, hedger sync, and mints QEURO to the stQEURO vault.
 
-- events: Emits `ExternalVaultYieldHarvested`.
+- events: Emits no direct event; downstream token mint/transfer events provide observability.
 
-- errors: Reverts on invalid configuration or adapter harvest failures.
+- errors: Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
 
-- reentrancy: Guarded by `nonReentrant`.
+- reentrancy: Must be invoked from a `nonReentrant` external entrypoint.
 
-- access: Governance-only.
+- access: Internal.
 
-- oracle: No direct oracle dependency.
+- oracle: Requires fresh validated EUR/USD and USDC/USD oracle reads.
 
 
 ```solidity
-function harvestVaultYield(uint256 vaultId)
-    external
-    onlyRole(GOVERNANCE_ROLE)
-    nonReentrant
-    returns (uint256 harvestedYield);
+function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns (uint256 qeuroMinted);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`vaultId`|`uint256`|Vault id whose adapter yield should be harvested.|
+|`vaultId`|`uint256`|Vault identifier whose stQEURO series receives the compounded yield.|
+|`usdcAmount`|`uint256`|Amount of already-held USDC to convert into stQEURO backing.|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`harvestedYield`|`uint256`|Yield harvested by adapter in USDC units.|
+|`qeuroMinted`|`uint256`|Net QEURO minted into the stQEURO vault.|
+
+
+### setFundingRateAnnualBps
+
+Sets the annualized hedger funding rate used to size the hedger yield carve-out.
+
+Expressed in basis points of the deployed notional, accrued pro-rata to elapsed time.
+Set to 0 for commercial launch (Quantillon-as-sole-hedger bootstrap); a non-zero value
+reserves an absolute funding amount for hedgers ahead of the staker/treasury split.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`.
+
+- validation: Reverts when `newRateBps` exceeds `MAX_FUNDING_RATE_ANNUAL_BPS`.
+
+- state-changes: Updates `fundingRateAnnualBps`.
+
+- events: Emits `FundingRateUpdated`.
+
+- errors: Reverts with `AboveLimit` when the rate is too high.
+
+- reentrancy: No reentrancy-sensitive external calls.
+
+- access: Governance-only.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setFundingRateAnnualBps(uint256 newRateBps) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRateBps`|`uint256`|New annualized funding rate in basis points (<= MAX_FUNDING_RATE_ANNUAL_BPS).|
+
+
+### setHedgerYieldRecipient
+
+Sets the recipient of the hedger funding share routed during yield distribution.
+
+When unset (address(0)), the hedger share falls back to the treasury.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`.
+
+- validation: Reverts on the zero address.
+
+- state-changes: Updates `hedgerYieldRecipient`.
+
+- events: Emits `HedgerYieldRecipientUpdated`.
+
+- errors: Reverts with `ZeroAddress` for an invalid recipient.
+
+- reentrancy: No reentrancy-sensitive external calls.
+
+- access: Governance-only.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setHedgerYieldRecipient(address newRecipient) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRecipient`|`address`|New hedger yield recipient address.|
+
+
+### harvestAndDistributeVaultYield
+
+Harvests external-vault yield and distributes it: hedger funding first, then the
+staked-user share into stQEURO (rising share price), then the remainder to treasury.
+
+Realizes adapter yield into this contract via `harvestYieldToVault`, carves out the hedger
+funding accrual (`fundingRateAnnualBps * notional * dt / (10000 * 365 days)`), credits the
+residual to stQEURO holders pro-rata to staked/circulating QEURO, and sends the rest to
+treasury. The first call for a vault id only anchors the funding clock.
+MINIMAL V1: the hedger carve-out is capped at the realized yield; the "draw from the user pool"
+path for `realizedYield < hedgerAccrual` (negative residual, falling share price) is
+intentionally out of scope and does not trigger while funding stays below the vault yield.
+
+**Notes:**
+- security: Restricted to `YIELD_DISTRIBUTOR_ROLE`; protected by `nonReentrant` and pause.
+
+- validation: Reverts when vault id is invalid/inactive or adapter is unset.
+
+- state-changes: Updates the funding clock, protocol USDC/QEURO accounting, and stQEURO backing; moves USDC to the hedger recipient and treasury.
+
+- events: Emits `VaultYieldDistributed`.
+
+- errors: Reverts on invalid configuration, adapter failures, or unsafe credit conditions.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Restricted to `YIELD_DISTRIBUTOR_ROLE`.
+
+- oracle: Credit path requires fresh validated EUR/USD and USDC/USD oracle reads.
+
+
+```solidity
+function harvestAndDistributeVaultYield(uint256 vaultId)
+    external
+    nonReentrant
+    whenNotPaused
+    onlyRole(YIELD_DISTRIBUTOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id whose adapter yield is harvested and distributed.|
+
+
+### harvestConfig
+
+Returns the yield-distribution configuration for a vault id.
+
+Single read replacing the per-field getters to keep the contract under the EIP-170 limit.
+
+**Notes:**
+- security: Read-only helper.
+
+- validation: No input validation required.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function harvestConfig(uint256 vaultId)
+    external
+    view
+    returns (uint256 fundingRateBps, address hedgerRecipient, uint256 lastHarvest);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to query.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`fundingRateBps`|`uint256`|Annualized hedger funding rate (basis points).|
+|`hedgerRecipient`|`address`|Hedger funding recipient (zero address falls back to treasury).|
+|`lastHarvest`|`uint256`|Timestamp of the last harvest+distribute for the vault id.|
 
 
 ### deployUsdcToVault
@@ -2329,11 +2570,11 @@ Fees accumulate during minting and redemptions
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2457,14 +2698,18 @@ function getTotalUsdcAvailable() external view returns (uint256);
 
 ### updatePriceCache
 
-Updates the price cache with the current oracle price
+Refreshes the deviation-baseline price cache to the current valid oracle price
 
-Allows governance to manually refresh the price cache to prevent deviation check failures
-
-Useful when price has moved significantly and cache needs to be updated
+F-3: PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
+reports as valid (this reverts on `!isValid`), so anyone (e.g. a keeper) can re-baseline
+during a sharp EUR move to clear the vault's 2% deviation guard and restore mint/redeem
+availability without waiting on a governance multisig. It cannot commit a manipulated or
+stale price — the oracle's own bounds / staleness / circuit-breaker checks gate validity.
+Tradeoff: this removes the governance-in-the-loop pause on the vault's SECONDARY deviation
+circuit; the oracle adapter's validity remains the primary protection layer.
 
 **Notes:**
-- security: Only callable by governance role
+- security: Permissionless; only commits an oracle-validated price; nonReentrant.
 
 - validation: Validates oracle price is valid before updating cache
 
@@ -2474,15 +2719,15 @@ Useful when price has moved significantly and cache needs to be updated
 
 - errors: Reverts if oracle price is invalid
 
-- reentrancy: Not applicable - no external calls after state changes
+- reentrancy: Protected by nonReentrant
 
-- access: Restricted to GOVERNANCE_ROLE
+- access: Public - callable by anyone
 
 - oracle: Requires valid oracle price
 
 
 ```solidity
-function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant;
+function updatePriceCache() external nonReentrant;
 ```
 
 ### _applyPriceCacheUpdate
@@ -2592,11 +2837,95 @@ function _getExternalVaultCollateralBalance() internal view returns (uint256 ext
 |`externalCollateral`|`uint256`|Total external collateral balance in USDC units.|
 
 
+### _isInRedemptionSet
+
+Returns whether a vault id belongs to the redemption set used for collateral counting.
+
+Mirrors EXACTLY the membership notion of `_getExternalVaultCollateralBalance` and
+`_resolveWithdrawalPriority`: a vault is in the set iff it appears in
+`redemptionPriorityVaultIds`, or (when that list is empty) it is the non-zero
+`defaultStakingVaultId`. Deployment is gated on this so principal can only ever land in
+a vault that is both counted as collateral and reachable by the withdrawal path.
+
+**Notes:**
+- security: Internal read helper.
+
+- validation: No input validation.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function _isInRedemptionSet(uint256 vaultId) internal view returns (bool inSet);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to test.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`inSet`|`bool`|True when the vault id is counted/withdrawable.|
+
+
+### _requireInRedemptionSet
+
+Reverts unless the vault id is in the redemption set (counted + withdrawable).
+
+Used to gate external-vault deployment so collateral counting, withdrawal capacity, and
+deployed principal stay in lockstep (audit F-2). A vault that is active but absent from
+the redemption priority/default set would otherwise hold principal that is excluded from
+collateral and unreachable by the withdrawal path, stranding funds in liquidation.
+
+**Notes:**
+- security: Internal guard.
+
+- validation: Reverts with `InvalidVault` when the vault id is outside the redemption set.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Reverts with `CommonErrorLibrary.InvalidVault`.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function _requireInRedemptionSet(uint256 vaultId) internal view;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id being deployed to.|
+
+
 ### _getTotalCollateralWithAccruedYield
 
-Returns total collateral available including held and external-vault balances.
+Returns total principal-backed collateral (held USDC + tracked external principal).
 
-Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`.
+Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`. Despite the legacy
+name, this intentionally EXCLUDES unharvested external-vault yield: the
+value equals what redemption/withdrawal can actually source, so collateral counting and
+withdrawal capacity stay consistent. Harvested yield is routed to stQEURO holders.
 
 **Notes:**
 - security: Internal read helper.
@@ -2974,11 +3303,11 @@ When paused:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -3002,11 +3331,11 @@ Resumes all vault operations after emergency pause
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -3033,7 +3362,7 @@ Protections:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -3074,11 +3403,11 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -3125,7 +3454,8 @@ function _syncMintWithHedgersOrRevert(uint256 amount, uint256 fillPrice, uint256
 
 Internal helper to notify HedgerPool about user redeems
 
-Attempts to release hedger fills but swallows failures to avoid blocking users
+Releases hedger fills atomically. Reverts propagate, so a paused or
+otherwise unavailable HedgerPool blocks the redeem instead of desyncing exposure.
 
 **Notes:**
 - security: Internal helper; relies on HedgerPool access control
@@ -3136,7 +3466,7 @@ Attempts to release hedger fills but swallows failures to avoid blocking users
 
 - events: None
 
-- errors: Silently ignores downstream errors
+- errors: Propagates HedgerPool reverts to preserve redeem/hedger atomicity
 
 - reentrancy: Not applicable
 
@@ -3258,20 +3588,6 @@ event LiquidationRedeemed(
 |`collateralizationRatioBps`|`uint256`|Protocol CR at redemption time (basis points)|
 |`isPremium`|`bool`|True if user received more than fair value (CR > 100%)|
 
-### HedgerPoolNotificationFailed
-LOW-3: Emitted when notifying HedgerPool of a liquidation redemption fails
-
-
-```solidity
-event HedgerPoolNotificationFailed(uint256 qeuroAmount);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO that was being redeemed|
-
 ### HedgerDepositAdded
 Emitted when hedger deposits USDC to vault for unified liquidity
 
@@ -3337,24 +3653,6 @@ event CollateralizationThresholdsUpdated(
 |`minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in 18 decimals)|
 |`criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in 18 decimals)|
 |`caller`|`address`|Address of the governance role holder who updated the thresholds|
-
-### CollateralizationStatusChanged
-Emitted when protocol collateralization status changes
-
-
-```solidity
-event CollateralizationStatusChanged(
-    uint256 indexed currentRatio, bool indexed canMint, bool indexed shouldLiquidate
-);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`currentRatio`|`uint256`|Current protocol collateralization ratio (in basis points)|
-|`canMint`|`bool`|Whether minting is currently allowed based on collateralization|
-|`shouldLiquidate`|`bool`|Whether liquidation should be triggered based on collateralization|
 
 ### PriceDeviationDetected
 
@@ -3444,19 +3742,62 @@ event StQEURORegistered(
 event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
 ```
 
-### ExternalVaultYieldHarvested
+### VaultYieldDistributed
+Emitted when harvested external-vault yield is distributed across hedger/user/treasury.
+
 
 ```solidity
-event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
+event VaultYieldDistributed(
+    uint256 indexed vaultId, uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare
+);
 ```
 
-### ExternalVaultDeploymentFailed
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id whose yield was distributed|
+|`realizedYield`|`uint256`|Total USDC yield realized from the adapter (6 decimals)|
+|`hedgerShare`|`uint256`|USDC routed to the hedger funding recipient (6 decimals)|
+|`userShare`|`uint256`|USDC credited into the stQEURO vault as QEURO backing (6 decimals)|
+|`treasuryShare`|`uint256`|USDC routed to the treasury (6 decimals)|
+
+### FundingRateUpdated
+Emitted when governance updates the annualized hedger funding rate.
+
 
 ```solidity
-event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
+event FundingRateUpdated(uint256 oldRateBps, uint256 newRateBps);
 ```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldRateBps`|`uint256`|Previous funding rate (basis points)|
+|`newRateBps`|`uint256`|New funding rate (basis points)|
+
+### HedgerYieldRecipientUpdated
+Emitted when the hedger yield recipient is updated by governance.
+
+
+```solidity
+event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldRecipient`|`address`|Previous recipient address|
+|`newRecipient`|`address`|New recipient address|
 
 ### HedgerSyncFailed
+Deprecated: retained for ABI compatibility with existing off-chain consumers
+
+No longer emitted. Redeem hedger-sync is atomic (failures
+revert rather than being swallowed), so this event can never fire.
+
 
 ```solidity
 event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
@@ -3472,6 +3813,14 @@ event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed us
 
 ```solidity
 event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
+```
+
+### OracleUpdated
+Emitted when the oracle address is changed via updateOracle
+
+
+```solidity
+event OracleUpdated(address indexed oldOracle, address indexed newOracle);
 ```
 
 ### ProtocolFeeRouted

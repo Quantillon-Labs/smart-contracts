@@ -1,8 +1,8 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
-[IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+[IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 ChainlinkOracle
@@ -23,7 +23,7 @@ Key features:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### ORACLE_MANAGER_ROLE
 Role to manage oracle configurations
 
@@ -115,6 +115,27 @@ uint256 public constant BLOCKS_PER_HOUR = 300
 ```
 
 
+### DEV_MODE_DELAY
+MED-1: Minimum delay before a proposed dev-mode change takes effect
+
+
+```solidity
+uint256 public constant DEV_MODE_DELAY = 48 hours
+```
+
+
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+## State Variables
 ### eurUsdPriceFeed
 Interface to Chainlink EUR/USD price feed
 
@@ -254,15 +275,6 @@ bool public devModeEnabled
 ```
 
 
-### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
-
-
-```solidity
-uint256 public constant DEV_MODE_DELAY = 48 hours
-```
-
-
 ### pendingDevMode
 MED-1: Pending dev-mode value awaiting the timelock delay
 
@@ -281,18 +293,43 @@ uint256 public devModePendingAt
 ```
 
 
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
+## Functions
+### version
 
-Used to replace direct block.timestamp usage for testability and consistency
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+function version() external pure virtual override returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### constructor
 
 Constructor for ChainlinkOracle contract
@@ -385,11 +422,11 @@ SECURITY: Only admin can update treasury address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -556,6 +593,27 @@ function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness
 
 Validates a raw EUR/USD feed value against freshness, bounds, and deviation policy.
 
+Checks freshness via _validateTimestamp, scales the raw price, enforces the
+[minEurUsdPrice, maxEurUsdPrice] band, and (unless devModeEnabled) rejects a price
+deviating more than MAX_PRICE_DEVIATION bps from lastValidEurUsdPrice.
+
+**Notes:**
+- security: Enforces staleness, circuit-breaker bounds, and deviation limits before acceptance.
+
+- validation: Returns isValid=false on stale, non-positive, out-of-bounds, or over-deviation input.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - signals failure via the (0, false) return.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal - no access restrictions.
+
+- oracle: Reads cached bounds/baseline; does not call external feeds.
+
 
 ```solidity
 function _validateEurUsdPriceData(int256 rawPrice, uint256 updatedAt, uint8 feedDecimals)
@@ -583,6 +641,26 @@ function _validateEurUsdPriceData(int256 rawPrice, uint256 updatedAt, uint8 feed
 
 Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
 
+Returns $1.00 (1e18) unless the feed value is fresh (within MAX_USDC_PRICE_STALENESS),
+positive, and within usdcToleranceBps of $1.00, in which case the scaled price is returned.
+
+**Notes:**
+- security: Bounds USDC to a tolerance band so a depegged/stale USDC feed cannot distort events.
+
+- validation: Falls back to 1e18 on stale, non-positive, or out-of-tolerance input.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - falls back to 1e18.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal - no access restrictions.
+
+- oracle: Used only to enrich PriceUpdated events; does not gate EUR/USD reads.
+
 
 ```solidity
 function _normalizeUsdcUsdPrice(int256 rawPrice, uint256 updatedAt, uint8 feedDecimals)
@@ -590,24 +668,92 @@ function _normalizeUsdcUsdPrice(int256 rawPrice, uint256 updatedAt, uint8 feedDe
     view
     returns (uint256 usdcUsdPrice);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rawPrice`|`int256`|Raw USDC/USD price from the feed.|
+|`updatedAt`|`uint256`|Feed update timestamp.|
+|`feedDecimals`|`uint8`|Number of decimals used by the feed.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcUsdPrice`|`uint256`|Normalized USDC/USD price (18 decimals); $1.00 on any failure.|
+
 
 ### _readUsdcUsdPriceForEvent
 
 Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
 
+try/catch reads usdcUsdPriceFeed.latestRoundData()/decimals(); returns $1.00 if the round
+is inconsistent or any call reverts, otherwise delegates to _normalizeUsdcUsdPrice. Decoupled
+so a failing USDC feed can never block an EUR/USD read.
+
+**Notes:**
+- security: Isolates USDC-feed failures from the EUR/USD path via try/catch.
+
+- validation: Rejects inconsistent rounds (roundId != answeredInRound, startedAt > updatedAt).
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - all failures fall back to 1e18.
+
+- reentrancy: Not applicable - view function (external staticcall only).
+
+- access: Internal - no access restrictions.
+
+- oracle: Reads the USDC/USD Chainlink feed; result used only for events.
+
 
 ```solidity
 function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcUsdPrice`|`uint256`|USDC/USD price (18 decimals) for event enrichment; $1.00 on any failure.|
+
 
 ### _commitEurUsdPrice
 
 Commits an accepted EUR/USD price as the new oracle deviation baseline.
 
+Stores the accepted EUR/USD price as the new baseline, records update time/block, and emits
+PriceUpdated. Called only after a value passes _validateEurUsdPriceData.
+
+**Notes:**
+- security: Reached only after validation; advances the deviation baseline used by later reads.
+
+- validation: Assumes the caller validated the price; performs no checks itself.
+
+- state-changes: Sets lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock.
+
+- events: Emits PriceUpdated(eurUsdPrice, usdcUsdPrice, timestamp).
+
+- errors: None.
+
+- reentrancy: Not applicable - no external calls.
+
+- access: Internal - no access restrictions.
+
+- oracle: Updates the cached oracle baseline; does not call external feeds.
+
 
 ```solidity
 function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|Accepted EUR/USD price to store as the new baseline (18 decimals).|
+|`usdcUsdPrice`|`uint256`|USDC/USD price included in the emitted event (18 decimals).|
+
 
 ### _updatePrices
 
@@ -955,11 +1101,11 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -984,7 +1130,7 @@ Restarts price updates and disables fallback mode.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -1013,11 +1159,11 @@ Forces the use of the last known valid price.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

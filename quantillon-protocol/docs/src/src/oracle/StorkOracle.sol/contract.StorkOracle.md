@@ -1,8 +1,8 @@
 # StorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/StorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/StorkOracle.sol)
 
 **Inherits:**
-[IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+[IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 StorkOracle
@@ -39,7 +39,7 @@ ALTERNATIVE: Consider using Stork's Chainlink adapter for easier integration:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### ORACLE_MANAGER_ROLE
 Role to manage oracle configurations
 
@@ -109,6 +109,39 @@ uint256 public constant MAX_TIMESTAMP_DRIFT = 900
 ```
 
 
+### STORK_FEED_DECIMALS
+Stork price feed decimals (constant)
+
+Stork feeds use 18 decimals precision (value is multiplied by 10^18)
+This is verified based on Stork's documentation
+
+
+```solidity
+uint8 public constant STORK_FEED_DECIMALS = 18
+```
+
+
+### DEV_MODE_DELAY
+MED-1: Minimum delay before a proposed dev-mode change takes effect
+
+
+```solidity
+uint256 public constant DEV_MODE_DELAY = 48 hours
+```
+
+
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+## State Variables
 ### eurUsdPriceFeed
 Interface to Stork EUR/USD price feed
 
@@ -126,18 +159,6 @@ Used for USDC price validation and cross-checking
 
 ```solidity
 IStorkFeed public usdcUsdPriceFeed
-```
-
-
-### STORK_FEED_DECIMALS
-Stork price feed decimals (constant)
-
-Stork feeds use 18 decimals precision (value is multiplied by 10^18)
-This is verified based on Stork's documentation
-
-
-```solidity
-uint8 public constant STORK_FEED_DECIMALS = 18
 ```
 
 
@@ -254,15 +275,6 @@ bool public devModeEnabled
 ```
 
 
-### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
-
-
-```solidity
-uint256 public constant DEV_MODE_DELAY = 48 hours
-```
-
-
 ### pendingDevMode
 MED-1: Pending dev-mode value awaiting the timelock delay
 
@@ -281,18 +293,43 @@ uint256 public devModePendingAt
 ```
 
 
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
+## Functions
+### version
 
-Used to replace direct block.timestamp usage for testability and consistency
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+function version() external pure virtual override returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### constructor
 
 Constructor for StorkOracle contract
@@ -520,6 +557,27 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 
 Validates a raw EUR/USD Stork value against freshness, bounds, and deviation policy.
 
+Checks freshness via _validateTimestamp, scales by STORK_FEED_DECIMALS, enforces the
+[minEurUsdPrice, maxEurUsdPrice] band, and (unless devModeEnabled) rejects a price deviating
+more than MAX_PRICE_DEVIATION bps from lastValidEurUsdPrice.
+
+**Notes:**
+- security: Enforces staleness, circuit-breaker bounds, and deviation limits before acceptance.
+
+- validation: Returns isValid=false on stale, non-positive, out-of-bounds, or over-deviation input.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - signals failure via the (0, false) return.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal - no access restrictions.
+
+- oracle: Reads cached bounds/baseline; does not call the Stork feed.
+
 
 ```solidity
 function _validateEurUsdPriceData(int256 rawPrice, uint256 timestamp)
@@ -546,28 +604,115 @@ function _validateEurUsdPriceData(int256 rawPrice, uint256 timestamp)
 
 Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
 
+Returns $1.00 (1e18) unless the Stork value is fresh, positive, and within usdcToleranceBps
+of $1.00, in which case the value scaled by STORK_FEED_DECIMALS is returned.
+
+**Notes:**
+- security: Bounds USDC to a tolerance band so a depegged/stale USDC feed cannot distort events.
+
+- validation: Falls back to 1e18 on stale, non-positive, or out-of-tolerance input.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - falls back to 1e18.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal - no access restrictions.
+
+- oracle: Used only to enrich PriceUpdated events; does not gate EUR/USD reads.
+
 
 ```solidity
 function _normalizeUsdcUsdPrice(int256 rawPrice, uint256 timestamp) internal view returns (uint256 usdcUsdPrice);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rawPrice`|`int256`|Raw USDC/USD price from Stork.|
+|`timestamp`|`uint256`|Stork update timestamp.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcUsdPrice`|`uint256`|Normalized USDC/USD price (18 decimals); $1.00 on any failure.|
+
 
 ### _readUsdcUsdPriceForEvent
 
 Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
 
+try/catch reads usdcUsdPriceFeed.getTemporalNumericValueV1(usdcUsdFeedId); returns $1.00 if
+the call reverts, otherwise delegates to _normalizeUsdcUsdPrice. Decoupled so a failing USDC
+feed can never block an EUR/USD read.
+
+**Notes:**
+- security: Isolates USDC-feed failures from the EUR/USD path via try/catch.
+
+- validation: Delegates range/tolerance checks to _normalizeUsdcUsdPrice.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - all failures fall back to 1e18.
+
+- reentrancy: Not applicable - view function (external staticcall only).
+
+- access: Internal - no access restrictions.
+
+- oracle: Reads the USDC/USD Stork feed; result used only for events.
+
 
 ```solidity
 function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcUsdPrice`|`uint256`|USDC/USD price (18 decimals) for event enrichment; $1.00 on any failure.|
+
 
 ### _commitEurUsdPrice
 
 Commits an accepted EUR/USD price as the new oracle deviation baseline.
 
+Stores the accepted EUR/USD price as the new baseline, records update time/block, and emits
+PriceUpdated. Called only after a value passes _validateEurUsdPriceData.
+
+**Notes:**
+- security: Reached only after validation; advances the deviation baseline used by later reads.
+
+- validation: Assumes the caller validated the price; performs no checks itself.
+
+- state-changes: Sets lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock.
+
+- events: Emits PriceUpdated(eurUsdPrice, usdcUsdPrice, timestamp).
+
+- errors: None.
+
+- reentrancy: Not applicable - no external calls.
+
+- access: Internal - no access restrictions.
+
+- oracle: Updates the cached oracle baseline; does not call the Stork feed.
+
 
 ```solidity
 function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|Accepted EUR/USD price to store as the new baseline (18 decimals).|
+|`usdcUsdPrice`|`uint256`|USDC/USD price included in the emitted event (18 decimals).|
+
 
 ### _updatePrices
 
@@ -938,7 +1083,7 @@ Restarts price updates and disables fallback mode.
 
 - errors: No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to EMERGENCY_ROLE
 
@@ -1107,7 +1252,7 @@ Allows oracle manager to adjust price thresholds based on market conditions
 
 - errors: Throws if minPrice >= maxPrice or invalid bounds
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -1142,7 +1287,7 @@ Allows oracle manager to adjust USDC price tolerance around $1.00
 
 - errors: Throws if tolerance is invalid or out of bounds
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 
@@ -1177,7 +1322,7 @@ Note: Stork uses a single contract address with different feed IDs
 
 - errors: Throws if feed address is zero or invalid
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to ORACLE_MANAGER_ROLE
 

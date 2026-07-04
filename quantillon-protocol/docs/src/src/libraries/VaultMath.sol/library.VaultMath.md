@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/VaultMath.sol)
 
 **Title:**
 VaultMath
@@ -18,7 +18,7 @@ This library provides essential mathematical utilities:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### BASIS_POINTS
 Precision for percentage calculations (10000 = 100%)
 
@@ -47,6 +47,41 @@ uint256 public constant MAX_PERCENTAGE = 1000000
 
 
 ## Functions
+### version
+
+Returns the semantic version of this linked library.
+
+On-chain version of the standalone deployed library; bump per semver on any change.
+See deployments/{chainId}/versions.json for deployed-address provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### mulDiv
 
 Multiply two numbers and divide by a third with rounding
@@ -87,49 +122,6 @@ function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 
 |Name|Type|Description|
 |----|----|-----------|
 |`result`|`uint256`|a * b / c with proper rounding|
-
-
-### mulDivUp
-
-Multiply two numbers and divide by a third, rounding the result up
-
-Ceiling variant of [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv). If there is any non-zero remainder after division,
-the result is increased by 1 to round towards positive infinity.
-
-**Notes:**
-- security: Uses [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) internally for overflow and division-by-zero protection
-
-- validation: Caller must ensure `c` is non-zero; reverts via [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) otherwise
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Reverts with DivisionByZero or MultiplicationOverflow via [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) on invalid inputs
-
-- reentrancy: Not applicable - pure function
-
-- access: Internal library function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`a`|`uint256`|First multiplicand|
-|`b`|`uint256`|Second multiplicand|
-|`c`|`uint256`|Divisor|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`result`|`uint256`|a * b / c, rounded up when there is a remainder|
 
 
 ### percentageOf
@@ -216,300 +208,5 @@ function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
 |Name|Type|Description|
 |----|----|-----------|
 |`scaledValue`|`uint256`|Scaled value with proper rounding|
-
-
-### min
-
-Calculate minimum value between two numbers
-
-Returns the smaller of a and b
-
-**Notes:**
-- security: Pure; no overflow
-
-- validation: None
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function min(uint256 a, uint256 b) internal pure returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`a`|`uint256`|First number|
-|`b`|`uint256`|Second number|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Minimum value|
-
-
-### max
-
-Calculate maximum value between two numbers
-
-Returns the larger of a and b
-
-**Notes:**
-- security: Pure; no overflow
-
-- validation: None
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function max(uint256 a, uint256 b) internal pure returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`a`|`uint256`|First number|
-|`b`|`uint256`|Second number|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Maximum value|
-
-
-### eurToUsd
-
-Convert EUR amount to USD using exchange rate
-
-usdAmount = eurAmount * eurUsdRate / PRECISION
-
-**Notes:**
-- security: Uses mulDiv; no division by zero if rate > 0
-
-- validation: Caller must ensure eurUsdRate > 0
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: Rate passed in; no live oracle
-
-
-```solidity
-function eurToUsd(uint256 eurAmount, uint256 eurUsdRate) internal pure returns (uint256 usdAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eurAmount`|`uint256`|Amount in EUR (18 decimals)|
-|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdAmount`|`uint256`|Amount in USD (18 decimals)|
-
-
-### usdToEur
-
-Convert USD amount to EUR using exchange rate
-
-eurAmount = usdAmount * PRECISION / eurUsdRate
-
-**Notes:**
-- security: Uses mulDiv; reverts if eurUsdRate is zero
-
-- validation: Caller must ensure eurUsdRate > 0
-
-- state-changes: None
-
-- events: None
-
-- errors: DivisionByZero if eurUsdRate is 0
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: Rate passed in; no live oracle
-
-
-```solidity
-function usdToEur(uint256 usdAmount, uint256 eurUsdRate) internal pure returns (uint256 eurAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdAmount`|`uint256`|Amount in USD (18 decimals)|
-|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eurAmount`|`uint256`|Amount in EUR (18 decimals)|
-
-
-### calculateCollateralRatio
-
-Calculate collateralization ratio
-
-Returns type(uint256).max when debtValue is zero (infinite ratio)
-
-**Notes:**
-- security: Pure; no overflow for typical values
-
-- validation: debtValue 0 returns max
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function calculateCollateralRatio(uint256 collateralValue, uint256 debtValue)
-    internal
-    pure
-    returns (uint256 ratio);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`collateralValue`|`uint256`|Total collateral value in USD|
-|`debtValue`|`uint256`|Total debt value in USD|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`ratio`|`uint256`|Collateralization ratio in 18 decimals (e.g., 1.5e18 = 150%)|
-
-
-### calculateYieldDistribution
-
-Calculate yield distribution between users and hedgers
-
-Reverts with InvalidParameter if yieldShiftBps exceeds BASIS_POINTS
-
-**Notes:**
-- security: Pure; hedgerYield + userYield = totalYield
-
-- validation: yieldShiftBps <= BASIS_POINTS
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidParameter if yieldShiftBps > BASIS_POINTS
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function calculateYieldDistribution(uint256 totalYield, uint256 yieldShiftBps)
-    internal
-    pure
-    returns (uint256 userYield, uint256 hedgerYield);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalYield`|`uint256`|Total yield generated|
-|`yieldShiftBps`|`uint256`|Yield shift percentage in basis points (0-10000)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`userYield`|`uint256`|Yield allocated to QEURO users|
-|`hedgerYield`|`uint256`|Yield allocated to hedgers|
-
-
-### isWithinTolerance
-
-Check if a value is within a certain percentage of another value
-
-difference <= percentageOf(larger, toleranceBps)
-
-**Notes:**
-- security: Pure; uses percentageOf
-
-- validation: toleranceBps <= MAX_PERCENTAGE implied by percentageOf
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function isWithinTolerance(uint256 value1, uint256 value2, uint256 toleranceBps) internal pure returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`value1`|`uint256`|First value|
-|`value2`|`uint256`|Second value|
-|`toleranceBps`|`uint256`|Tolerance in basis points|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|isWithinTolerance Whether values are within tolerance|
 
 

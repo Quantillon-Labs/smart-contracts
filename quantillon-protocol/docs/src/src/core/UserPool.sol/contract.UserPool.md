@@ -1,8 +1,8 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/UserPool.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 UserPool
@@ -71,7 +71,7 @@ Integration points:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 Role for governance operations (parameter updates, emergency actions)
 
@@ -98,6 +98,54 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
+### TIME_PROVIDER
+TimeProvider contract for centralized time management
+
+Used to replace direct block.timestamp usage for testability and consistency
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
+### BLOCKS_PER_DAY
+
+```solidity
+uint256 public constant BLOCKS_PER_DAY = 7200
+```
+
+
+### MAX_REWARD_PERIOD
+
+```solidity
+uint256 public constant MAX_REWARD_PERIOD = 365 days
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for deposit operations to prevent DoS
+
+Prevents out-of-gas attacks through large arrays
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 100
+```
+
+
+### MAX_REWARD_BATCH_SIZE
+Maximum batch size for reward claim operations to prevent DoS
+
+Prevents out-of-gas attacks through large user arrays
+
+
+```solidity
+uint256 public constant MAX_REWARD_BATCH_SIZE = 50
+```
+
+
+## State Variables
 ### qeuro
 QEURO token contract for minting and burning
 
@@ -178,17 +226,6 @@ SECURITY: Only this address can receive ETH from recoverETH function
 
 ```solidity
 address public treasury
-```
-
-
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
-
-Used to replace direct block.timestamp usage for testability and consistency
-
-
-```solidity
-TimeProvider public immutable TIME_PROVIDER
 ```
 
 
@@ -416,43 +453,43 @@ mapping(address => uint256) public pendingUsdcWithdrawals
 ```
 
 
-### BLOCKS_PER_DAY
-
-```solidity
-uint256 public constant BLOCKS_PER_DAY = 7200
-```
-
-
-### MAX_REWARD_PERIOD
-
-```solidity
-uint256 public constant MAX_REWARD_PERIOD = 365 days
-```
-
-
-### MAX_BATCH_SIZE
-Maximum batch size for deposit operations to prevent DoS
-
-Prevents out-of-gas attacks through large arrays
-
-
-```solidity
-uint256 public constant MAX_BATCH_SIZE = 100
-```
-
-
-### MAX_REWARD_BATCH_SIZE
-Maximum batch size for reward claim operations to prevent DoS
-
-Prevents out-of-gas attacks through large user arrays
-
-
-```solidity
-uint256 public constant MAX_REWARD_BATCH_SIZE = 50
-```
-
-
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### flashLoanProtection
 
 Modifier to protect against flash loan attacks
@@ -564,7 +601,7 @@ Initializes the UserPool with all required contracts and default parameters
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -1346,86 +1383,6 @@ after the cooldown period has passed.
 function unstake() external nonReentrant whenNotPaused;
 ```
 
-### claimStakingRewards
-
-Claim staking rewards
-
-This function allows users to claim their pending staking rewards.
-It calculates and transfers the rewards based on their staked amount.
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`rewardAmount`|`uint256`|Amount of QEURO rewards claimed (18 decimals)|
-
-
-### batchRewardClaim
-
-Batch claim staking rewards for multiple users (admin function)
-
-This function allows admins to claim rewards for multiple users in one transaction.
-Useful for protocol-wide reward distributions or automated reward processing.
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function batchRewardClaim(address[] calldata users)
-    external
-    nonReentrant
-    onlyRole(GOVERNANCE_ROLE)
-    returns (uint256[] memory rewardAmounts);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`users`|`address[]`|Array of user addresses to claim rewards for|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`rewardAmounts`|`uint256[]`|Array of reward amounts claimed for each user (18 decimals)|
-
-
 ### _updatePendingRewards
 
 Update pending rewards for a user
@@ -1741,11 +1698,11 @@ Returns the total amount of QEURO currently staked in the pool
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1775,11 +1732,11 @@ Returns comprehensive pool statistics including user count, averages, and ratios
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1908,11 +1865,11 @@ Calculates the expected rewards for staking a specific amount for a given durati
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1949,11 +1906,11 @@ This function is restricted to governance roles.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2093,11 +2050,11 @@ a protocol-wide emergency or vulnerability.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2122,11 +2079,11 @@ an emergency pause.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2150,11 +2107,11 @@ Returns the current pause status of the pool
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2184,11 +2141,11 @@ Recovers accidentally sent ERC20 tokens to the treasury address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2219,11 +2176,11 @@ SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2372,42 +2329,6 @@ event QEUROUnstaked(address indexed user, uint256 qeuroAmount, uint256 timestamp
 |`user`|`address`|Address of the user who unstaked|
 |`qeuroAmount`|`uint256`|Amount of QEURO unstaked (18 decimals)|
 |`timestamp`|`uint256`|Timestamp of the unstaking action|
-
-### StakingRewardsClaimed
-Emitted when staking rewards are claimed by a user
-
-Indexed parameters allow efficient filtering of events
-
-
-```solidity
-event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 timestamp);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user who claimed rewards|
-|`rewardAmount`|`uint256`|Amount of QEURO rewards claimed (18 decimals)|
-|`timestamp`|`uint256`|Timestamp of the reward claim|
-
-### YieldDistributed
-Emitted when yield is distributed to stakers
-
-OPTIMIZED: Indexed timestamp for efficient time-based filtering
-
-
-```solidity
-event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 indexed timestamp);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalYield`|`uint256`|Total amount of yield distributed (18 decimals)|
-|`yieldPerShare`|`uint256`|Amount of yield per staked QEURO share (18 decimals)|
-|`timestamp`|`uint256`|Timestamp of the yield distribution|
 
 ### PoolParameterUpdated
 Emitted when pool parameters are updated

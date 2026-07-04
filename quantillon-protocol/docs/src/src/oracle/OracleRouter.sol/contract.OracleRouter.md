@@ -1,8 +1,8 @@
 # OracleRouter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/OracleRouter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/OracleRouter.sol)
 
 **Inherits:**
-[IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+[IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 OracleRouter
@@ -10,10 +10,12 @@ OracleRouter
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
-Router contract that allows admin to switch between Chainlink and Stork oracles
+Router contract that lets governance switch the protocol between two oracle slots
 
 Key features:
-- Holds references to both ChainlinkOracle and StorkOracle
+- Holds references to two oracle slots (enum OracleType { CHAINLINK, STORK }); the
+slot-1 "STORK" name is historical — it can host any IOracle implementation
+(currently HyperliquidEurUsdOracle in production)
 - Routes all IOracle calls to the currently active oracle
 - Admin can switch between oracles via switchOracle()
 - Implements IOracle interface (generic, oracle-agnostic)
@@ -23,7 +25,7 @@ Key features:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### ORACLE_MANAGER_ROLE
 Role to manage oracle configurations
 
@@ -51,6 +53,7 @@ bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 ```
 
 
+## State Variables
 ### chainlinkOracle
 Chainlink oracle contract reference
 
@@ -88,6 +91,74 @@ address public treasury
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
+### constructor
+
+Locks the implementation so it cannot be initialized directly
+
+Disables initializers on the implementation contract; only proxies may be
+initialized. Brings OracleRouter in line with the other core/oracle
+contracts, which all call _disableInitializers() (F-3/F-4 audit fix).
+
+**Notes:**
+- security: Prevents implementation-contract initialization
+
+- validation: No input validation required - constructor
+
+- state-changes: Disables initializers on the implementation
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - constructor
+
+- access: No access restrictions
+
+- oracle: No oracle dependencies
+
+- oz-upgrades-unsafe-allow: constructor
+
+
+```solidity
+constructor() ;
+```
+
 ### initialize
 
 Initializes the router contract with both oracle addresses

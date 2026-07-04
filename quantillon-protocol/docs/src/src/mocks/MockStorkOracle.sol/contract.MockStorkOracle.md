@@ -1,5 +1,5 @@
 # MockStorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/mocks/MockStorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/mocks/MockStorkOracle.sol)
 
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -15,7 +15,7 @@ Mock oracle that implements IStorkOracle interface but uses mock data
 Used for localhost testing - provides same interface as StorkOracle
 
 
-## State Variables
+## Constants
 ### EMERGENCY_ROLE
 
 ```solidity
@@ -27,20 +27,6 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 
 ```solidity
 bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE")
-```
-
-
-### treasury
-
-```solidity
-address public treasury
-```
-
-
-### originalAdmin
-
-```solidity
-address private originalAdmin
 ```
 
 
@@ -79,6 +65,28 @@ uint256 public constant MAX_PRICE_DEVIATION = 500
 ```
 
 
+### MIN_BLOCKS_BETWEEN_UPDATES
+
+```solidity
+uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1
+```
+
+
+## State Variables
+### treasury
+
+```solidity
+address public treasury
+```
+
+
+### originalAdmin
+
+```solidity
+address private originalAdmin
+```
+
+
 ### lastValidEurUsdPrice
 
 ```solidity
@@ -97,13 +105,6 @@ uint256 public lastValidUsdcUsdPrice
 
 ```solidity
 uint256 public lastPriceUpdateBlock
-```
-
-
-### MIN_BLOCKS_BETWEEN_UPDATES
-
-```solidity
-uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1
 ```
 
 

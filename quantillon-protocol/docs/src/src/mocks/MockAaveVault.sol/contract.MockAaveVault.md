@@ -1,5 +1,5 @@
 # MockAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/mocks/MockAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/mocks/MockAaveVault.sol)
 
 **Title:**
 MockAaveVault
@@ -10,7 +10,7 @@ Tracks principal-like balances by account and supports synthetic yield injection
 Mirrors MockMorphoVault interface for symmetric adapter testing.
 
 
-## State Variables
+## Constants
 ### USDC
 
 ```solidity
@@ -18,6 +18,7 @@ IERC20 public immutable USDC
 ```
 
 
+## State Variables
 ### shareBalanceOf
 
 ```solidity

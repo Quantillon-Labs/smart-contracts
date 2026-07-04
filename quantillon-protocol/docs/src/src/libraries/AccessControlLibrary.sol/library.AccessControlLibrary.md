@@ -1,5 +1,5 @@
 # AccessControlLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/AccessControlLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/AccessControlLibrary.sol)
 
 **Title:**
 AccessControlLibrary
@@ -17,6 +17,16 @@ Main characteristics:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Functions
@@ -54,40 +64,6 @@ function onlyGovernance(AccessControlUpgradeable accessControl) internal view;
 |`accessControl`|`AccessControlUpgradeable`|The access control contract to check roles against|
 
 
-### onlyVaultManager
-
-Ensures the caller has vault manager role
-
-Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE
-
-**Notes:**
-- security: Validates caller has VAULT_MANAGER_ROLE before allowing access
-
-- validation: No input validation required - view function
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: Throws NotVaultManager if caller lacks required role
-
-- reentrancy: Not applicable - view function
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function onlyVaultManager(AccessControlUpgradeable accessControl) internal view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`accessControl`|`AccessControlUpgradeable`|The access control contract to check roles against|
-
-
 ### onlyEmergencyRole
 
 Ensures the caller has emergency role
@@ -114,40 +90,6 @@ Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE
 
 ```solidity
 function onlyEmergencyRole(AccessControlUpgradeable accessControl) internal view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`accessControl`|`AccessControlUpgradeable`|The access control contract to check roles against|
-
-
-### onlyLiquidatorRole
-
-Ensures the caller has liquidator role
-
-Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE
-
-**Notes:**
-- security: Validates caller has LIQUIDATOR_ROLE before allowing access
-
-- validation: No input validation required - view function
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: Throws NotLiquidatorRole if caller lacks required role
-
-- reentrancy: Not applicable - view function
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function onlyLiquidatorRole(AccessControlUpgradeable accessControl) internal view;
 ```
 **Parameters**
 

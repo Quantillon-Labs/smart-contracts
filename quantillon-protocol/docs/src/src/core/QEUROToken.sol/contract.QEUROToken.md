@@ -1,8 +1,8 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/QEUROToken.sol)
 
 **Inherits:**
-Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 QEUROToken
@@ -39,7 +39,7 @@ Tokenomics:
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### MINTER_ROLE
 Role for minting tokens (assigned to QuantillonVault only)
 
@@ -177,6 +177,7 @@ uint256 public constant MINT_FEE_RATE = 1e15
 ```
 
 
+## State Variables
 ### maxSupply
 Current maximum supply limit (updatable by governance)
 
@@ -305,6 +306,42 @@ uint256 private _flashLoanBalanceBefore
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### flashLoanProtection
 
 Modifier to protect against flash loan attacks
@@ -389,7 +426,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to initializer modifier
 
@@ -450,7 +487,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to MINTER_ROLE
 
@@ -490,7 +527,7 @@ Protocol fee (0.1%) is collected for each mint in the batch.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: Restricted to MINTER_ROLE
 
@@ -541,7 +578,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to BURNER_ROLE
 
@@ -582,7 +619,7 @@ rate limits and balance checks. Accumulates total for rate limiting.
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by flashLoanProtection modifier
 
 - access: Restricted to BURNER_ROLE
 
@@ -696,7 +733,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -738,7 +775,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -779,7 +816,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -820,7 +857,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -860,7 +897,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -899,7 +936,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -933,7 +970,7 @@ Only callable by compliance role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -970,7 +1007,7 @@ Only callable by compliance role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -1004,7 +1041,7 @@ Only callable by compliance role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -1038,7 +1075,7 @@ Only callable by compliance role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to COMPLIANCE_ROLE
 
@@ -1079,7 +1116,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -1218,7 +1255,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to PAUSER_ROLE
 
@@ -1252,7 +1289,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to PAUSER_ROLE
 
@@ -1545,7 +1582,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -1580,7 +1617,7 @@ SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -1618,7 +1655,7 @@ Security considerations:
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -1652,7 +1689,7 @@ SECURITY: Only governance can update treasury address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -1686,7 +1723,7 @@ SECURITY: Only governance can update FeeCollector address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to DEFAULT_ADMIN_ROLE
 
@@ -2106,22 +2143,6 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 |----|----|-----------|
 |`to`|`address`|Address to which ETH was recovered|
 |`amount`|`uint256`|Amount of ETH recovered|
-
-### ProtocolFeeCollected
-Emitted when protocol fee is collected on mint
-
-
-```solidity
-event ProtocolFeeCollected(uint256 indexed amount, uint256 indexed feeAmount, address indexed feeCollector);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Total amount minted|
-|`feeAmount`|`uint256`|Protocol fee amount collected|
-|`feeCollector`|`address`|Address of the fee collector|
 
 ### FeeCollectorUpdated
 Emitted when FeeCollector address is updated

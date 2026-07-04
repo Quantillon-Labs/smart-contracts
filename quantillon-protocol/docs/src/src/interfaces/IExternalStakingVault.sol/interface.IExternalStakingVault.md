@@ -1,5 +1,5 @@
 # IExternalStakingVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IExternalStakingVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IExternalStakingVault.sol)
 
 **Title:**
 IExternalStakingVault
@@ -90,20 +90,22 @@ function withdrawUnderlying(uint256 usdcAmount) external returns (uint256 usdcWi
 |`usdcWithdrawn`|`uint256`|Actual USDC withdrawn.|
 
 
-### harvestYield
+### harvestYieldToVault
 
-Harvests yield and routes it to YieldShift using adapter-defined source semantics.
+Harvests accrued yield and transfers it as USDC to the caller (the vault).
 
-Realizes accrued yield without withdrawing tracked principal.
+Routes the realized yield back to `msg.sender` (the vault) so the caller can apply the
+protocol's own distribution policy (hedger/user/treasury split).
+Realizes only the amount above tracked principal; principal is left untouched.
 
 **Notes:**
 - security: Implementations should restrict unauthorized callers.
 
 - validation: Implementations should validate source state before harvesting.
 
-- state-changes: Typically realizes yield and routes it to downstream distribution logic.
+- state-changes: Realizes yield and transfers USDC out to the caller; principal unchanged.
 
-- events: Implementations should emit harvest/yield-routing events.
+- events: Implementations should emit harvest/transfer events.
 
 - errors: Reverts on invalid state or downstream integration failure.
 
@@ -115,13 +117,13 @@ Realizes accrued yield without withdrawing tracked principal.
 
 
 ```solidity
-function harvestYield() external returns (uint256 harvestedYield);
+function harvestYieldToVault() external returns (uint256 realizedYield);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`harvestedYield`|`uint256`|Yield harvested in USDC (6 decimals).|
+|`realizedYield`|`uint256`|Yield realized and transferred to the caller in USDC (6 decimals).|
 
 
 ### totalUnderlying

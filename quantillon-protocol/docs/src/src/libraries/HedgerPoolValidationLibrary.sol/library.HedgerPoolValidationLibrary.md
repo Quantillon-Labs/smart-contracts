@@ -1,5 +1,5 @@
 # HedgerPoolValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/HedgerPoolValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/HedgerPoolValidationLibrary.sol)
 
 **Title:**
 HedgerPoolValidationLibrary
@@ -17,6 +17,16 @@ Main characteristics:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Functions
@@ -359,41 +369,6 @@ function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure;
 |`maxMargin`|`uint256`|Maximum allowed margin per position|
 
 
-### validatePendingRewards
-
-Validates pending rewards against maximum accumulation limit
-
-Prevents excessive reward accumulation that could cause overflow
-
-**Notes:**
-- security: Prevents reward overflow that could cause system issues
-
-- validation: Ensures pending rewards stay within accumulation limits
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Throws PendingRewardsExceedMaximum if rewards exceed limit
-
-- reentrancy: Not applicable - pure function
-
-- access: Internal library function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newRewards`|`uint256`|The new total pending rewards amount|
-|`maxRewards`|`uint256`|Maximum allowed pending rewards|
-
-
 ### validateFee
 
 Validates fee amount against maximum allowed fee
@@ -427,39 +402,5 @@ function validateFee(uint256 fee, uint256 maxFee) internal pure;
 |----|----|-----------|
 |`fee`|`uint256`|The fee amount to validate|
 |`maxFee`|`uint256`|The maximum allowed fee|
-
-
-### validateTreasuryAddress
-
-Validates treasury address is not zero address
-
-Prevents setting treasury to zero address which could cause loss of funds
-
-**Notes:**
-- security: Prevents loss of funds by ensuring treasury is properly set
-
-- validation: Ensures treasury address is valid for fund operations
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Throws ZeroAddress if treasury is zero address
-
-- reentrancy: Not applicable - pure function
-
-- access: Internal library function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function validateTreasuryAddress(address treasury) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`treasury`|`address`|The treasury address to validate|
 
 

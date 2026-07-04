@@ -1,5 +1,5 @@
 # YieldValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/YieldValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/YieldValidationLibrary.sol)
 
 **Title:**
 YieldValidationLibrary
@@ -17,6 +17,16 @@ Main characteristics:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Functions
@@ -122,42 +132,6 @@ function validateTargetRatio(uint256 ratio, uint256 maxRatio) internal pure;
 |----|----|-----------|
 |`ratio`|`uint256`|The target ratio to validate|
 |`maxRatio`|`uint256`|The maximum allowed ratio|
-
-
-### validateSlippage
-
-Validates slippage protection for token swaps/trades
-
-Ensures received amount is within acceptable tolerance of expected
-
-**Notes:**
-- security: Prevents excessive slippage attacks in yield operations
-
-- validation: Ensures received amount meets minimum expectations
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Throws ExcessiveSlippage if slippage exceeds tolerance
-
-- reentrancy: Not applicable - pure function
-
-- access: Internal library function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`received`|`uint256`|The actual amount received|
-|`expected`|`uint256`|The expected amount|
-|`tolerance`|`uint256`|The slippage tolerance in basis points|
 
 
 ### validateTreasuryAddress

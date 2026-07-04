@@ -1,5 +1,5 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IQuantillonVault.sol)
 
 **Title:**
 IQuantillonVault
@@ -33,11 +33,11 @@ Sets up the vault with initial configuration and assigns roles to admin
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -276,11 +276,11 @@ Allows governance to update fee parameters for minting and redemption
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -311,11 +311,11 @@ Allows governance to update the price oracle used for conversions
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -345,11 +345,11 @@ Allows governance to withdraw accumulated fees to specified address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -379,11 +379,11 @@ Emergency function to pause all vault operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -407,11 +407,11 @@ Resumes all vault operations after emergency pause
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -435,11 +435,11 @@ Allows governance to recover accidentally sent ERC20 tokens to treasury
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -470,11 +470,11 @@ Allows governance to recover accidentally sent ETH
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1339,7 +1339,7 @@ Updates the HedgerPool contract address for hedger operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1373,7 +1373,7 @@ Updates the UserPool contract address for user deposit tracking
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1407,7 +1407,7 @@ Updates the fee collector contract address
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1441,7 +1441,7 @@ Updates minimum and critical collateralization ratios
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to GOVERNANCE_ROLE
 
@@ -1591,7 +1591,7 @@ Returns ratio in 1e18-scaled percentage format (100% = 1e20)
 
 - access: Public - anyone can check collateralization ratio
 
-- oracle: Requires fresh oracle price data (via HedgerPool)
+- oracle: Not applicable - no oracle dependency (via HedgerPool)
 
 
 ```solidity
@@ -1883,46 +1883,6 @@ function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`newSplit`|`uint256`|New fee‑share value (1e18‑scaled, 0–1e18 allowed by implementation).|
-
-
-### harvestVaultYield
-
-Harvests yield from a configured external vault id.
-
-Governance-triggered adapter harvest operation.
-
-**Notes:**
-- security: Restricted to governance in implementation.
-
-- validation: Reverts when vault id is invalid/inactive or adapter is unset.
-
-- state-changes: May update adapter and downstream yield accounting.
-
-- events: Emits vault-yield harvested event in implementation.
-
-- errors: Reverts on configuration or adapter failures.
-
-- reentrancy: Implementation is expected to guard with `nonReentrant`.
-
-- access: Governance-only in implementation.
-
-- oracle: No direct oracle dependency.
-
-
-```solidity
-function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`vaultId`|`uint256`|Vault id to harvest.|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`harvestedYield`|`uint256`|Yield harvested in USDC units.|
 
 
 ### getVaultExposure

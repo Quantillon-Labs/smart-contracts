@@ -1,5 +1,5 @@
 # IUserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IUserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IUserPool.sol)
 
 **Title:**
 IUserPool
@@ -31,11 +31,11 @@ Sets up the user pool with initial configuration and assigns roles to admin
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -44,6 +44,7 @@ function initialize(
     address _qeuro,
     address _usdc,
     address _vault,
+    address _oracle,
     address _yieldShift,
     address _timelock,
     address _treasury
@@ -57,6 +58,7 @@ function initialize(
 |`_qeuro`|`address`|QEURO token address|
 |`_usdc`|`address`|USDC token address|
 |`_vault`|`address`|Vault contract address|
+|`_oracle`|`address`|Oracle contract address|
 |`_yieldShift`|`address`|YieldShift contract address|
 |`_timelock`|`address`|Timelock contract address|
 |`_treasury`|`address`|Treasury address|
@@ -87,20 +89,22 @@ Converts USDC to QEURO and adds user to the pool for yield distribution
 
 
 ```solidity
-function deposit(uint256 usdcAmount, uint256 minQeuroOut) external returns (uint256 qeuroMinted);
+function deposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
+    external
+    returns (uint256[] memory qeuroMintedAmounts);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deposit|
-|`minQeuroOut`|`uint256`|Minimum QEURO expected (slippage protection)|
+|`usdcAmounts`|`uint256[]`|Amounts of USDC to deposit|
+|`minQeuroOuts`|`uint256[]`|Minimum QEURO expected per deposit (slippage protection)|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroMinted`|`uint256`|Amount of QEURO minted to user|
+|`qeuroMintedAmounts`|`uint256[]`|Amounts of QEURO minted to user|
 
 
 ### withdraw
@@ -128,20 +132,22 @@ Converts QEURO back to USDC and removes user from the pool
 
 
 ```solidity
-function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) external returns (uint256 usdcReceived);
+function withdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
+    external
+    returns (uint256[] memory usdcReceivedAmounts);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to burn|
-|`minUsdcOut`|`uint256`|Minimum USDC expected|
+|`qeuroAmounts`|`uint256[]`|Amounts of QEURO to burn|
+|`minUsdcOuts`|`uint256[]`|Minimum USDC expected per withdrawal|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcReceived`|`uint256`|USDC received by user|
+|`usdcReceivedAmounts`|`uint256[]`|USDC received by user|
 
 
 ### stake
@@ -165,17 +171,17 @@ Locks QEURO tokens to earn staking rewards with cooldown period
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
-function stake(uint256 qeuroAmount) external;
+function stake(uint256[] calldata qeuroAmounts) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to stake|
+|`qeuroAmounts`|`uint256[]`|Amounts of QEURO to stake|
 
 
 ### requestUnstake
@@ -199,7 +205,7 @@ Initiates unstaking process with cooldown period before final withdrawal
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -233,166 +239,12 @@ Completes the unstaking process after cooldown period has passed
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
 function unstake() external;
 ```
-
-### claimStakingRewards
-
-Claim accumulated staking rewards
-
-Claims all accumulated staking rewards for the caller
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function claimStakingRewards() external returns (uint256 rewardAmount);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`rewardAmount`|`uint256`|Amount of rewards claimed|
-
-
-### getUserDeposits
-
-Get a user's total deposits (USDC equivalent)
-
-Returns the total USDC equivalent value of user's deposits
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getUserDeposits(address user) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Total deposits in USDC equivalent|
-
-
-### getUserStakes
-
-Get a user's total staked QEURO
-
-Returns the total amount of QEURO staked by the user
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getUserStakes(address user) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Total staked QEURO amount|
-
-
-### getUserPendingRewards
-
-Get a user's pending staking rewards
-
-Returns the amount of staking rewards available to claim
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getUserPendingRewards(address user) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Pending staking rewards amount|
-
 
 ### getUserInfo
 
@@ -411,11 +263,11 @@ Returns comprehensive user information including balances and staking data
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -468,7 +320,7 @@ Returns live user pool TVL in USDC equivalent; historical deposit counters are e
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
@@ -502,11 +354,11 @@ Returns the total amount of QEURO staked by all users
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -536,11 +388,11 @@ Returns comprehensive pool statistics and metrics
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -557,74 +409,6 @@ function getPoolMetrics()
 |`averageDeposit`|`uint256`|Average deposit per user|
 |`stakingRatio`|`uint256`|Staking ratio (bps)|
 |`poolTVL`|`uint256`|Total value locked|
-
-
-### getStakingAPY
-
-Current staking APY (bps)
-
-Returns the current annual percentage yield for staking
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getStakingAPY() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Current staking APY in basis points|
-
-
-### getDepositAPY
-
-Current base deposit APY (bps)
-
-Returns the current annual percentage yield for deposits
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getDepositAPY() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Current deposit APY in basis points|
 
 
 ### calculateProjectedRewards
@@ -644,11 +428,11 @@ Calculates expected rewards for a given staking amount and duration
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -688,27 +472,21 @@ Allows governance to update staking configuration parameters
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
-function updateStakingParameters(
-    uint256 _stakingAPY,
-    uint256 _depositAPY,
-    uint256 _minStakeAmount,
-    uint256 _unstakingCooldown
-) external;
+function updateStakingParameters(uint256 _stakingAPY, uint256 _minStakeAmount, uint256 _unstakingCooldown) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`_stakingAPY`|`uint256`|New staking APY (bps)|
-|`_depositAPY`|`uint256`|New base deposit APY (bps)|
 |`_minStakeAmount`|`uint256`|Minimum stake amount|
 |`_unstakingCooldown`|`uint256`|Unstaking cooldown in seconds|
 
@@ -766,21 +544,22 @@ Allows admin to emergency unstake for a user bypassing cooldown
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
-function emergencyUnstake(address user) external;
+function emergencyUnstake(address user, address recipient) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`user`|`address`|User address|
+|`recipient`|`address`|Address receiving the unstaked funds|
 
 
 ### pause
@@ -800,11 +579,11 @@ Emergency function to pause all pool operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -828,65 +607,16 @@ Resumes all pool operations after emergency pause
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
 function unpause() external;
 ```
-
-### getPoolConfig
-
-Pool configuration snapshot
-
-Returns current pool configuration parameters
-
-NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool
-
-**Notes:**
-- security: No security implications (view function)
-
-- validation: No validation required
-
-- state-changes: No state changes (view function)
-
-- events: No events (view function)
-
-- errors: No custom errors
-
-- reentrancy: No external calls, safe
-
-- access: Public (anyone can call)
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function getPoolConfig()
-    external
-    view
-    returns (
-        uint256 _stakingAPY,
-        uint256 _depositAPY,
-        uint256 _minStakeAmount,
-        uint256 _unstakingCooldown,
-        uint256 _performanceFee
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_stakingAPY`|`uint256`|Staking APY (bps)|
-|`_depositAPY`|`uint256`|Deposit APY (bps)|
-|`_minStakeAmount`|`uint256`|Minimum stake amount|
-|`_unstakingCooldown`|`uint256`|Unstaking cooldown seconds|
-|`_performanceFee`|`uint256`|Performance fee on staking rewards (bps)|
-
 
 ### isPoolActive
 
@@ -905,11 +635,11 @@ Returns true if the pool is not paused and operations are active
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -939,11 +669,11 @@ Returns true if the account has been granted the role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -980,11 +710,11 @@ Returns the role that is the admin of the given role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1020,11 +750,11 @@ Can only be called by an account with the admin role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1055,11 +785,11 @@ Can only be called by an account with the admin role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1090,11 +820,11 @@ The caller gives up their own role
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1125,11 +855,11 @@ Returns true if the contract is currently paused
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1140,40 +870,6 @@ function paused() external view returns (bool);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`bool`|True if paused, false otherwise|
-
-
-### upgradeTo
-
-Upgrades the contract to a new implementation
-
-Can only be called by accounts with UPGRADER_ROLE
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function upgradeTo(address newImplementation) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newImplementation`|`address`|Address of the new implementation contract|
 
 
 ### upgradeToAndCall
@@ -1193,11 +889,11 @@ Can only be called by accounts with UPGRADER_ROLE
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1228,11 +924,11 @@ Role that can update pool parameters and governance functions
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1262,11 +958,11 @@ Role that can pause the pool and perform emergency operations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1296,11 +992,11 @@ Role that can upgrade the contract implementation
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1330,11 +1026,11 @@ Used for reward calculations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1364,11 +1060,11 @@ Maximum duration for reward calculations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1398,11 +1094,11 @@ The euro-pegged stablecoin token used in the pool
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1432,11 +1128,11 @@ The collateral token used for deposits
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1466,11 +1162,11 @@ The vault contract used for minting/burning QEURO
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1500,11 +1196,11 @@ The contract managing yield distribution
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1534,11 +1230,11 @@ Annual percentage yield for staking (in basis points)
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1568,11 +1264,11 @@ Annual percentage yield for deposits (in basis points)
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1602,11 +1298,11 @@ Minimum amount of QEURO required to stake
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1636,11 +1332,11 @@ Time in seconds before unstaking can be completed
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1670,11 +1366,11 @@ Fee charged on performance (in basis points)
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1685,40 +1381,6 @@ function performanceFee() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Performance fee in basis points|
-
-
-### totalDeposits
-
-Returns the total deposits
-
-Total USDC equivalent value of all deposits
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function totalDeposits() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Total deposits in USDC equivalent|
 
 
 ### totalUserDeposits
@@ -1740,11 +1402,11 @@ Tracks the sum of all USDC deposits made by users
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1774,11 +1436,11 @@ Total amount of QEURO staked by all users
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1808,11 +1470,11 @@ Number of users who have deposited or staked
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1842,11 +1504,11 @@ Used for calculating user rewards
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1876,11 +1538,11 @@ Timestamp of the last yield distribution
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1910,11 +1572,11 @@ Total amount of yield distributed to users
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1944,11 +1606,11 @@ Last block when user rewards were calculated
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -1984,11 +1646,11 @@ Returns true if the user has ever deposited
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2024,11 +1686,11 @@ Returns comprehensive user data including balances and staking info
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2081,11 +1743,11 @@ Allows governance to recover accidentally sent ERC20 tokens
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -2116,11 +1778,11 @@ Allows governance to recover accidentally sent ETH
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

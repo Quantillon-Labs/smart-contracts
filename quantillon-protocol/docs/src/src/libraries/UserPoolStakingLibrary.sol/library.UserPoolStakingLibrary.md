@@ -1,5 +1,5 @@
 # UserPoolStakingLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/UserPoolStakingLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/UserPoolStakingLibrary.sol)
 
 **Title:**
 UserPoolStakingLibrary
@@ -15,7 +15,7 @@ Extracted from UserPool to reduce bytecode size and improve maintainability
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### MIN_STAKE_AMOUNT
 
 ```solidity
@@ -51,14 +51,42 @@ uint256 public constant UNSTAKE_COOLDOWN = 7 days
 ```
 
 
-### REWARD_CLAIM_COOLDOWN
+## Functions
+### version
+
+Returns the semantic version of this linked library.
+
+On-chain version of the standalone deployed library; bump per semver on any change.
+See deployments/{chainId}/versions.json for deployed-address provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
-uint256 public constant REWARD_CLAIM_COOLDOWN = 1 days
+function version() external pure returns (string memory);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
 
 
-## Functions
 ### _calculateStakingRewards
 
 Calculates staking rewards for a user
@@ -147,393 +175,6 @@ function calculateStakingRewards(StakeInfo memory stakeInfo, uint256 stakingAPY,
 |Name|Type|Description|
 |----|----|-----------|
 |`rewards`|`uint256`|Calculated rewards|
-
-
-### calculateTotalStakingRewards
-
-Calculates total staking rewards for a user
-
-Calculates total rewards across all active stakes for a user
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateTotalStakingRewards(StakeInfo[] memory userStakes, uint256 stakingAPY, uint256 currentTime)
-    external
-    pure
-    returns (uint256 totalRewards);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`userStakes`|`StakeInfo[]`|Array of user stakes|
-|`stakingAPY`|`uint256`|Staking APY in basis points|
-|`currentTime`|`uint256`|Current timestamp|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalRewards`|`uint256`|Total rewards for all stakes|
-
-
-### validateStakeParameters
-
-Validates stake parameters
-
-Ensures stake parameters are within acceptable bounds
-
-**Notes:**
-- security: Prevents invalid stake parameters from being processed
-
-- validation: Validates amounts, durations, and user limits
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Throws various validation errors for invalid inputs
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function validateStakeParameters(uint256 amount, uint256 duration, UserStakingData memory userStakingData)
-    external
-    pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Stake amount|
-|`duration`|`uint256`|Stake duration|
-|`userStakingData`|`UserStakingData`|User's current staking data|
-
-
-### validateUnstakeParameters
-
-Validates unstake parameters
-
-Ensures unstake operations meet minimum requirements
-
-**Notes:**
-- security: Prevents premature unstaking and enforces cooldowns
-
-- validation: Validates stake status and timing requirements
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: Throws various validation errors for invalid unstake attempts
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function validateUnstakeParameters(StakeInfo memory stakeInfo, uint256 currentTime) external pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stakeInfo`|`StakeInfo`|Stake information|
-|`currentTime`|`uint256`|Current timestamp|
-
-
-### calculateUnstakePenalty
-
-Calculates unstake penalty
-
-Calculates penalty based on stake duration to discourage early unstaking
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateUnstakePenalty(StakeInfo memory stakeInfo, uint256 currentTime)
-    external
-    pure
-    returns (uint256 penalty);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stakeInfo`|`StakeInfo`|Stake information|
-|`currentTime`|`uint256`|Current timestamp|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`penalty`|`uint256`|Penalty percentage in basis points|
-
-
-### calculateDepositAPY
-
-Calculates deposit APY based on pool metrics
-
-Adjusts deposit APY based on staking ratio to incentivize optimal behavior
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateDepositAPY(uint256 totalDeposits, uint256 totalStaked, uint256 baseAPY)
-    external
-    pure
-    returns (uint256 depositAPY);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalDeposits`|`uint256`|Total pool deposits|
-|`totalStaked`|`uint256`|Total staked amount|
-|`baseAPY`|`uint256`|Base APY in basis points|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`depositAPY`|`uint256`|Calculated deposit APY|
-
-
-### calculateStakingAPY
-
-Calculates staking APY based on pool metrics
-
-Adjusts staking APY based on staking ratio to incentivize optimal behavior
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateStakingAPY(uint256 totalDeposits, uint256 totalStaked, uint256 baseAPY)
-    external
-    pure
-    returns (uint256 stakingAPY);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalDeposits`|`uint256`|Total pool deposits|
-|`totalStaked`|`uint256`|Total staked amount|
-|`baseAPY`|`uint256`|Base APY in basis points|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stakingAPY`|`uint256`|Calculated staking APY|
-
-
-### calculateDynamicFee
-
-Calculates fee for deposit/withdrawal
-
-Adjusts fees based on pool utilization to manage liquidity
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculateDynamicFee(uint256 amount, uint256 baseFee, uint256 poolUtilization)
-    external
-    pure
-    returns (uint256 fee);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Transaction amount|
-|`baseFee`|`uint256`|Base fee in basis points|
-|`poolUtilization`|`uint256`|Pool utilization ratio|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`fee`|`uint256`|Calculated fee amount|
-
-
-### calculatePoolMetrics
-
-Calculates pool metrics
-
-Packs pool metrics into a single uint256 for gas efficiency
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function calculatePoolMetrics(uint256 totalDeposits, uint256 totalStaked, uint256 totalUsers)
-    external
-    pure
-    returns (uint256 metrics);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalDeposits`|`uint256`|Total pool deposits|
-|`totalStaked`|`uint256`|Total staked amount|
-|`totalUsers`|`uint256`|Total number of users|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`metrics`|`uint256`|Packed pool metrics|
-
-
-### unpackPoolMetrics
-
-Unpacks pool metrics
-
-Unpacks pool metrics from a single uint256 for gas efficiency
-
-**Notes:**
-- security: No security implications - pure calculation function
-
-- validation: Input validation handled by calling contract
-
-- state-changes: No state changes - pure function
-
-- events: No events emitted
-
-- errors: No errors thrown - pure function
-
-- reentrancy: Not applicable - pure function
-
-- access: Public function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function unpackPoolMetrics(uint256 metrics)
-    external
-    pure
-    returns (uint256 stakingRatio, uint256 averageDeposit, uint256 totalUsers);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`metrics`|`uint256`|Packed pool metrics|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stakingRatio`|`uint256`|Staking ratio in basis points|
-|`averageDeposit`|`uint256`|Average deposit per user|
-|`totalUsers`|`uint256`|Total number of users|
 
 
 ## Structs

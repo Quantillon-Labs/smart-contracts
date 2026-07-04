@@ -1,5 +1,5 @@
 # CommonValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/CommonValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/CommonValidationLibrary.sol)
 
 **Title:**
 CommonValidationLibrary
@@ -17,6 +17,16 @@ Main characteristics:
 
 **Note:**
 security-contact: team@quantillon.money
+
+
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
 
 
 ## Functions
@@ -196,76 +206,6 @@ function validatePercentage(uint256 percentage, uint256 maxPercentage) internal 
 |`maxPercentage`|`uint256`|The maximum allowed percentage (in basis points)|
 
 
-### validateDuration
-
-Validates that a duration is within valid range
-
-Reverts with HoldingPeriodNotMet if too short, AboveLimit if too long
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if duration out of [minDuration, maxDuration]
-
-- state-changes: None
-
-- events: None
-
-- errors: HoldingPeriodNotMet, AboveLimit
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateDuration(uint256 duration, uint256 minDuration, uint256 maxDuration) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`duration`|`uint256`|The duration to validate|
-|`minDuration`|`uint256`|The minimum allowed duration|
-|`maxDuration`|`uint256`|The maximum allowed duration|
-
-
-### validatePrice
-
-Validates that a price is valid (greater than zero)
-
-Reverts with InvalidPrice if price is zero
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if price is zero
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidPrice
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validatePrice(uint256 price) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`price`|`uint256`|The price to validate|
-
-
 ### validateCondition
 
 Validates that a boolean condition is true
@@ -380,41 +320,6 @@ function validateSufficientBalance(uint256 balance, uint256 requiredAmount) inte
 |`requiredAmount`|`uint256`|The required amount|
 
 
-### validateNotContract
-
-Validates that an address is not a contract (for security)
-
-Prevents sending funds to potentially malicious contracts
-
-**Notes:**
-- security: View; checks extcodesize
-
-- validation: Reverts if addr has code
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidTreasury, InvalidAddress
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateNotContract(address addr, string memory errorType) internal view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`addr`|`address`|The address to validate|
-|`errorType`|`string`|The type of error to throw if validation fails|
-
-
 ### validateTreasuryAddress
 
 Validates treasury address is not zero address
@@ -447,146 +352,5 @@ function validateTreasuryAddress(address treasury) internal pure;
 |Name|Type|Description|
 |----|----|-----------|
 |`treasury`|`address`|The treasury address to validate|
-
-
-### validateSlippage
-
-Validates slippage protection for token swaps/trades
-
-Reverts with InvalidParameter if slippage exceeds tolerance
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if received below expected minus tolerance
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidParameter
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`received`|`uint256`|The actual amount received|
-|`expected`|`uint256`|The expected amount|
-|`tolerance`|`uint256`|The slippage tolerance in basis points|
-
-
-### validateThresholdValue
-
-Validates that a value meets minimum threshold requirements
-
-Reverts with BelowThreshold if value is below minimum
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if value < threshold
-
-- state-changes: None
-
-- events: None
-
-- errors: BelowThreshold
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateThresholdValue(uint256 value, uint256 threshold) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`value`|`uint256`|The value to validate|
-|`threshold`|`uint256`|The minimum required threshold|
-
-
-### validateFee
-
-Validates fee amount against maximum allowed fee
-
-Reverts with InvalidParameter if fee exceeds maximum
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if fee > maxFee
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidParameter
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateFee(uint256 fee, uint256 maxFee) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`fee`|`uint256`|The fee amount to validate|
-|`maxFee`|`uint256`|The maximum allowed fee|
-
-
-### validateThreshold
-
-Validates threshold value against maximum limit
-
-Reverts with InvalidParameter if threshold exceeds maximum
-
-**Notes:**
-- security: Pure; no state change
-
-- validation: Reverts if threshold > maxThreshold
-
-- state-changes: None
-
-- events: None
-
-- errors: InvalidParameter
-
-- reentrancy: No external calls
-
-- access: Internal library
-
-- oracle: None
-
-
-```solidity
-function validateThreshold(uint256 threshold, uint256 maxThreshold) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`threshold`|`uint256`|The threshold value to validate|
-|`maxThreshold`|`uint256`|The maximum allowed threshold|
 
 

@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IYieldShift.sol)
 
 
 ## Functions
@@ -143,46 +143,6 @@ function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external
 |`vaultId`|`uint256`|Target vault id receiving user-yield routing.|
 |`yieldAmount`|`uint256`|Yield amount in USDC (6 decimals).|
 |`source`|`bytes32`|Logical yield source identifier (e.g. `keccak256("aave")`).|
-
-
-### claimUserYield
-
-Claims accumulated user yield for a specific address.
-
-Enforces holding period via `lastDepositTime` before releasing USDC yield.
-
-**Notes:**
-- security: Callable by user or UserPool; checks holding period and pool balances.
-
-- validation: Reverts if holding period not met or pool has insufficient yield.
-
-- state-changes: Updates `userPendingYield`, `userLastClaim`, `userYieldPool`, `totalYieldDistributed`.
-
-- events: Emits `UserYieldClaimed`.
-
-- errors: Reverts with holding‑period or insufficient‑yield errors.
-
-- reentrancy: Protected by nonReentrant modifier in implementation.
-
-- access: Restricted to `user` or UserPool contract.
-
-- oracle: No direct oracle dependency.
-
-
-```solidity
-function claimUserYield(address user) external returns (uint256 yieldAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address whose yield is being claimed.|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of USDC yield transferred to `user`.|
 
 
 ### claimHedgerYield
@@ -1109,7 +1069,7 @@ function hedgerYieldPool() external view returns (uint256 pool);
 
 Returns pending yield for a user.
 
-Reads per‑user pending yield that can be claimed via `claimUserYield`.
+Per-user pending-yield bookkeeping. NOTE (audit F-8): userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
 
 **Notes:**
 - security: View‑only.

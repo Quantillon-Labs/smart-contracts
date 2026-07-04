@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -18,31 +18,13 @@ Replaces UUPSUpgradeable with timelock and multi-sig requirements
 security-contact: team@quantillon.money
 
 
-## State Variables
+## Constants
 ### UPGRADER_ROLE
 Role for upgrade operations
 
 
 ```solidity
 bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
-```
-
-
-### timelock
-Timelock contract for secure upgrades
-
-
-```solidity
-ITimelockUpgradeable public timelock
-```
-
-
-### secureUpgradesEnabled
-Whether the contract is using secure upgrades
-
-
-```solidity
-bool public secureUpgradesEnabled
 ```
 
 
@@ -73,15 +55,6 @@ uint256 public constant EMERGENCY_DISABLE_QUORUM = 2
 ```
 
 
-### emergencyDisablePendingAt
-INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
-
-
-```solidity
-uint256 public emergencyDisablePendingAt
-```
-
-
 ### EMERGENCY_DISABLE_STORAGE_SLOT
 Unstructured storage slot to avoid shifting child storage layouts.
 
@@ -89,6 +62,34 @@ Unstructured storage slot to avoid shifting child storage layouts.
 ```solidity
 bytes32 private constant EMERGENCY_DISABLE_STORAGE_SLOT =
     keccak256("quantillon.secure-upgradeable.emergency-disable.storage.v1")
+```
+
+
+## State Variables
+### timelock
+Timelock contract for secure upgrades
+
+
+```solidity
+ITimelockUpgradeable public timelock
+```
+
+
+### secureUpgradesEnabled
+Whether the contract is using secure upgrades
+
+
+```solidity
+bool public secureUpgradesEnabled
+```
+
+
+### emergencyDisablePendingAt
+INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
+
+
+```solidity
+uint256 public emergencyDisablePendingAt
 ```
 
 
@@ -214,11 +215,11 @@ Configures the timelock contract for secure upgrade management
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -233,9 +234,15 @@ function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### toggleSecureUpgrades
 
-Toggle secure upgrades
+(Re-)enable secure upgrades
 
-Enables or disables the secure upgrade mechanism
+Enables secure upgrades. Disabling is intentionally NOT possible through
+this function: it must go through the quorum-gated, timelocked
+emergency-disable flow (proposeEmergencyDisableSecureUpgrades →
+approveEmergencyDisableSecureUpgrades → applyEmergencyDisableSecureUpgrades).
+Passing enabled=false reverts. (F-5 audit fix: an instant disable here let
+a single admin bypass the emergency flow and then call emergencyUpgrade with
+no timelock.)
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -248,11 +255,11 @@ Enables or disables the secure upgrade mechanism
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -262,7 +269,7 @@ function toggleSecureUpgrades(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE
 
 |Name|Type|Description|
 |----|----|-----------|
-|`enabled`|`bool`|Whether to enable secure upgrades|
+|`enabled`|`bool`|Must be true; false reverts (use the emergency-disable flow)|
 
 
 ### proposeUpgrade
@@ -282,11 +289,11 @@ Initiates a secure upgrade proposal with timelock delay and multi-sig requiremen
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -320,11 +327,11 @@ Executes a previously proposed upgrade after timelock delay
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -354,11 +361,11 @@ Allows emergency upgrades when secure upgrades are disabled or timelock is unava
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -406,11 +413,11 @@ Checks if there is a pending upgrade for the specified implementation
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -446,11 +453,11 @@ Returns detailed information about a pending upgrade
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -489,11 +496,11 @@ Checks if a pending upgrade has passed the timelock delay and can be executed
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -529,11 +536,11 @@ Returns the current security configuration for upgrades
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -570,11 +577,11 @@ Disables secure upgrades for emergency situations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity
@@ -805,11 +812,11 @@ Re-enables secure upgrades after emergency situations
 
 - errors: Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not protected by a reentrancy guard
 
 - access: Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable - no oracle dependency
 
 
 ```solidity

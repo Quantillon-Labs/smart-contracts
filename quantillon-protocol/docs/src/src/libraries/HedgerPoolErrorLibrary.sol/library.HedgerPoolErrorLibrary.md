@@ -1,5 +1,5 @@
 # HedgerPoolErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/HedgerPoolErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/libraries/HedgerPoolErrorLibrary.sol)
 
 **Title:**
 HedgerPoolErrorLibrary
@@ -19,6 +19,16 @@ Main characteristics:
 security-contact: team@quantillon.money
 
 
+## Constants
+### VERSION
+Library version (semver); see deployments/{chainId}/versions.json for provenance.
+
+
+```solidity
+string internal constant VERSION = "1.0.0"
+```
+
+
 ## Errors
 ### FlashLoanAttackDetected
 
@@ -36,18 +46,6 @@ error InvalidPosition();
 
 ```solidity
 error InvalidHedger();
-```
-
-### MaxPositionsPerTx
-
-```solidity
-error MaxPositionsPerTx();
-```
-
-### AlreadyWhitelisted
-
-```solidity
-error AlreadyWhitelisted();
 ```
 
 ### OnlyVault
@@ -116,12 +114,6 @@ error TotalExposureExceedsMaximum();
 error NewMarginExceedsMaximum();
 ```
 
-### PendingRewardsExceedMaximum
-
-```solidity
-error PendingRewardsExceedMaximum();
-```
-
 ### InvalidLeverage
 
 ```solidity
@@ -132,24 +124,6 @@ error InvalidLeverage();
 
 ```solidity
 error LeverageTooHigh();
-```
-
-### LeverageTooLow
-
-```solidity
-error LeverageTooLow();
-```
-
-### MaxLeverageExceeded
-
-```solidity
-error MaxLeverageExceeded();
-```
-
-### MarginTooLow
-
-```solidity
-error MarginTooLow();
 ```
 
 ### MarginRatioTooLow
@@ -164,46 +138,16 @@ error MarginRatioTooLow();
 error MarginRatioTooHigh();
 ```
 
-### MarginInsufficient
-
-```solidity
-error MarginInsufficient();
-```
-
-### MarginLimitExceeded
-
-```solidity
-error MarginLimitExceeded();
-```
-
-### PositionNotFound
-
-```solidity
-error PositionNotFound();
-```
-
 ### PositionOwnerMismatch
 
 ```solidity
 error PositionOwnerMismatch();
 ```
 
-### PositionAlreadyClosed
-
-```solidity
-error PositionAlreadyClosed();
-```
-
 ### PositionClosureRestricted
 
 ```solidity
 error PositionClosureRestricted();
-```
-
-### PositionHasActiveFill
-
-```solidity
-error PositionHasActiveFill();
 ```
 
 ### InsufficientHedgerCapacity
@@ -228,29 +172,5 @@ error HedgerHasActivePosition();
 
 ```solidity
 error MinHoldPeriodNotElapsed();
-```
-
-### EntryFeeTooHigh
-
-```solidity
-error EntryFeeTooHigh();
-```
-
-### ExitFeeTooHigh
-
-```solidity
-error ExitFeeTooHigh();
-```
-
-### MarginFeeTooHigh
-
-```solidity
-error MarginFeeTooHigh();
-```
-
-### YieldFeeTooHigh
-
-```solidity
-error YieldFeeTooHigh();
 ```
 

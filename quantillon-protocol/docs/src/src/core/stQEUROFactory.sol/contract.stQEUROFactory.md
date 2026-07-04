@@ -1,8 +1,8 @@
 # stQEUROFactory
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/stQEUROFactory.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/core/stQEUROFactory.sol)
 
 **Inherits:**
-Initializable, AccessControlUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, AccessControlUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 stQEUROFactory
@@ -10,7 +10,7 @@ stQEUROFactory
 Deploys and registers one stQEURO token proxy per staking vault.
 
 
-## State Variables
+## Constants
 ### GOVERNANCE_ROLE
 
 ```solidity
@@ -25,6 +25,7 @@ bytes32 public constant VAULT_FACTORY_ROLE = keccak256("VAULT_FACTORY_ROLE")
 ```
 
 
+## State Variables
 ### tokenImplementation
 stQEUROToken implementation used by newly deployed ERC1967 proxies.
 
@@ -126,6 +127,42 @@ mapping(bytes32 => bool) private _vaultNameHashUsed
 
 
 ## Functions
+### version
+
+Returns the semantic version of this implementation.
+
+Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+
+**Notes:**
+- security: No security implications - returns a compile-time constant.
+
+- validation: No input validation required.
+
+- state-changes: None - pure function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - pure function.
+
+- access: Public - anyone can read the version.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function version() external pure virtual override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
 ### constructor
 
 Disables initializers on the implementation contract.

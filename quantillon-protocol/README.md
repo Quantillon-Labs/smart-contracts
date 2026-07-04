@@ -15,7 +15,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 
 ## 📚 Documentation
 
-- **[API Documentation](https://smartcontracts.quantillon.money/API.html)** - Complete API reference for all smart contracts
+- **[API Reference](https://smartcontracts.quantillon.money/API-Reference.html)** - Complete API reference for all smart contracts
 - **[Technical Reference](https://smartcontracts.quantillon.money/API-Reference.html)** - Detailed technical specifications and implementation details
 - **[Quick Start Guide](https://smartcontracts.quantillon.money/Quick-Start.html)** - Get started quickly with integration examples
 - **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns

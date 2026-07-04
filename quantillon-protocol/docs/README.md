@@ -4,9 +4,6 @@ Welcome to the comprehensive documentation for the Quantillon Protocol - a next-
 
 ## 📚 Documentation Overview
 
-### [API Documentation](./API.md)
-Complete API reference for all smart contract interfaces, including function signatures, parameters, return values, events, and integration examples.
-
 ### [Technical API Reference](./API-Reference.md)
 Detailed technical specifications, error codes, gas estimates, and implementation details for developers.
 
@@ -42,12 +39,11 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 ## 🚀 Quick Links
 
 ### For Developers
-- [**API Documentation**](./API.md) - Complete function reference
+- [**Technical Reference**](./API-Reference.md) - Complete function reference, addresses, and constants
 - [**Quick Start**](./Quick-Start.md) - Get started in minutes
-- [**Technical Reference**](./API-Reference.md) - Deep technical details
 
 ### For Integrators
-- [**Integration Examples**](./API.md#integration-examples) - Code examples
+- [**Integration Examples**](./API-Reference.md#solidity-integration-examples) - Code examples
 - [**Error Handling**](./API-Reference.md#error-handling) - Error codes and handling
 - [**Gas Optimization**](./API-Reference.md#gas-optimization) - Performance tips
 - [**stQEURO Multi-Vault Upgrade**](./stQEUROFactory.md) - Implementation and runbook

@@ -26,15 +26,16 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The canonical, machin
 
 ### Oracles
 
-| Contract | Address |
-|----------|---------|
-| OracleRouter | `0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0` |
-| ChainlinkOracle | `0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7` |
-| StorkOracle | `0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC` |
-| SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` |
-| TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` |
+| Contract | Address | Status |
+|----------|---------|--------|
+| OracleRouter | `0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0` | entry point for all protocol price reads |
+| HyperliquidEurUsdOracle | `0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43` | **ACTIVE** (router slot 1) |
+| ChainlinkOracle | `0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7` | fallback (router slot 0); USDC/USD source |
+| StorkOracle | `0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC` | parked (replaced in slot 1 by HyperliquidEurUsdOracle) |
+| SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` | on-chain price store feeding HyperliquidEurUsdOracle |
+| TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` | timestamp wrapper (deployed directly, not proxied) |
 
-> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). `OracleRouter` routes to either `ChainlinkOracle` or `StorkOracle`, switchable by governance.
+> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, STORK }` — switchable in one governance transaction via `switchOracle`. Slot 1 keeps its historical `STORK` enum name for ABI stability but currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
 
 ### Governance & infrastructure
 
@@ -49,7 +50,17 @@ External staking adapters are onboarded after core deployment via `setup-externa
 
 | Adapter | Address | `vaultId` |
 |---------|---------|-----------|
-| MetaMorphoStakingVaultAdapter | `0x103aEBD0059AAA3DcCaa9ab0cCb901382Bd48978` | 2 |
+| MetaMorphoStakingVaultAdapter | `0xb2f253Cd74ebfa16894339438B467396De9e8EA3` | 2 |
+
+> The previous vaultId-2 adapter (`0x103aEBD0059AAA3DcCaa9ab0cCb901382Bd48978`) was migrated to the address above on 2026-07-01; migration details live in [`deployments/8453/metamorpho-adapter.json`](https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/deployments/8453/metamorpho-adapter.json).
+
+### Per-vault stQEURO tokens
+
+`addresses.json` intentionally lists `stQEUROToken` as the zero address: stQEURO is deployed **per external vault** by `stQEUROFactory` and must be resolved at runtime via `getStQEUROByVaultId(vaultId)`. Currently live:
+
+| Vault | `vaultId` | stQEURO proxy | Underlying vault |
+|-------|-----------|---------------|------------------|
+| MORPHO1 (MetaMorpho) | 2 | `0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d` | `0xBEEFE94c8aD530842bfE7d8B397938fFc1cb83b2` |
 
 ### External dependencies
 
@@ -220,6 +231,19 @@ Read-only view of the distribution parameters and the vault's last-harvest times
 Governance setters for the hedger funding carve-out and its recipient. Emit `FundingRateUpdated` /
 `HedgerYieldRecipientUpdated` (restored in v1.1.1).
 
+### Events
+
+```solidity
+event QEUROminted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount);
+event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount);
+event LiquidationRedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcPayout, uint256 collateralizationRatioBps, bool isPremium);
+event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
+event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
+event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
+event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
+event VaultYieldDistributed(uint256 indexed vaultId, uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare);
+```
+
 ---
 
 ## QEUROToken
@@ -279,6 +303,16 @@ function getTokenInfo() external view returns (
     bool whitelistMode,
     bool isPaused
 )
+```
+
+### Events
+
+```solidity
+event TokensMinted(address indexed to, uint256 amount);
+event TokensBurned(address indexed from, uint256 amount);
+event AddressWhitelisted(address indexed account);
+event AddressBlacklisted(address indexed account);
+event MaxSupplyUpdated(uint256 oldMaxSupply, uint256 newMaxSupply);
 ```
 
 ---
@@ -353,6 +387,15 @@ function vote(uint256 proposalId, bool support) external
 - Voting period active
 - Sufficient voting power
 - Not already voted
+
+### Events
+
+```solidity
+event TokensLocked(address indexed user, uint256 amount, uint256 lockTime, uint256 votingPower);
+event TokensUnlocked(address indexed user, uint256 amount);
+event ProposalCreated(uint256 indexed proposalId, string description, uint256 startTime, uint256 endTime);
+event VoteCast(address indexed voter, uint256 indexed proposalId, bool support, uint256 votingPower);
+```
 
 ---
 
@@ -431,6 +474,16 @@ function getPoolMetrics() external view returns (
     uint256 totalDeposits,
     uint256 totalRewards
 )
+```
+
+### Events
+
+```solidity
+event USDCDeposited(address indexed user, uint256 amount);
+event USDCWithdrawn(address indexed user, uint256 amount);
+event QEUROStaked(address indexed user, uint256 amount);
+event QEUROUnstaked(address indexed user, uint256 amount);
+event RewardsClaimed(address indexed user, uint256 amount);
 ```
 
 ---
@@ -561,6 +614,19 @@ Batch governance setter for:
 - `yieldShift`
 - `feeCollector`
 
+### Events
+
+```solidity
+event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 positionData);
+event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
+event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
+event RewardReserveFunded(address indexed funder, uint256 amount);
+event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
+event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
+```
+
 ---
 
 ## stQEUROFactory
@@ -611,6 +677,13 @@ function getVaultName(uint256 vaultId) external view returns (string memory vaul
 
 #### `updateYieldShift(address)` / `updateTokenImplementation(address)` / `updateOracle(address)` / `updateTreasury(address)` / `updateTokenAdmin(address)`
 Governance configuration setters affecting future vault token deployments and defaults.
+
+### Events
+
+```solidity
+event VaultRegistered(uint256 indexed vaultId, address indexed vault, address indexed stQEUROToken, string vaultName);
+event FactoryConfigUpdated(string indexed key, address oldValue, address newValue);
+```
 
 ---
 
@@ -682,6 +755,15 @@ function distributeYield(uint256 qeuroAmount) external
 - `vaultName`
 
 This overload is used by `stQEUROFactory` when deploying a dedicated proxy per vault.
+
+### Events
+
+```solidity
+event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 stQeuroAmount);
+event QEUROUnstaked(address indexed user, uint256 stQeuroAmount, uint256 qeuroAmount);
+event YieldClaimed(address indexed user, uint256 amount);
+event YieldDistributed(uint256 totalAmount, uint256 timestamp);
+```
 
 ---
 
@@ -801,13 +883,87 @@ Governance setter to authorize/revoke a yield source and bind source type.
 #### `currentYieldShift()`, `userPendingYield(address)`, `hedgerPendingYield(address)`, `paused()`
 Direct state getters used by integrations and indexers.
 
+### Events
+
+```solidity
+event YieldDistributionUpdated(uint256 userPoolYield, uint256 hedgerPoolYield, uint256 currentShift);
+event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
+event UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp);
+event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
+```
+
+---
+
+## OracleRouter
+
+**Contract**: `OracleRouter.sol`
+**Interface**: `IOracle.sol`
+**Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+
+Single oracle entry point for the protocol. All protocol contracts read prices only through `OracleRouter`; the underlying source can be switched by governance without touching consumers.
+
+Routing slots (`enum OracleType { CHAINLINK, STORK }`):
+- Slot `0` (`CHAINLINK`) — `ChainlinkOracle`, the fallback.
+- Slot `1` (`STORK`) — historically `StorkOracle`; **currently hosts `HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). The enum name is retained for ABI stability.
+
+### Function Signatures
+
+#### `getEurUsdPrice() → (uint256, bool)`
+```solidity
+function getEurUsdPrice() external returns (uint256 price, bool isValid)
+```
+Proxies to the active oracle. **Non-`view` by design** — a fresh valid read commits the price into the deviation-baseline cache and emits `PriceUpdated`; integrators that only need a cheap read should use the cached getters.
+
+**Returns**:
+- `price`: EUR/USD price (18 decimals)
+- `isValid`: Whether price is fresh and valid
+
+#### `getUsdcUsdPrice() → (uint256, bool)`
+```solidity
+function getUsdcUsdPrice() external view returns (uint256 price, bool isValid)
+```
+
+#### `getActiveOracle() → (OracleType)`
+Returns the currently active slot (`1` on Base mainnet).
+
+#### `getOracleAddresses() → (address chainlinkAddress, address storkAddress)`
+Returns both slot addresses (the "stork" slot currently returns the `HyperliquidEurUsdOracle` address).
+
+#### `switchOracle(OracleType newOracle)`
+```solidity
+function switchOracle(OracleType newOracle) external
+```
+
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`
+**Events**: `OracleSwitched(uint8 oldOracle, uint8 newOracle, address caller)`
+
+One-transaction failover between slot 0 and slot 1 (e.g. `switchOracle(0)` falls back to Chainlink).
+
+#### `updateOracleAddresses(address chainlink, address stork)`
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`
+**Events**: `OracleAddressesUpdated`
+
+Points a slot at a new oracle contract — this is how `HyperliquidEurUsdOracle` was installed into slot 1.
+
+Health and config views (`getOracleHealth`, `getEurUsdDetails`, `getOracleConfig`, `getPriceFeedAddresses`, `checkPriceFeedConnectivity`) and manager passthroughs (`updatePriceBounds`, `updateUsdcTolerance`, `updatePriceFeeds`, `triggerCircuitBreaker`, `resetCircuitBreaker`) forward to the active oracle.
+
 ---
 
 ## ChainlinkOracle
 
-**Contract**: `ChainlinkOracle.sol`  
-**Interface**: `IChainlinkOracle.sol`  
+**Contract**: `ChainlinkOracle.sol`
+**Interface**: `IChainlinkOracle.sol`
 **Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+
+Fallback EUR/USD oracle (router slot 0) and the protocol's USDC/USD source, reading Chainlink AggregatorV3 feeds.
+
+**Validation rules**:
+- `MAX_PRICE_STALENESS` (EUR/USD): 2 hours
+- `MAX_USDC_PRICE_STALENESS`: 25 hours
+- `MAX_PRICE_DEVIATION`: 500 basis points (5%) circuit breaker
+- `MAX_TIMESTAMP_DRIFT`: 900 seconds (15 minutes)
+- EUR/USD price bounds: 0.80 – 1.40 (18 decimals)
+- USDC tolerance: 200 bps (2%), falls back to $1.00 outside tolerance
 
 ### Function Signatures
 
@@ -817,7 +973,7 @@ function getEurUsdPrice() external view returns (uint256 price, bool isValid)
 ```
 
 **Returns**:
-- `price`: EUR/USD price (8 decimals)
+- `price`: EUR/USD price (18 decimals, normalized from the 8-decimal feed)
 - `isValid`: Whether price is fresh and valid
 
 #### `getUsdcUsdPrice() → (uint256, bool)`
@@ -826,7 +982,7 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid)
 ```
 
 **Returns**:
-- `price`: USDC/USD price (8 decimals)
+- `price`: USDC/USD price (18 decimals, normalized from the 8-decimal feed)
 - `isValid`: Whether price is fresh and valid
 
 #### `updatePriceFeeds(address eurUsdFeed, address usdcUsdFeed)`
@@ -834,7 +990,7 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid)
 function updatePriceFeeds(address eurUsdFeed, address usdcUsdFeed) external
 ```
 
-**Modifiers**: `onlyRole(ADMIN_ROLE)`  
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`  
 **Events**: `PriceFeedsUpdated(address eurUsdFeed, address usdcUsdFeed)`  
 **Requirements**:
 - `eurUsdFeed != address(0)`
@@ -845,7 +1001,7 @@ function updatePriceFeeds(address eurUsdFeed, address usdcUsdFeed) external
 function updatePriceBounds(uint256 minPrice, uint256 maxPrice) external
 ```
 
-**Modifiers**: `onlyRole(ADMIN_ROLE)`  
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`  
 **Events**: `PriceBoundsUpdated(uint256 minPrice, uint256 maxPrice)`  
 **Requirements**:
 - `minPrice < maxPrice`
@@ -863,8 +1019,155 @@ function triggerCircuitBreaker() external
 function resetCircuitBreaker() external
 ```
 
-**Modifiers**: `onlyRole(ADMIN_ROLE)`  
+**Modifiers**: `onlyRole(EMERGENCY_ROLE)`  
 **Events**: `CircuitBreakerReset(uint256 timestamp)`
+
+---
+
+## HyperliquidEurUsdOracle
+
+**Contract**: `HyperliquidEurUsdOracle.sol`
+**Interface**: `IHyperliquidOracle.sol` (IOracle-compatible)
+**Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+
+**The ACTIVE production EUR/USD oracle** (router slot 1, live since 2026-06-25). EUR/USD is the Hyperliquid `EUR` perpetual mid-price, published on-chain into `SlippageStorage` by the off-chain publisher and read via `getSlippageBySource(sourceId).midPrice` (18 decimals). USDC/USD is delegated to `ChainlinkOracle`.
+
+**Validation rules**:
+- `maxPriceStaleness`: 900 seconds default (15 min), hard-capped by `HARD_MAX_STALENESS` = 3600 seconds
+- EUR/USD price bounds: 0.80 – 1.40 (18 decimals)
+- `MAX_PRICE_DEVIATION`: 500 basis points (5%) circuit breaker vs last valid price
+- USDC tolerance: 200 bps (2%), falls back to $1.00
+- Stale or out-of-bounds price → `isValid = false` → dependent mint/redeem revert
+
+### Function Signatures
+
+#### `getEurUsdPrice() → (uint256, bool)`
+```solidity
+function getEurUsdPrice() external returns (uint256 price, bool isValid)
+```
+Non-`view`: a fresh valid read updates the deviation-baseline cache and emits `PriceUpdated`.
+
+#### `getUsdcUsdPrice() → (uint256, bool)`
+```solidity
+function getUsdcUsdPrice() external view returns (uint256 price, bool isValid)
+```
+Delegated to the configured USDC source (`ChainlinkOracle`).
+
+#### `setMaxPriceStaleness(uint256 newMaxStaleness)`
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)` — must be ≤ 3600 seconds.
+**Events**: `MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness)`
+
+#### `updateSlippageSource(address _slippageStorage, uint8 _sourceId)` / `updateUsdcSource(address _usdcSource)`
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`
+
+#### `updatePriceBounds(uint256 minPrice, uint256 maxPrice)` / `updateUsdcTolerance(uint256 newToleranceBps)`
+**Modifiers**: `onlyRole(ORACLE_MANAGER_ROLE)`
+
+#### `triggerCircuitBreaker()` / `resetCircuitBreaker()`
+**Modifiers**: `onlyRole(EMERGENCY_ROLE)`
+
+Health and config views: `getOracleHealth`, `getEurUsdDetails`, `getOracleConfig`, `getPriceFeedAddresses`, `checkPriceFeedConnectivity`.
+
+### Events
+
+```solidity
+event PriceUpdated(uint256 eurUsdPrice, uint256 usdcUsdPrice, uint256 indexed timestamp);
+event CircuitBreakerTriggered(uint256 attemptedPrice, uint256 lastValidPrice, string indexed reason);
+event CircuitBreakerReset(address indexed admin);
+event PriceBoundsUpdated(string indexed boundType, uint256 newMinPrice, uint256 newMaxPrice);
+event SlippageSourceUpdated(address indexed newSlippageStorage, uint8 newSourceId);
+event UsdcSourceUpdated(address indexed newUsdcSource);
+event MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness);
+```
+
+---
+
+## StorkOracle
+
+**Contract**: `StorkOracle.sol`
+**Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+
+EUR/USD and USDC/USD feeds via the Stork Network, exposing the same `IOracle` surface as `ChainlinkOracle`. **Parked**: it previously occupied router slot 1 and was replaced there by `HyperliquidEurUsdOracle` on 2026-06-25. The contract remains deployed and can be re-installed via `OracleRouter.updateOracleAddresses` if needed.
+
+---
+
+## FeeCollector
+
+**Contract**: `FeeCollector.sol`
+**Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+
+Centralized protocol fee collection and distribution. Distribution ratios (initializer defaults, governance-adjustable, must sum to 10000 bps): **treasury 60% / dev fund 25% / community 15%**.
+
+### Function Signatures
+
+#### `collectFees(address token, uint256 amount, string sourceType)`
+Records fees pulled from an authorized protocol contract.
+
+**Modifiers**: `onlyFeeSource`, `whenNotPaused`, `nonReentrant`
+
+#### `collectETHFees(string sourceType)`
+Payable ETH-fee variant.
+
+**Modifiers**: `onlyFeeSource`, `whenNotPaused`, `nonReentrant`
+
+#### `distributeFees(address token)`
+Distributes collected fees to treasury, dev fund, and community fund according to configured ratios.
+
+**Modifiers**: `onlyRole(TREASURY_ROLE)`, `whenNotPaused`, `nonReentrant`
+
+#### `updateFeeRatios(uint256 _treasuryRatio, uint256 _devFundRatio, uint256 _communityRatio)`
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
+**Requirements**: `_treasuryRatio + _devFundRatio + _communityRatio == 10000`
+
+#### `updateFundAddresses(...)`
+Updates treasury / dev fund / community fund destinations.
+
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
+
+#### `authorizeFeeSource(address feeSource)` / `revokeFeeSource(address feeSource)`
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
+
+### Events
+
+```solidity
+event FeesCollected(address indexed token, uint256 amount, address indexed source, string indexed sourceType);
+event FeesDistributed(address indexed token, uint256 totalAmount, uint256 treasuryAmount, uint256 devFundAmount, uint256 communityAmount);
+event FeeRatiosUpdated(uint256 treasuryRatio, uint256 devFundRatio, uint256 communityRatio);
+event FundAddressesUpdated(address treasury, address devFund, address communityFund);
+```
+
+---
+
+## TimeProvider
+
+**Contract**: `TimeProvider` (in `src/libraries/TimeProviderLibrary.sol`) — deployed directly, not behind a proxy
+
+Centralized `block.timestamp` wrapper used across core contracts, with governance-controlled offset support for test environments.
+
+### Function Signatures
+
+#### `currentTime() → (uint256)` / `rawTimestamp() → (uint256)`
+Public views: offset-adjusted time and raw block timestamp.
+
+#### `setTimeOffset(int256 newOffset, string reason)`
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)` — offset bounded (max 7 days) to prevent abuse.
+
+#### `advanceTime(uint256 amount)` / `resetTime()`
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
+
+#### `setEmergencyMode(bool enabled)` / `emergencyResetTime()`
+**Modifiers**: `onlyRole(EMERGENCY_ROLE)`
+
+#### `getTimeInfo()` / `timeDiff(uint256 t1, uint256 t2)`
+Public views.
+
+### Events
+
+```solidity
+event TimeOffsetChanged(address indexed changer, int256 oldOffset, int256 newOffset, string reason, uint256 timestamp);
+event EmergencyModeChanged(bool enabled, address indexed changer, uint256 timestamp);
+event TimeReset(address indexed resetter, uint256 timestamp);
+```
 
 ---
 
@@ -872,47 +1175,69 @@ function resetCircuitBreaker() external
 
 | Role | Description | Key Functions |
 |------|-------------|---------------|
-| `DEFAULT_ADMIN_ROLE` | Super admin | All administrative functions |
-| `EMERGENCY_ROLE` | Emergency operations | Pause/unpause, circuit breaker |
-| `GOVERNANCE_ROLE` | Governance operations | Parameter updates, proposals |
-| `VAULT_ROLE` | Vault operations | Mint/burn QEURO |
-| `YIELD_MANAGER_ROLE` | Yield management | Distribute yield, manage Aave |
-| `COMPLIANCE_ROLE` | Compliance operations | Whitelist/blacklist addresses |
-| `LIQUIDATOR_ROLE` | Liquidation operations | Liquidate positions |
-| `TIME_MANAGER_ROLE` | Time management | Set time offsets |
+| `DEFAULT_ADMIN_ROLE` | Super admin | Treasury updates, token/ETH recovery |
+| `GOVERNANCE_ROLE` | Governance operations | Parameter updates, fee ratios, time offsets |
+| `EMERGENCY_ROLE` | Emergency operations | Pause/unpause, circuit breakers |
+| `UPGRADER_ROLE` | UUPS upgrades | Upgrade authorization (gated by the 12h Timelock) |
+| `MINTER_ROLE` / `BURNER_ROLE` | QEURO supply | Mint/burn QEURO (held by `QuantillonVault`) |
+| `COMPLIANCE_ROLE` | Compliance operations | Whitelist/blacklist addresses (QEUROToken) |
+| `ORACLE_MANAGER_ROLE` | Oracle management | `switchOracle`, feed/bounds/staleness config |
+| `YIELD_MANAGER_ROLE` | Yield management | Yield distribution and external-vault yield ops |
+| `TREASURY_ROLE` | Fee distribution | `FeeCollector.distributeFees` |
+
+> On Base mainnet all privileged roles are held by the 2-of-3 governance Safe; there is no liquidator role — liquidation mode is a protocol-level state (vault CR ≤ 101%), not a per-position keeper action.
 
 ---
 
 ## Constants and Limits
 
+Verified against deployed contracts on Base mainnet (2026-07-04). Values marked *settable* are current live values that governance can change, not immutable constants.
+
 ### QuantillonVault
-- `MAX_MINT_AMOUNT`: 1,000,000 USDC
-- `MIN_MINT_AMOUNT`: 1 USDC
-- `MAX_REDEEM_AMOUNT`: 1,000,000 QEURO
-- `MIN_REDEEM_AMOUNT`: 1 QEURO
+- `mintFee`: 0 (*settable*, max 5% = `5e16`)
+- `redemptionFee`: 0 (*settable*, max 5%; also applied to liquidation-mode redemptions)
+- `MIN_COLLATERALIZATION_RATIO_FOR_MINTING`: 105% (`105e18`)
+- `criticalCollateralizationRatio`: 101% (`101e18`) — liquidation mode at or below this protocol CR
+- `MAX_PRICE_DEVIATION`: 200 bps (2%) between cached and live oracle price
+- `MAX_FUNDING_RATE_ANNUAL_BPS`: 5000 (50%) cap on the hedger funding rate
 
 ### QEUROToken
-- `MAX_SUPPLY`: 1,000,000,000 QEURO (1B tokens)
-- `MIN_PRICE_PRECISION`: 2 decimals
-- `MAX_PRICE_PRECISION`: 8 decimals
+- `maxSupply`: 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY` = 100M, *settable*)
+- Decimals: 18
+- Mint rate limiting: max 10,000,000 QEURO per 300-second window (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
 
 ### QTIToken
-- `MIN_LOCK_TIME`: 1 week (604,800 seconds)
-- `MAX_LOCK_TIME`: 4 years (126,144,000 seconds)
-- `MIN_PROPOSAL_POWER`: 1,000 veQTI
-- `VOTING_PERIOD`: 7 days (604,800 seconds)
+- `TOTAL_SUPPLY_CAP`: 100,000,000 QTI — **current supply is 0 (dormant: no mint path is wired)**
+- `MIN_LOCK_TIME`: 7 days · `MAX_LOCK_TIME`: 365 days
+- `MAX_VE_QTI_MULTIPLIER`: 4× voting power
+- `proposalThreshold`: 100,000 QTI · `quorumVotes`: 1,000,000 QTI (*settable*)
+- Voting period: 3 days minimum, 14 days maximum · `PROPOSAL_EXECUTION_DELAY`: 2 days
 
 ### UserPool
-- `MIN_STAKE_AMOUNT`: 100 QEURO
-- `MAX_STAKE_AMOUNT`: 10,000,000 QEURO
-- `UNSTAKE_COOLDOWN`: 7 days (604,800 seconds)
+- `stakingAPY`: 800 bps (8%) · `depositAPY`: 400 bps (4%) (*settable*)
+- `minStakeAmount`: 100 QEURO (*settable*)
+- `unstakingCooldown`: 7 days (*settable*)
+- `performanceFee`: 0 (*settable*)
 
 ### HedgerPool
-- `MAX_LEVERAGE`: 10x
-- `MIN_LEVERAGE`: 1x
-- `MIN_MARGIN_RATIO`: 110% (1.1)
-- `LIQUIDATION_THRESHOLD`: 105% (1.05)
-- `MAX_POSITIONS_PER_HEDGER`: 50
+- `maxLeverage`: 20× — minimum margin ratio 5% (`DEFAULT_MIN_MARGIN_RATIO_BPS` = 500)
+- `MAX_MARGIN_RATIO`: 5000 bps (50%, i.e. 2× minimum leverage)
+- `minMarginAmount`: 100 USDC
+- `entryFee` / `exitFee` / `marginFee`: 0 (*settable*)
+- `eurInterestRate` / `usdInterestRate`: 350 / 450 bps (*settable*)
+- `rewardFeeSplit`: 20% (`2e17`) of protocol fees routed to the hedger reward reserve (*settable*)
+- Single-hedger model (`setSingleHedger` + rotation); liquidation is driven by the vault-level critical CR (≤ 101%), not a per-position threshold constant
+
+### stQEURO
+- `yieldFee`: 0 (*settable*, max 20% = 2000 bps)
+
+### YieldShift
+- `baseYieldShift`: 50% · `maxYieldShift`: 90% (*settable*)
+- `MIN_HOLDING_PERIOD`: 7 days · `TWAP_PERIOD`: 24 hours · `MAX_HISTORY_LENGTH`: 1000
+
+### Oracles
+- ChainlinkOracle: EUR/USD staleness 2 h · USDC/USD staleness 25 h · 5% deviation breaker · bounds 0.80–1.40 · USDC tolerance 2%
+- HyperliquidEurUsdOracle: staleness 900 s (hard cap 3600 s) · same bounds, breaker, and tolerance
 
 ### External Vault Adapters
 - No fixed exposure/rebalance constants — adapters are thin pass-throughs to the wrapped vault.
@@ -1022,6 +1347,88 @@ tx_hash = contract.functions.mintQEURO(usdc_amount, min_qeuro_out).transact({
     'from': user_address
 })
 ```
+
+---
+
+## Solidity Integration Examples
+
+### Basic QEURO Minting
+
+```solidity
+// 1. Approve USDC spending
+usdc.approve(vaultAddress, usdcAmount);
+
+// 2. Mint QEURO with slippage protection
+uint256 minQeuroOut = (usdcAmount * 95) / 100; // 5% slippage tolerance
+vault.mintQEURO(usdcAmount, minQeuroOut);
+```
+
+### Staking QEURO
+
+```solidity
+// 1. Approve QEURO spending
+qeuro.approve(userPoolAddress, qeuroAmount);
+
+// 2. Stake QEURO
+userPool.stake(qeuroAmount);
+
+// There is no staking-reward claim. Protocol yield for users accrues automatically
+// through the stQEURO wrapper (rising exchange rate) — wrap QEURO into stQEURO to earn it.
+```
+
+### Opening a Hedge Position
+
+```solidity
+// 1. Approve USDC spending (caller must be the configured single hedger)
+usdc.approve(hedgerPoolAddress, marginAmount);
+
+// 2. Open position with 5x leverage (max leverage: 20x)
+uint256 positionId = hedgerPool.enterHedgePosition(marginAmount, 5);
+
+// 3. Monitor hedger activity / claim rewards
+bool hedgerActive = hedgerPool.hasActiveHedger();
+(uint256 interestDiff, uint256 ysRewards, uint256 total) = hedgerPool.claimHedgingRewards();
+```
+
+### Governance Participation
+
+> **Note**: QTI is currently dormant (supply 0, no mint path wired) — these calls become functional after the activation upgrade.
+
+```solidity
+// 1. Lock QTI for voting power
+qti.lock(lockAmount, lockDuration);
+
+// 2. Create proposal
+uint256 proposalId = qti.createProposal(
+    "Update protocol parameters",
+    block.timestamp + 1 days,
+    block.timestamp + 7 days
+);
+
+// 3. Vote on proposal
+qti.vote(proposalId, true); // Vote yes
+```
+
+---
+
+## Security Considerations
+
+1. **Always validate return values** from view functions
+2. **Check contract state** before making transactions
+3. **Use slippage protection** for all swaps
+4. **Monitor oracle prices** for freshness
+5. **Implement proper error handling** for all interactions
+6. **Use events** for transaction monitoring
+7. **Follow access control patterns** for role-based operations
+
+---
+
+## Support
+
+For technical support and questions:
+- **Email**: team@quantillon.money
+- **Documentation**: [Quantillon Protocol Docs](https://docs.quantillon.money)
+- **GitHub**: [Quantillon Labs](https://github.com/Quantillon-Labs)
 
 ---
 

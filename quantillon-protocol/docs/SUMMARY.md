@@ -1,6 +1,5 @@
 # Summary
 - [Home](README.md)
-- [API Documentation](API.md)
 - [Technical Reference](API-Reference.md)
 - [Quick Start Guide](Quick-Start.md)
 - [Integration Examples](Integration-Examples.md)

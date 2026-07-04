@@ -5,8 +5,7 @@ parameters, roles, events, and the operator runbook. Implemented in `QuantillonV
 
 > Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
 > [stQEUROFactory](./stQEUROFactory.md) ·
-> [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md) ·
-> decision record / investigation: [stQEURO yield pipeline diagnosis](./stQEURO-yield-pipeline-diagnosis.md).
+> [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
 
 ---
 

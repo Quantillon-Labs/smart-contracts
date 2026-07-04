@@ -214,7 +214,7 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 - Repo-root `README.md` → becomes the site homepage. Link to guides with absolute `https://smartcontracts.quantillon.money/<Name>.html` URLs; relative `./docs/X.md` links work on GitHub but **404 on the published book**.
 - `docs/SUMMARY.md` → site nav for the guide pages (its `# src` contract tree should mirror what `forge doc` emits into `docs/src/src/**`).
 - `docs/README.md` → the "Documentation Hub" page.
-- Top-level guides published as `…/<Name>.html`: `API.md`, `API-Reference.md`, `Quick-Start.md`, `Integration-Examples.md`, `Architecture.md`, `Security.md`, `Deployment.md`, `stQEUROFactory.md`, `Multi-Vault-Staking-Flow.md`, `External-Vault-Onboarding-Runbook.md`, `QTI-Activation-Checklist.md`.
+- Top-level guides published as `…/<Name>.html`: `API-Reference.md`, `Quick-Start.md`, `Integration-Examples.md`, `Architecture.md`, `Oracle-Architecture.md`, `Security.md`, `Deployment.md`, `stQEUROFactory.md`, `Multi-Vault-Staking-Flow.md`, `Staking-Yield-Distribution.md`, `External-Vault-Onboarding-Runbook.md`.
 
 **Keep in sync:** `docs/API-Reference.md` Contract Addresses must match `deployments/8453/addresses.json` (Base mainnet). External vault adapters are onboarded per `vaultId` and live in `deployments/8453/*-adapter.json`, not in `addresses.json`.
 

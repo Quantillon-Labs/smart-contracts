@@ -160,7 +160,6 @@ const contract = new ethers.Contract(address, abi, signer);
 ```
 docs/
 ├── README.md                 # Main documentation index
-├── API.md                   # API documentation
 ├── API-Reference.md         # Technical API reference
 ├── Quick-Start.md           # Quick start guide
 ├── Integration-Examples.md  # Integration examples

@@ -218,7 +218,7 @@ async function createProposal(description, startTime, endTime) {
     try {
         // 1. Check voting power
         const votingPower = await qti.getVotingPower(signer.address);
-        const minProposalPower = await qti.MIN_PROPOSAL_POWER();
+        const minProposalPower = await qti.proposalThreshold(); // 100,000 QTI
         
         if (votingPower.lt(minProposalPower)) {
             throw new Error(`Insufficient voting power. Required: ${minProposalPower}, Current: ${votingPower}`);
@@ -332,15 +332,17 @@ async function monitorPosition(positionId) {
     const hedgerPool = new ethers.Contract(HEDGER_POOL_ADDRESS, HEDGER_POOL_ABI, signer);
     
     try {
-        // 1. Get position info
-        const positionInfo = await hedgerPool.getPositionInfo(positionId);
+        // 1. Get position info (public mapping getter)
+        const positionInfo = await hedgerPool.positions(positionId);
         
-        // 2. Calculate margin ratio
+        // 2. Calculate margin ratio in basis points
         const marginRatio = positionInfo.margin.mul(10000).div(positionInfo.positionSize);
-        const liquidationThreshold = await hedgerPool.liquidationThreshold();
+        const minMarginRatioBps = (await hedgerPool.coreParams()).minMarginRatio; // 500 = 5%
         
         // 3. Check if position is healthy
-        const isHealthy = marginRatio.gt(liquidationThreshold);
+        // Note: protocol-level liquidation mode triggers at vault CR <= 101%
+        // (QuantillonVault.criticalCollateralizationRatio), independent of this check.
+        const isHealthy = marginRatio.gt(minMarginRatioBps);
         
         console.log(`Position ${positionId}:`);
         console.log(`  Margin: ${ethers.utils.formatUnits(positionInfo.margin, 6)} USDC`);
@@ -369,8 +371,8 @@ async function addMargin(positionId, additionalMargin) {
     const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
     
     try {
-        // 1. Check position ownership
-        const positionInfo = await hedgerPool.getPositionInfo(positionId);
+        // 1. Check position ownership (public mapping getter)
+        const positionInfo = await hedgerPool.positions(positionId);
         if (positionInfo.hedger !== signer.address) {
             throw new Error('Not the owner of this position');
         }
@@ -462,13 +464,15 @@ class QuantillonPortfolio {
     
     async optimizeYield() {
         try {
-            const userPoolAPY = await this.userPool.getStakingAPY();
-            const hedgerPoolAPY = await this.hedgerPool.getHedgingAPY();
+            const userPoolAPY = await this.userPool.stakingAPY(); // bps
+            // No APY getter on HedgerPool - use the interest-rate differential
+            const params = await this.hedgerPool.coreParams();
+            const hedgerCarryBps = params.usdInterestRate - params.eurInterestRate;
             
             console.log(`User Pool APY: ${userPoolAPY.toNumber() / 100}%`);
-            console.log(`Hedger Pool APY: ${hedgerPoolAPY.toNumber() / 100}%`);
+            console.log(`Hedger carry (rate differential): ${hedgerCarryBps / 100}%`);
             
-            if (userPoolAPY.gt(hedgerPoolAPY)) {
+            if (userPoolAPY.gte(hedgerCarryBps)) {
                 console.log('Recommendation: Stake in User Pool for higher yield');
             } else {
                 console.log('Recommendation: Consider hedging for higher yield');

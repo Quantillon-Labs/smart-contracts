@@ -250,14 +250,18 @@ cat scripts/results/contract-sizes/contract-sizes-summary.txt
 
 ```javascript
 // Check yield opportunities
-const userPoolAPY = await userPool.getStakingAPY();
-const hedgerPoolAPY = await hedgerPool.getHedgingAPY();
+const userPoolAPY = await userPool.stakingAPY(); // bps, e.g. 800 = 8%
 
-if (userPoolAPY > hedgerPoolAPY) {
+// Hedger economics derive from the EUR/USD interest-rate differential
+// (there is no APY getter on HedgerPool)
+const params = await hedgerPool.coreParams();
+const hedgerCarryBps = params.usdInterestRate - params.eurInterestRate; // bps
+
+if (userPoolAPY > hedgerCarryBps) {
     // Stake in user pool
     await userPool.stake(qeuroAmount);
 } else {
-    // Open hedge position
+    // Open hedge position (single-hedger model: caller must be the configured hedger)
     await hedgerPool.enterHedgePosition(marginAmount, leverage);
 }
 ```
@@ -266,13 +270,16 @@ if (userPoolAPY > hedgerPoolAPY) {
 
 ```javascript
 // Monitor position health
-const positionInfo = await hedgerPool.getPositionInfo(positionId);
-const marginRatio = positionInfo.margin / positionInfo.positionSize;
+const positionInfo = await hedgerPool.positions(positionId);
+const marginRatioBps = positionInfo.margin.mul(10000).div(positionInfo.positionSize);
+const minMarginRatioBps = (await hedgerPool.coreParams()).minMarginRatio; // 500 = 5%
 
-if (marginRatio < 1.1) {
-    console.warn('Position is near liquidation threshold');
+if (marginRatioBps.lt(minMarginRatioBps.add(100))) {
+    console.warn('Position is near the minimum margin ratio');
     // Add margin or close position
 }
+// Note: protocol-level liquidation mode triggers at vault CR <= 101%
+// (QuantillonVault.criticalCollateralizationRatio), independent of per-position margin.
 ```
 
 ### Governance Participation
@@ -280,7 +287,7 @@ if (marginRatio < 1.1) {
 ```javascript
 // Check voting power
 const votingPower = await qti.getVotingPower(userAddress);
-const minPower = await qti.MIN_PROPOSAL_POWER();
+const minPower = await qti.proposalThreshold(); // 100,000 QTI
 
 if (votingPower >= minPower) {
     // Can create proposals

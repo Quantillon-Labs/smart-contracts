@@ -145,23 +145,19 @@ function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint2
 **Notes**:
 - Uses cached EUR/USD price path (`lastValidEurUsdPrice`).
 
-#### `getVaultMetrics() → (uint256, uint256, uint256, uint256, uint256)`
+#### Vault balance getters (public state)
 ```solidity
-function getVaultMetrics() external view returns (
-    uint256 totalUsdcHeld_,
-    uint256 totalMinted_,
-    uint256 totalDebtValue,
-    uint256 totalUsdcInExternalVaults_,
-    uint256 totalUsdcAvailable_
-)
+uint256 public totalUsdcHeld;              // USDC held directly by the vault
+uint256 public totalMinted;                // QEURO minted by vault tracker
+uint256 public totalUsdcInExternalVaults;  // Principal tracked across external vault adapters
 ```
 
-**Returns**:
-- `totalUsdcHeld_`: USDC held directly by vault
-- `totalMinted_`: QEURO minted by vault tracker
-- `totalDebtValue`: USD debt value using live token supply and cached EUR/USD
-- `totalUsdcInExternalVaults_`: Principal tracker across all configured external vault adapters
-- `totalUsdcAvailable_`: Total collateral available — held USDC plus tracked external-vault **principal** (unharvested adapter yield is excluded)
+**Notes**:
+- The aggregated `getVaultMetrics()` helper was removed in the external
+  multi-vault refactor (EIP-170 headroom); read the three public trackers
+  directly, and use `getProtocolCollateralizationRatio()` for debt/collateral
+  ratio math. Total available collateral = `totalUsdcHeld +
+  totalUsdcInExternalVaults` (unharvested adapter yield is excluded).
 
 #### `getProtocolCollateralizationRatio() → (uint256)`
 ```solidity
@@ -1002,7 +998,7 @@ revert CustomError();
 const contract = new web3.eth.Contract(abi, address);
 
 // Call view function
-const result = await contract.methods.getVaultMetrics().call();
+const result = await contract.methods.getProtocolCollateralizationRatio().call();
 
 // Send transaction
 const tx = await contract.methods.mintQEURO(usdcAmount, minQeuroOut)

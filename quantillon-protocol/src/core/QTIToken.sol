@@ -46,7 +46,7 @@ import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
  * @dev Vote-escrow mechanics:
  *      - Users can lock QTI tokens for governance power
  *      - Longer locks = higher voting power (up to 4x multiplier)
- *      - Minimum lock: 7 days, Maximum lock: 4 years
+ *      - Minimum lock: 7 days, Maximum lock: 365 days (1 year)
  *      - Voting power decreases linearly over time
  *      - Locked tokens cannot be transferred until unlock
  * 

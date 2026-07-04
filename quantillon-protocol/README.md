@@ -11,7 +11,7 @@
 
 ## 📖 Overview
 
-Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability. The codebase includes 1,300+ tests, custom errors and centralized validation libraries, and role-based access control.
+Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability. The codebase includes 1,400+ tests, custom errors and centralized validation libraries, and role-based access control.
 
 ## 📚 Documentation
 
@@ -54,9 +54,11 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
 | **MockAaveVault** | Mock Aave-style adapter | External adapter model validation, yield fee/harvest controls for staging |
 | **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period; allocation uses holding-period-filtered eligible-pool sizes with gradual adjustment (TWAP helpers exist but inform historical metrics, not the binding shift) |
-| **OracleRouter** | Oracle routing | Routes between Chainlink and Stork oracles, switchable by governance |
-| **ChainlinkOracle** | Chainlink price feeds | EUR/USD and USDC/USD via Chainlink, 1 hr staleness check, circuit breakers |
-| **StorkOracle** | Stork price feeds | EUR/USD and USDC/USD via Stork Network, same validation as Chainlink |
+| **OracleRouter** | Oracle routing | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (**active**), slot 0 ChainlinkOracle (fallback) |
+| **HyperliquidEurUsdOracle** | Active EUR/USD oracle | Hyperliquid EUR perp mid-price read from SlippageStorage; 15 min staleness (1 h hard cap), circuit breakers |
+| **ChainlinkOracle** | Fallback price feeds | EUR/USD (2 h staleness) and USDC/USD (25 h staleness) via Chainlink, circuit breakers |
+| **StorkOracle** | Stork price feeds (parked) | EUR/USD and USDC/USD via Stork Network; replaced in the router slot by HyperliquidEurUsdOracle |
+| **SlippageStorage** | On-chain price store | Written by the off-chain publisher, read by HyperliquidEurUsdOracle |
 | **TimeProvider** | Time utilities | Centralized `block.timestamp` wrapper for consistent time management |
 
 ## 🚀 Quick Start
@@ -244,7 +246,7 @@ make gas-analysis
 ### Code Quality
 
 - **NatSpec Documentation**: Comprehensive documentation for all functions
-- **Test Coverage**: Extensive test suite with 1,300+ tests (100% passing)
+- **Test Coverage**: Extensive test suite with 1,400+ tests (100% passing)
 - **Security Analysis**: Regular security audits and static analysis
 - **Gas Optimization**: Optimized for deployment size and execution cost
 - **Error Handling**: Custom errors for gas efficiency and better error messages

@@ -99,7 +99,7 @@ modifier nonReentrant() {
 
 **Price Feed Validation**:
 - Multiple price feed sources
-- Staleness checks (max 1 hour)
+- Staleness checks (Hyperliquid: 15 min; Chainlink EUR/USD: 2 h; USDC/USD: 25 h)
 - Price bound validation
 - Circuit breaker mechanisms
 
@@ -454,7 +454,7 @@ async function healthCheck() {
 
 **Alerting**:
 - Price deviation > 5%
-- Liquidity ratio < 110%
+- Protocol collateralization ratio < 105% (minting floor; liquidation mode at <= 101%)
 - Emergency role activation
 - Large transaction volumes
 - Failed transaction spikes

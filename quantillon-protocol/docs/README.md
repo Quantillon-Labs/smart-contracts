@@ -78,9 +78,10 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 External adapters are onboarded post-core deployment via [`setup-external-vaults.sh`](../scripts/deployment/setup-external-vaults.sh). See the [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
 
 ### Oracle System
-- **OracleRouter** - Oracle-agnostic router implementing `IOracle`; routes to Chainlink or Stork (switchable by governance)
-- **ChainlinkOracle** - EUR/USD + USDC/USD via Chainlink AggregatorV3; 1-hour staleness; 5% deviation circuit breaker
-- **StorkOracle** - EUR/USD + USDC/USD via Stork Network; same validation as Chainlink
+- **OracleRouter** - Oracle-agnostic router implementing `IOracle`; two switchable slots — slot 1 currently hosts **HyperliquidEurUsdOracle (the active oracle)**, slot 0 ChainlinkOracle (fallback)
+- **HyperliquidEurUsdOracle** - **ACTIVE** EUR/USD source: Hyperliquid EUR perp mid-price published into SlippageStorage; 900 s staleness (1 h hard cap); 5% deviation circuit breaker
+- **ChainlinkOracle** - Fallback EUR/USD (2-hour staleness) + USDC/USD (25-hour staleness) via Chainlink AggregatorV3; 5% deviation circuit breaker
+- **StorkOracle** - EUR/USD + USDC/USD via Stork Network; parked (replaced in the router slot by HyperliquidEurUsdOracle)
 
 ### Utilities
 - **TimeProvider** - Centralized `block.timestamp` wrapper used by all time-sensitive contracts

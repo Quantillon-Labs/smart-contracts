@@ -24,7 +24,7 @@ Core smart contracts implementing:
 - **Solidity 0.8.24** (EVM Shanghai)
 - **Foundry** (Forge, Anvil, Cast)
 - **OpenZeppelin Contracts** (upgradeable, access control)
-- **Chainlink + Stork** (oracle feeds, switchable via OracleRouter)
+- **Hyperliquid (active) + Chainlink (fallback) + Stork (parked)** oracle feeds, switchable via OracleRouter
 - **Slither + Mythril** (security analysis)
 
 ## Working Directory
@@ -101,7 +101,7 @@ RPC_URL=http://localhost:8545
 ### Contract Dependency Chain
 
 ```
-OracleRouter (ChainlinkOracle | StorkOracle)
+OracleRouter (slot 1: HyperliquidEurUsdOracle [ACTIVE] | slot 0: ChainlinkOracle [fallback])
      ↓
 QuantillonVault  ←→  QEUROToken (mint/burn)
      ↓
@@ -127,7 +127,9 @@ FeeCollector (60/25/15 treasury/dev/community)
 | **stQEUROFactory** | Factory deploying one stQEURO proxy per vault, `vaultId` registry |
 | **stQEUROToken** | Yield-bearing wrapper, exchange rate increases as yield accrues (similar to stETH) |
 | **YieldShift** | Dynamic yield split between UserPool/HedgerPool, 7-day holding period; binding allocation uses holding-period-filtered eligible-pool sizes + gradual adjustment (TWAP helpers feed historical metrics only) |
-| **OracleRouter** | Routes between Chainlink and Stork oracles, switchable by governance |
+| **OracleRouter** | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (active), slot 0 ChainlinkOracle (fallback) |
+| **HyperliquidEurUsdOracle** | ACTIVE EUR/USD oracle: Hyperliquid EUR perp mid-price read from SlippageStorage (900 s staleness, 1 h hard cap); USDC/USD delegated to ChainlinkOracle |
+| **SlippageStorage** | On-chain price store written by the off-chain publisher (dapp slippage-monitor), read by HyperliquidEurUsdOracle |
 | **TimeProvider** | Centralized `block.timestamp` wrapper used across contracts |
 
 ### HedgerPool P&L Model
@@ -139,7 +141,7 @@ Hedgers are SHORT EUR (they owe QEURO to users):
 
 ### Oracle Architecture
 
-`OracleRouter` implements `IOracle` and routes to either `ChainlinkOracle` or `StorkOracle`. All protocol contracts depend only on `IOracle` (oracle-agnostic). Both oracle adapters validate EUR/USD and USDC/USD feeds with staleness checks (ChainlinkOracle: 2h EUR/USD, 25h USDC/USD) and circuit breakers.
+`OracleRouter` implements `IOracle` and routes to one of two slots — `enum OracleType { CHAINLINK, STORK }`. Slot 1 keeps its historical `STORK` name for ABI stability but currently hosts **`HyperliquidEurUsdOracle`, the ACTIVE production oracle** (`activeOracle = 1`, live since 2026-06-25); slot 0 is `ChainlinkOracle` (fallback and USDC/USD source); `StorkOracle` is parked. All protocol contracts depend only on `IOracle` (oracle-agnostic). HyperliquidEurUsdOracle reads the Hyperliquid EUR perp mid-price from `SlippageStorage` (published on-chain by the dapp's slippage-monitor; 900 s staleness default, 1 h hard cap); ChainlinkOracle validates EUR/USD and USDC/USD feeds with staleness checks (2h EUR/USD, 25h USDC/USD). Both enforce 0.80-1.40 price bounds and 5% deviation circuit breakers.
 
 - **`getEurUsdPrice()` is non-`view` by design**: on a fresh valid read it commits the price into the deviation-baseline cache (`lastValidEurUsdPrice`/`lastPriceUpdateTime`/`lastPriceUpdateBlock`) and emits `PriceUpdated`. So every price read is a state write, and consumers such as `QuantillonVault.shouldTriggerLiquidationLive()` are non-`view` too. Integrators that only need a cheap read should use the cached getters rather than `getEurUsdPrice()`.
 - **Failover is manual**: `OracleRouter` routes to a single `activeOracle` with no automatic fallback or disagreement handling. If the active oracle returns `isValid=false`, callers revert; switching is a deliberate governance action via `switchOracle` (`ORACLE_MANAGER_ROLE`). Operate a monitor/alert on oracle health.
@@ -186,7 +188,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 
 1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (a `timelock` pointer gates upgrades; a quorum-gated 24hr emergency-disable path exists in the base). **Live trust model (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** all privileged roles are held by a **2-of-3 Gnosis Safe** (`0x1d7fF432…e6cd`); each core proxy's `timelock` is an **OpenZeppelin `TimelockController`** (`0x7Ade8f3B…8342`, 12h delay, Safe = sole proposer/executor); the deployer EOA is fully de-privileged (retains only SlippageStorage `WRITER`). Upgrades run `Safe → controller.schedule → wait 12h → controller.execute`.
 2. **Role-Based Access**: `AccessControlUpgradeable` with defined roles (`MINTER_ROLE`, `PAUSER_ROLE`, `UPGRADER_ROLE`, etc.)
-3. **Library Pattern**: Business logic extracted to libraries to stay under EIP-170 bytecode limit — 24 libraries in `src/libraries/`
+3. **Library Pattern**: Business logic extracted to libraries to stay under EIP-170 bytecode limit — 22 libraries in `src/libraries/`
 4. **Error Libraries**: Custom errors in domain-specific libraries (`CommonErrorLibrary`, `VaultErrorLibrary`, `HedgerPoolErrorLibrary`, `TokenErrorLibrary`, etc.) for gas efficiency
 5. **Reentrancy Protection**: `ReentrancyGuardUpgradeable` on all state-changing functions
 6. **Emergency Pause**: `PausableUpgradeable` with `PAUSER_ROLE`

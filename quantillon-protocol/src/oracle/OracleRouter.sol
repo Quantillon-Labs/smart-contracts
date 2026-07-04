@@ -32,10 +32,12 @@ import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol"
 
 /**
  * @title OracleRouter
- * @notice Router contract that allows admin to switch between Chainlink and Stork oracles
+ * @notice Router contract that lets governance switch the protocol between two oracle slots
  * 
  * @dev Key features:
- *      - Holds references to both ChainlinkOracle and StorkOracle
+ *      - Holds references to two oracle slots (enum OracleType { CHAINLINK, STORK }); the
+ *        slot-1 "STORK" name is historical — it can host any IOracle implementation
+ *        (currently HyperliquidEurUsdOracle in production)
  *      - Routes all IOracle calls to the currently active oracle
  *      - Admin can switch between oracles via switchOracle()
  *      - Implements IOracle interface (generic, oracle-agnostic)

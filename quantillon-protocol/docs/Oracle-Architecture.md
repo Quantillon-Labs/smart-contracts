@@ -77,7 +77,7 @@ QuantillonVault (mint/redeem)   +   off-server watchdog (freezes on stale / brea
 
 ## OracleRouter
 
-Two slots: `OracleType.CHAINLINK = 0`, `OracleType.STORK = 1` (slot 1 now = Hyperliquid oracle).
+Two slots: `OracleType.CHAINLINK = 0`, `OracleType.MARKET = 1` (slot 1 = the swappable market oracle, currently Hyperliquid). Slot 1 was named `STORK` before router v1.1.0; the old `storkOracle()` getter remains as a deprecated alias of `marketOracle()`.
 `_getActiveOracle()` casts the active slot to `IOracle` and delegates all reads. Management:
 `switchOracle(type)` and `updateOracleAddresses(chainlink, slot1)` — both `ORACLE_MANAGER_ROLE`.
 `QuantillonVault.oracle` is the router, so the vault prices off whichever slot is active.

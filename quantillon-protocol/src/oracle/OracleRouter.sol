@@ -11,6 +11,7 @@ import {IVersioned} from "../interfaces/IVersioned.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IStorkOracle} from "../interfaces/IStorkOracle.sol";
+import {IMarketOracleAdmin} from "../interfaces/IMarketOracleAdmin.sol";
 
 // OpenZeppelin role system
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -35,11 +36,13 @@ import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol"
  * @notice Router contract that lets governance switch the protocol between two oracle slots
  * 
  * @dev Key features:
- *      - Holds references to two oracle slots (enum OracleType { CHAINLINK, STORK }); the
- *        slot-1 "STORK" name is historical — it can host any IOracle implementation
- *        (currently HyperliquidEurUsdOracle in production)
+ *      - Holds references to two oracle slots (enum OracleType { CHAINLINK, MARKET }); the
+ *        MARKET slot can host any IOracle implementation (StorkOracle pre-2026-06-25,
+ *        HyperliquidEurUsdOracle since)
  *      - Routes all IOracle calls to the currently active oracle
  *      - Admin can switch between oracles via switchOracle()
+ *      - v1.1.0: slot 1 renamed STORK -> MARKET / storkOracle -> marketOracle; the
+ *        pre-1.1.0 storkOracle() getter is kept as a deprecated ABI-compatible alias
  *      - Implements IOracle interface (generic, oracle-agnostic)
  *      - Protocol contracts use IOracle interface for oracle-agnostic integration
  * 
@@ -71,7 +74,7 @@ contract OracleRouter is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.1.0";
     }
     using Address for address payable;
 
@@ -89,9 +92,11 @@ contract OracleRouter is
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /// @notice Enum for oracle type selection
+    /// @dev Slot 1 was named STORK before v1.1.0; renamed to MARKET (the swappable
+    ///      market-price oracle slot). Enum values are unchanged (CHAINLINK=0, MARKET=1).
     enum OracleType {
         CHAINLINK,
-        STORK
+        MARKET
     }
 
     // =============================================================================
@@ -101,8 +106,10 @@ contract OracleRouter is
     /// @notice Chainlink oracle contract reference
     IChainlinkOracle public chainlinkOracle;
     
-    /// @notice Stork oracle contract reference
-    IStorkOracle public storkOracle;
+    /// @notice Market oracle contract reference (slot 1)
+    /// @dev The swappable market-price oracle: StorkOracle pre-2026-06-25, currently
+    ///      HyperliquidEurUsdOracle. Named `storkOracle` before v1.1.0 (same slot/encoding).
+    IOracle public marketOracle;
 
     /// @notice Currently active oracle type
     OracleType public activeOracle;
@@ -125,7 +132,7 @@ contract OracleRouter is
     /// @notice Emitted when oracle addresses are updated
     event OracleAddressesUpdated(
         address newChainlinkOracle,
-        address newStorkOracle
+        address newMarketOracle
     );
 
     /// @notice Emitted when treasury address is updated
@@ -162,9 +169,9 @@ contract OracleRouter is
      * @dev Sets up all core dependencies, roles, and default oracle selection
      * @param admin Address with administrator privileges
      * @param _chainlinkOracle ChainlinkOracle contract address
-     * @param _storkOracle StorkOracle contract address
+     * @param _marketOracle Market oracle contract address (slot 1)
      * @param _treasury Treasury address for ETH recovery
-     * @param _defaultOracle Default oracle to use (CHAINLINK or STORK)
+     * @param _defaultOracle Default oracle to use (CHAINLINK or MARKET)
      * @custom:security Validates all addresses are not zero, grants admin roles
      * @custom:validation Validates all input addresses are not address(0)
      * @custom:state-changes Initializes all state variables, sets default oracle
@@ -172,23 +179,23 @@ contract OracleRouter is
      * @custom:errors Throws validation errors if addresses are zero
      * @custom:reentrancy Protected by initializer modifier
      * @custom:access Public - only callable once during deployment
-     * @custom:oracle Initializes references to ChainlinkOracle and StorkOracle contracts
+     * @custom:oracle Initializes references to the chainlink and market oracle contracts
      */
     function initialize(
         address admin,
         address _chainlinkOracle,
-        address _storkOracle,
+        address _marketOracle,
         address _treasury,
         OracleType _defaultOracle
     ) public initializer {
         // Input parameter validation
         if (admin == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_chainlinkOracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        if (_storkOracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_marketOracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(_chainlinkOracle, "oracle");
-        CommonValidationLibrary.validateNonZeroAddress(_storkOracle, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_marketOracle, "oracle");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         // OpenZeppelin module initialization
@@ -204,7 +211,7 @@ contract OracleRouter is
 
         // Initialize oracle references
         chainlinkOracle = IChainlinkOracle(_chainlinkOracle);
-        storkOracle = IStorkOracle(_storkOracle);
+        marketOracle = IOracle(_marketOracle);
         treasury = _treasury;
 
         // NOTE: Admin must grant router the ORACLE_MANAGER_ROLE on both oracles after deployment
@@ -259,7 +266,7 @@ contract OracleRouter is
 
     /**
      * @notice Gets the currently active oracle contract
-     * @dev Returns chainlinkOracle or storkOracle based on activeOracle enum
+     * @dev Returns chainlinkOracle or marketOracle based on activeOracle enum
      * @return The active oracle contract implementing IOracle
      * @custom:security View only
      * @custom:validation None
@@ -273,7 +280,7 @@ contract OracleRouter is
     function _getActiveOracle() internal view returns (IOracle) {
         return activeOracle == OracleType.CHAINLINK
             ? IOracle(address(chainlinkOracle))
-            : IOracle(address(storkOracle));
+            : marketOracle;
     }
 
     // =============================================================================
@@ -283,7 +290,7 @@ contract OracleRouter is
     /**
      * @notice Gets the currently active oracle type
      * @dev Returns activeOracle enum value
-     * @return The active oracle type (CHAINLINK or STORK)
+     * @return The active oracle type (CHAINLINK or MARKET)
      * @custom:security View only
      * @custom:validation None
      * @custom:state-changes None
@@ -299,9 +306,9 @@ contract OracleRouter is
 
     /**
      * @notice Gets the addresses of both oracle contracts
-     * @dev Returns chainlinkOracle and storkOracle addresses
+     * @dev Returns chainlinkOracle and marketOracle addresses
      * @return chainlinkAddress Address of ChainlinkOracle contract
-     * @return storkAddress Address of StorkOracle contract
+     * @return marketAddress Address of the market oracle contract (slot 1)
      * @custom:security View only
      * @custom:validation None
      * @custom:state-changes None
@@ -311,8 +318,27 @@ contract OracleRouter is
      * @custom:access Anyone
      * @custom:oracle None
      */
-    function getOracleAddresses() external view returns (address chainlinkAddress, address storkAddress) {
-        return (address(chainlinkOracle), address(storkOracle));
+    function getOracleAddresses() external view returns (address chainlinkAddress, address marketAddress) {
+        return (address(chainlinkOracle), address(marketOracle));
+    }
+
+    /**
+     * @notice Deprecated alias for the slot-1 (market) oracle address
+     * @dev Before v1.1.0 the slot-1 state variable was named `storkOracle`; this function
+     *      preserves the auto-generated getter's selector and return type for ABI
+     *      compatibility. New integrations must use `marketOracle()` instead.
+     * @return The slot-1 oracle, typed as IStorkOracle for ABI compatibility
+     * @custom:security View only
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Anyone
+     * @custom:oracle Returns the market oracle reference
+     */
+    function storkOracle() external view returns (IStorkOracle) {
+        return IStorkOracle(address(marketOracle));
     }
 
     // =============================================================================
@@ -402,9 +428,9 @@ contract OracleRouter is
     // =============================================================================
 
     /**
-     * @notice Switches the active oracle between Chainlink and Stork
+     * @notice Switches the active oracle between the two slots
      * @dev Validates newOracle != activeOracle and oracle address not zero; emits OracleSwitched
-     * @param newOracle The new oracle type to activate (CHAINLINK or STORK)
+     * @param newOracle The new oracle type to activate (CHAINLINK or MARKET)
      * @custom:security ORACLE_MANAGER_ROLE only
      * @custom:validation newOracle != activeOracle; oracle address not zero
      * @custom:state-changes activeOracle
@@ -419,7 +445,7 @@ contract OracleRouter is
 
         address oracleAddress = newOracle == OracleType.CHAINLINK
             ? address(chainlinkOracle)
-            : address(storkOracle);
+            : address(marketOracle);
         CommonValidationLibrary.validateNonZeroAddress(oracleAddress, "oracle");
 
         OracleType oldOracle = activeOracle;
@@ -430,12 +456,12 @@ contract OracleRouter is
 
     /**
      * @notice Updates the oracle contract addresses
-     * @dev Validates both addresses; updates chainlinkOracle and storkOracle; emits OracleAddressesUpdated
+     * @dev Validates both addresses; updates chainlinkOracle and marketOracle; emits OracleAddressesUpdated
      * @param _chainlinkOracle New ChainlinkOracle address
-     * @param _storkOracle New StorkOracle address
+     * @param _marketOracle New market oracle address (slot 1)
      * @custom:security ORACLE_MANAGER_ROLE only
      * @custom:validation Both addresses not zero
-     * @custom:state-changes chainlinkOracle, storkOracle
+     * @custom:state-changes chainlinkOracle, marketOracle
      * @custom:events OracleAddressesUpdated
      * @custom:errors InvalidOracle if zero
      * @custom:reentrancy No external calls
@@ -444,15 +470,15 @@ contract OracleRouter is
      */
     function updateOracleAddresses(
         address _chainlinkOracle,
-        address _storkOracle
+        address _marketOracle
     ) external onlyRole(ORACLE_MANAGER_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_chainlinkOracle, "oracle");
-        CommonValidationLibrary.validateNonZeroAddress(_storkOracle, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_marketOracle, "oracle");
 
         chainlinkOracle = IChainlinkOracle(_chainlinkOracle);
-        storkOracle = IStorkOracle(_storkOracle);
+        marketOracle = IOracle(_marketOracle);
 
-        emit OracleAddressesUpdated(_chainlinkOracle, _storkOracle);
+        emit OracleAddressesUpdated(_chainlinkOracle, _marketOracle);
     }
 
     // =============================================================================
@@ -645,7 +671,7 @@ contract OracleRouter is
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.updatePriceBounds(_minPrice, _maxPrice);
         } else {
-            storkOracle.updatePriceBounds(_minPrice, _maxPrice);
+            IMarketOracleAdmin(address(marketOracle)).updatePriceBounds(_minPrice, _maxPrice);
         }
     }
 
@@ -666,7 +692,7 @@ contract OracleRouter is
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.updateUsdcTolerance(newToleranceBps);
         } else {
-            storkOracle.updateUsdcTolerance(newToleranceBps);
+            IMarketOracleAdmin(address(marketOracle)).updateUsdcTolerance(newToleranceBps);
         }
     }
 
@@ -674,12 +700,12 @@ contract OracleRouter is
      * @notice Updates price feed addresses (Chainlink only)
      * @param _eurUsdFeed New EUR/USD feed address
      * @param _usdcUsdFeed New USDC/USD feed address
-     * @dev Reverts for Stork oracle - use oracle-specific methods instead
-     * @custom:security Only Chainlink path; reverts for Stork
+     * @dev Reverts when the MARKET slot is active - use oracle-specific methods instead
+     * @custom:security Only Chainlink path; reverts for the MARKET slot
      * @custom:validation Via ChainlinkOracle
      * @custom:state-changes Oracle feed addresses
      * @custom:events Via oracle
-     * @custom:errors Reverts for Stork
+     * @custom:errors Reverts for the MARKET slot
      * @custom:reentrancy External call to ChainlinkOracle
      * @custom:access ORACLE_MANAGER_ROLE
      * @custom:oracle Delegates to ChainlinkOracle only
@@ -708,7 +734,7 @@ contract OracleRouter is
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.resetCircuitBreaker();
         } else {
-            storkOracle.resetCircuitBreaker();
+            IMarketOracleAdmin(address(marketOracle)).resetCircuitBreaker();
         }
     }
 
@@ -728,7 +754,7 @@ contract OracleRouter is
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.triggerCircuitBreaker();
         } else {
-            storkOracle.triggerCircuitBreaker();
+            IMarketOracleAdmin(address(marketOracle)).triggerCircuitBreaker();
         }
     }
 

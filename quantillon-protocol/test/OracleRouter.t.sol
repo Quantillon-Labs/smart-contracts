@@ -263,6 +263,8 @@ contract OracleRouterTest is Test {
         assertEq(router.hasRole(router.ORACLE_MANAGER_ROLE(), admin), true);
         assertEq(router.hasRole(router.EMERGENCY_ROLE(), admin), true);
         assertEq(address(router.chainlinkOracle()), address(chainlinkOracle));
+        assertEq(address(router.marketOracle()), address(storkOracle));
+        // deprecated pre-1.1.0 alias must keep returning the slot-1 oracle
         assertEq(address(router.storkOracle()), address(storkOracle));
         assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.CHAINLINK));
         assertEq(router.treasury(), treasury);
@@ -351,7 +353,7 @@ contract OracleRouterTest is Test {
     function test_GetEurUsdPrice_Stork() public {
         // Switch to Stork
         vm.prank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         
         // Router should delegate to Stork
         (uint256 price, bool isValid) = router.getEurUsdPrice();
@@ -379,12 +381,12 @@ contract OracleRouterTest is Test {
         vm.expectEmit(true, true, true, true);
         emit OracleRouter.OracleSwitched(
             OracleRouter.OracleType.CHAINLINK,
-            OracleRouter.OracleType.STORK,
+            OracleRouter.OracleType.MARKET,
             admin
         );
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         
-        assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.STORK));
+        assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.MARKET));
         
         // Verify price comes from Stork
         (uint256 price, ) = router.getEurUsdPrice();
@@ -406,7 +408,7 @@ contract OracleRouterTest is Test {
     function test_SwitchOracle_StorkToChainlink() public {
         // First switch to Stork
         vm.prank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         
         // Then switch back to Chainlink
         vm.prank(admin);
@@ -561,7 +563,7 @@ contract OracleRouterTest is Test {
     
     /**
      * @notice Tests that router can update oracle addresses
-     * @dev Verifies router updates chainlinkOracle and storkOracle addresses
+     * @dev Verifies router updates chainlinkOracle and marketOracle addresses
      * @custom:security No security implications - test function
      * @custom:validation No validation - test function
      * @custom:state-changes Updates oracle addresses
@@ -582,6 +584,8 @@ contract OracleRouterTest is Test {
         router.updateOracleAddresses(address(newChainlink), address(newStork));
         
         assertEq(address(router.chainlinkOracle()), address(newChainlink));
+        assertEq(address(router.marketOracle()), address(newStork));
+        // deprecated pre-1.1.0 alias follows the slot-1 update
         assertEq(address(router.storkOracle()), address(newStork));
     }
     
@@ -692,9 +696,9 @@ contract OracleRouterTest is Test {
         assertEq(uint256(router.getActiveOracle()), uint256(OracleRouter.OracleType.CHAINLINK));
         
         vm.prank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         
-        assertEq(uint256(router.getActiveOracle()), uint256(OracleRouter.OracleType.STORK));
+        assertEq(uint256(router.getActiveOracle()), uint256(OracleRouter.OracleType.MARKET));
     }
     
     /**
@@ -710,9 +714,9 @@ contract OracleRouterTest is Test {
      * @custom:oracle Returns oracle contract addresses
      */
     function test_GetOracleAddresses() public view {
-        (address chainlinkAddress, address storkAddress) = router.getOracleAddresses();
+        (address chainlinkAddress, address marketAddress) = router.getOracleAddresses();
         assertEq(chainlinkAddress, address(chainlinkOracle));
-        assertEq(storkAddress, address(storkOracle));
+        assertEq(marketAddress, address(storkOracle));
     }
     
     /**
@@ -730,7 +734,7 @@ contract OracleRouterTest is Test {
     function test_Revert_NonAdminCannotSwitchOracle() public {
         vm.prank(user);
         vm.expectRevert();
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
     }
     
     /**
@@ -767,7 +771,7 @@ contract OracleRouterTest is Test {
     function test_Revert_InitializeCalledOnRouter() public {
         // Router is already initialized via proxy, so calling initialize again will revert with InvalidInitialization
         vm.expectRevert();
-        // Router initialize requires 5 parameters: admin, chainlinkOracle, storkOracle, treasury, defaultOracle
+        // Router initialize requires 5 parameters: admin, chainlinkOracle, marketOracle, treasury, defaultOracle
         router.initialize(admin, address(chainlinkOracle), address(storkOracle), treasury, OracleRouter.OracleType.CHAINLINK);
     }
 

@@ -35,7 +35,7 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The canonical, machin
 | SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` | on-chain price store feeding HyperliquidEurUsdOracle |
 | TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` | timestamp wrapper (deployed directly, not proxied) |
 
-> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, STORK }` — switchable in one governance transaction via `switchOracle`. Slot 1 keeps its historical `STORK` enum name for ABI stability but currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
+> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, MARKET }` (v1.1.0; slot 1 was `STORK` in v1.0.0) — switchable in one governance transaction via `switchOracle`. Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`); read it via `marketOracle()` (the pre-1.1.0 `storkOracle()` getter remains as a deprecated alias). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
 
 ### Governance & infrastructure
 
@@ -902,9 +902,9 @@ event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 ti
 
 Single oracle entry point for the protocol. All protocol contracts read prices only through `OracleRouter`; the underlying source can be switched by governance without touching consumers.
 
-Routing slots (`enum OracleType { CHAINLINK, STORK }`):
+Routing slots (`enum OracleType { CHAINLINK, MARKET }`, router v1.1.0):
 - Slot `0` (`CHAINLINK`) — `ChainlinkOracle`, the fallback.
-- Slot `1` (`STORK`) — historically `StorkOracle`; **currently hosts `HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). The enum name is retained for ABI stability.
+- Slot `1` (`MARKET`) — the swappable market-price oracle: `StorkOracle` historically, **currently `HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). Named `STORK` before v1.1.0; the old `storkOracle()` getter is a deprecated alias of `marketOracle()`.
 
 ### Function Signatures
 
@@ -926,8 +926,11 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid)
 #### `getActiveOracle() → (OracleType)`
 Returns the currently active slot (`1` on Base mainnet).
 
-#### `getOracleAddresses() → (address chainlinkAddress, address storkAddress)`
-Returns both slot addresses (the "stork" slot currently returns the `HyperliquidEurUsdOracle` address).
+#### `getOracleAddresses() → (address chainlinkAddress, address marketAddress)`
+Returns both slot addresses (the market slot currently returns the `HyperliquidEurUsdOracle` address).
+
+#### `marketOracle() → (IOracle)` / `storkOracle() → (IStorkOracle)`
+`marketOracle()` is the slot-1 getter (v1.1.0+). `storkOracle()` is the pre-1.1.0 name, kept as a deprecated ABI-compatible alias returning the same address.
 
 #### `switchOracle(OracleType newOracle)`
 ```solidity

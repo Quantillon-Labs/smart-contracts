@@ -97,8 +97,8 @@ contract HyperliquidOracleRouterIntegrationTest is Test {
 
     function test_RouterRoutesEurUsdToHyperliquid() public {
         vm.prank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
-        assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.STORK));
+        router.switchOracle(OracleRouter.OracleType.MARKET);
+        assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.MARKET));
 
         (uint256 price, bool isValid) = router.getEurUsdPrice();
         assertTrue(isValid);
@@ -107,7 +107,7 @@ contract HyperliquidOracleRouterIntegrationTest is Test {
 
     function test_RouterDelegatesPriceBounds() public {
         vm.startPrank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         router.updatePriceBounds(0.5e18, 2e18);
         vm.stopPrank();
         assertEq(hlOracle.minEurUsdPrice(), 0.5e18);
@@ -116,7 +116,7 @@ contract HyperliquidOracleRouterIntegrationTest is Test {
 
     function test_RouterDelegatesCircuitBreaker() public {
         vm.startPrank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         router.triggerCircuitBreaker();
         vm.stopPrank();
         assertTrue(hlOracle.circuitBreakerTriggered());
@@ -134,7 +134,7 @@ contract HyperliquidOracleRouterIntegrationTest is Test {
 
     function test_RouterUsdcDelegatesThroughAdapterToChainlink() public {
         vm.prank(admin);
-        router.switchOracle(OracleRouter.OracleType.STORK);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
         (uint256 price, bool isValid) = router.getUsdcUsdPrice();
         assertTrue(isValid);
         assertApproxEqAbs(price, 1e18, 0.02e18);

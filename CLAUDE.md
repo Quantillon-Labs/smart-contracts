@@ -65,6 +65,7 @@ make check-storage-layout    # append-only storage-layout diff vs storage-layout
 make check-abi               # additive-only ABI/selector diff vs abi-baseline/ baselines
 make check-version-bump      # require a version() semver bump when deployed bytecode changes (vs version-baseline/)
 make check-deployed-versions # report deployed-vs-source versions (which contracts need an upgrade)
+make check-verifiable-bytecode CONTRACT=Name # pre-deploy per impl: pruned verification unit must byte-match the build artifact (via_ir source-set sensitivity); on FAIL deploy via scripts/deployment/build-verifiable-impl.sh
 make check-upgrade-safety    # build + size + storage-layout + ABI + version-bump (the PR gate)
 
 # Documentation

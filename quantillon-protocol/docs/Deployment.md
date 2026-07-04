@@ -33,6 +33,28 @@ make check-deployed-versions
 RPC_URL=$RPC_URL GIT_COMMIT=<sha> scripts/deployment/backfill-versions.sh 8453
 ```
 
+**Basescan verifiability — check BEFORE every implementation deploy.** Under `via_ir`,
+a contract's optimized bytecode can depend on the *full* compilation unit, while
+`forge verify-contract` submits a standard-json pruned to the contract's dependency
+closure — if the two compiles diverge, the deployed implementation can never be
+verified (QuantillonVault v1.1.1, 2026-07-04; ~67 bytes of drift). Whether a given
+contract/version diverges is per-compile luck, so gate every impl:
+
+```bash
+# ok  -> deploy normally (UpgradeBase deploy-only); standard verification will match
+# FAIL-> deploy the pruned-unit bytecode instead, so verification matches by construction
+make check-verifiable-bytecode CONTRACT=QuantillonVault
+
+# On FAIL: same sources & settings, equally valid compile — but reproducible by the verifier.
+# Deploys with PRIVATE_KEY/RPC_URL from .env, writes records to deployments/verifiable/,
+# and prints the exact verification command. Continue the normal Safe/timelock flow with
+# the printed implementation address.
+scripts/deployment/build-verifiable-impl.sh QuantillonVault \
+  --lib src/libraries/StakingYieldLibrary.sol:StakingYieldLibrary=<addr> \
+  --lib src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary=<addr> \
+  --deploy
+```
+
 ---
 
 ## Prerequisites

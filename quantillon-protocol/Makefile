@@ -161,6 +161,13 @@ check-version-bump:
 	@echo "🔖 Checking version() is bumped when deployed bytecode changes..."
 	@$(BASH) ./scripts/check-version-bump.sh
 
+# Pre-deploy, per-implementation (CONTRACT=Name): the pruned verification unit must
+# byte-match the build artifact, or Basescan can never reproduce the deployed bytecode
+# (via_ir source-set sensitivity). On FAIL, deploy with build-verifiable-impl.sh.
+check-verifiable-bytecode:
+	@echo "🔍 Checking the pruned verification unit byte-matches the build artifact..."
+	@$(BASH) ./scripts/check-verifiable-bytecode.sh $(CONTRACT)
+
 check-deployed-versions:
 	@echo "📦 Reporting deployed-vs-source contract versions (which need upgrading)..."
 	@$(BASH) ./scripts/check-deployed-versions.sh

@@ -63,11 +63,11 @@ BURNER_ROLE       = keccak256("BURNER_ROLE");      // Vault: burn QEURO
 PAUSER_ROLE       = keccak256("PAUSER_ROLE");      // Emergency: pause token
 COMPLIANCE_ROLE   = keccak256("COMPLIANCE_ROLE");  // Blacklist/whitelist management
 
-// QuantillonVault / UserPool / HedgerPool / YieldShift / AaveVault
+// QuantillonVault / UserPool / HedgerPool / YieldShift
 GOVERNANCE_ROLE         = keccak256("GOVERNANCE_ROLE");         // Parameter updates, wiring
 EMERGENCY_ROLE          = keccak256("EMERGENCY_ROLE");          // Emergency pause/withdraw
-VAULT_OPERATOR_ROLE     = keccak256("VAULT_OPERATOR_ROLE");     // Vault: Aave deployment
-HEDGER_ROLE             = keccak256("HEDGER_ROLE");             // HedgerPool: open positions
+VAULT_OPERATOR_ROLE     = keccak256("VAULT_OPERATOR_ROLE");     // Vault: external-vault USDC deployment
+// HedgerPool uses a single-hedger allowlist (setSingleHedger), not a HEDGER_ROLE
 
 // FeeCollector
 TREASURY_ROLE     = keccak256("TREASURY_ROLE");    // Fee withdrawal

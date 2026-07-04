@@ -22,7 +22,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   User Layer    │    │ Protocol Layer  │    │  Yield Layer    │
 ├─────────────────┤    ├─────────────────┤    ├─────────────────┤
-│ • Retail Users  │───▶│ • QuantillonVault│    │ • AaveVault     │
+│ • Retail Users  │───▶│ • QuantillonVault│    │ • Ext. Vaults   │
 │ • Institutional │    │ • QEUROToken    │    │ • YieldShift    │
 │ • Liquidity     │    │ • QTIToken      │    └─────────────────┘
 │   Providers     │    │ • FeeCollector  │             │
@@ -234,20 +234,19 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 - **Observer Pattern**: Performance monitoring
 - **Factory-Routed Distribution**: Yield routed by `vaultId` through `stQEUROFactory` to the correct staking token
 
-### AaveVault Integration
+### External Staking Vault Integration
 
-**Purpose**: Automated yield generation through Aave protocol.
+**Purpose**: Yield generation by deploying protocol USDC into external yield vaults (MetaMorpho live in production; Morpho/Aave adapters available).
 
 **Features**:
-- USDC deployment to Aave
-- Yield harvesting and distribution
-- Risk management and exposure limits
-- Emergency withdrawal mechanisms
-- Auto-rebalancing based on market conditions
+- USDC deployment per `vaultId` via `QuantillonVault.deployUsdcToVault`
+- Yield harvesting and distribution via `harvestAndDistributeVaultYield`
+- One stQEURO series per vault (isolated yield accounting)
+- Governance-gated exposure decisions per vault
 
 **Architecture Patterns**:
-- **Adapter Pattern**: Aave protocol integration
-- **Risk Management**: Exposure limit enforcement
+- **Adapter Pattern**: thin `IExternalStakingVault` adapters wrap each external vault
+- **Factory Registry**: `stQEUROFactory` maps `vaultId` to adapter + stQEURO series
 - **Yield Optimization**: Dynamic allocation strategies
 - **Vault-Aware Routing**: Harvested yield is pushed to `YieldShift.addYield(yieldVaultId, ...)`
 
@@ -323,10 +322,10 @@ QEURO Minting Flow:
 ```
 Yield Distribution Flow:
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ YieldShift  │    │ AaveVault   │    │  UserPool   │    │ HedgerPool  │
+│ YieldShift  │    │ Ext. Vault  │    │  UserPool   │    │ HedgerPool  │
 └──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
        │                  │                  │                  │
-       │ harvestAaveYield()│                  │                  │
+       │ harvestYieldToVault()               │                  │
        ├─────────────────▶│                  │                  │
        │                  │ claimRewards()   │                  │
        │                  ├─────────────────▶│                  │
@@ -416,10 +415,10 @@ Governance Flow:
 - StorkOracle: EUR/USD + USDC/USD via Stork Network; same staleness/deviation validation
 - MockChainlinkOracle + MockStorkOracle available for local/testnet development
 
-**Aave Protocol**:
-- USDC lending integration via AaveVault
-- Yield harvesting and distribution
-- Risk management (exposure limits)
+**External Yield Vaults (Morpho / Aave)**:
+- USDC deployment through `IExternalStakingVault` adapters (MetaMorpho live, vaultId 2)
+- Yield harvesting and distribution via `QuantillonVault.harvestAndDistributeVaultYield`
+- Governance-gated exposure per `vaultId`
 - Emergency withdrawal mechanisms
 
 **ERC-20 Standards**:

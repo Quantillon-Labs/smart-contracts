@@ -1,5 +1,7 @@
 # Technical Upgrade: stQEURO Multi-Vault with `stQEUROFactory`
 
+> **Historical technical record.** This document describes the multi-vault refactor as designed at the time. The `AaveVault` contract referenced below has since been removed from the codebase — external yield now flows through `IExternalStakingVault` adapters (see Architecture.md); the factory/vaultId model described here is the one live in production.
+
 ## Context
 
 The protocol originally used a single `stQEURO` staking token for a single staking vault.  

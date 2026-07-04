@@ -183,7 +183,7 @@ For detailed security information, see the [main project README](./quantillon-pr
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](./quantillon-protocol/CONTRIBUTING.md) for details.
+We welcome contributions! Please see our [Contributing Guidelines](./quantillon-protocol/docs/CONTRIBUTING.md) for details.
 
 ### Development Workflow
 1. Fork the repository

@@ -137,7 +137,7 @@ make validate-natspec
 ## 📊 Protocol Metrics
 
 ### Current Status
-- **Test Suite**: 1,300+ tests passing (unit, fuzz, integration, invariants)
+- **Test Suite**: 1,400+ tests passing (unit, fuzz, integration, invariants)
 - **Security**: Slither/Mythril runs are tracked in versioned artifacts under `scripts/results/`
 - **Build**: Compile, warning analysis, gas analysis, and contract-size checks are part of the Makefile workflow
 - **Documentation**: NatSpec coverage is validated with `make validate-natspec`

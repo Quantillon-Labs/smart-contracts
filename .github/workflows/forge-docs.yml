@@ -47,7 +47,7 @@ jobs:
           # SAVE custom markdown files BEFORE deleting docs
           echo "Saving custom markdown documentation files..."
           mkdir -p /tmp/custom-docs
-          for f in API.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Deployment.md favicon.png favicon.ico; do
+          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md favicon.png favicon.ico; do
             if [ -f "docs/$f" ]; then
               cp "docs/$f" "/tmp/custom-docs/$f"
               echo "Saved $f"
@@ -80,7 +80,7 @@ jobs:
 
           # COPY custom markdown files into docs/src/ so mdBook builds them with navigation
           echo "Copying custom markdown files into docs/src/..."
-          for f in API.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Deployment.md; do
+          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md; do
             if [ -f "/tmp/custom-docs/$f" ]; then
               cp "/tmp/custom-docs/$f" "docs/src/$f"
               echo "Copied $f to docs/src/"
@@ -96,13 +96,17 @@ jobs:
               echo "- [Home](README.md)"
               echo ""
               echo "# Documentation"
-              echo "- [API Documentation](API.md)"
               echo "- [Technical Reference](API-Reference.md)"
               echo "- [Quick Start Guide](Quick-Start.md)"
               echo "- [Integration Examples](Integration-Examples.md)"
               echo "- [Architecture Overview](Architecture.md)"
+              echo "- [Oracle Architecture](Oracle-Architecture.md)"
               echo "- [Security Guide](Security.md)"
               echo "- [Deployment Guide](Deployment.md)"
+              echo "- [stQEUROFactory Technical Upgrade](stQEUROFactory.md)"
+              echo "- [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)"
+              echo "- [Staking Yield Distribution](Staking-Yield-Distribution.md)"
+              echo "- [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)"
               echo ""
               # Append the rest of SUMMARY.md (skip the first two lines: # Summary and - [Home])
               tail -n +3 docs/src/SUMMARY.md
@@ -208,14 +212,18 @@ jobs:
         uses: actions/deploy-pages@v4
         continue-on-error: true
         with:
-          # The Pages service intermittently exceeds the 10-minute default
-          # ("Timeout reached, aborting!", e.g. run 28600197233) — allow 20.
-          timeout: 1200000
-      # The Pages service fails deploys intermittently (observed alternating
-      # success/failure on identical content, 2026-07-02/03). One retry absorbs
-      # the flake; a genuine outage still fails the run here.
+          # 600000 ms is the action's hard maximum (larger values are clamped
+          # with a warning; see run 28721453974's annotations).
+          timeout: 600000
+      # The Pages service fails deploys intermittently ("Deployment failed, try
+      # again later.", observed 2026-07-02/03/04). An immediate retry can land in
+      # the same service brownout (both attempts failed within 17s on run
+      # 28721453974), so back off before retrying; a genuine outage still fails.
+      - name: Back off before retrying the Pages deployment
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 120
       - id: deployment-retry
         if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
         with:
-          timeout: 1200000
+          timeout: 600000

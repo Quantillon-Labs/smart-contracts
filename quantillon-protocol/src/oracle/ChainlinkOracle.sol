@@ -75,7 +75,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -112,9 +112,7 @@ contract ChainlinkOracle is
     /// @dev Prevents timestamp manipulation attacks by miners
     uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
     
-    /// @notice Blocks per hour for block-based staleness checks
-    /// @dev ~12 second blocks on Ethereum, ~2 second blocks on L2s
-    uint256 public constant BLOCKS_PER_HOUR = 300;
+    // BLOCKS_PER_HOUR removed (audit SC4-7): dead constant, zero consumers.
 
     // =============================================================================
     // STATE VARIABLES - Contract state variables

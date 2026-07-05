@@ -115,7 +115,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -322,7 +322,7 @@ contract UserPool is
 
     /// @notice Pending USDC withdrawals for users whose transfers failed (e.g. USDC blacklist)
     mapping(address => uint256) public pendingUsdcWithdrawals;
-    uint256 public constant BLOCKS_PER_DAY = 7200; // Assuming 12 second blocks
+    // BLOCKS_PER_DAY removed (audit SC4-7): dead constant, never used in arithmetic.
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
     /// @notice Maximum batch size for deposit operations to prevent DoS
@@ -626,7 +626,7 @@ contract UserPool is
         (uint256[] memory netAmounts, uint256 totalNetAmount) = _calculateNetAmounts(usdcAmounts);
         
         // Update user and pool state BEFORE external calls (reentrancy protection)
-        _updateUserAndPoolState(usdcAmounts, minQeuroOuts, totalNetAmount);
+        _updateUserAndPoolState(usdcAmounts, totalNetAmount);
         
         // Process vault operations AFTER state updates
         _processVaultMinting(netAmounts, minQeuroOuts, qeuroMintedAmounts);
@@ -783,7 +783,6 @@ contract UserPool is
     /**
      * @notice Internal function to update user and pool state
      * @param usdcAmounts Array of USDC amounts (6 decimals)
-     * @param minQeuroOuts Array of minimum QEURO outputs (18 decimals)
      * @dev Updates user and pool state before external calls for reentrancy protection
      * @custom:security Updates state before external calls (CEI pattern)
      * @custom:validation No input validation required - parameters pre-validated
@@ -796,7 +795,6 @@ contract UserPool is
      */
     function _updateUserAndPoolState(
         uint256[] calldata usdcAmounts,
-        uint256[] calldata minQeuroOuts,
         uint256 /* totalNetAmount */
     ) internal {
         UserInfo storage user = userInfo[msg.sender];

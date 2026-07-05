@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.2";
+        return "1.1.3";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -460,10 +460,8 @@ contract QuantillonVault is
     /// @param newRecipient New recipient address
     event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
 
-    /// @notice Deprecated: retained for ABI compatibility with existing off-chain consumers
-    /// @dev No longer emitted. Redeem hedger-sync is atomic (failures
-    ///      revert rather than being swallowed), so this event can never fire.
-    event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
+    // HedgerSyncFailed event removed (audit SC4-7): dead — redeem hedger-sync is atomic
+    // (failures revert rather than being swallowed), so it could never fire.
 
     event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
     event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);

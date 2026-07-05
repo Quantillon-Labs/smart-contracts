@@ -91,7 +91,7 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -151,10 +151,8 @@ contract QEUROToken is
     /// @dev Prevents out-of-gas attacks through large blacklist/whitelist arrays
     uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
 
-    /// @notice Protocol fee rate for minting (0.1% = 1e15)
-    /// @dev Fee is calculated as: fee = amount * MINT_FEE_RATE / PRECISION
-    /// @dev Value: 1e15 = 0.1% (since PRECISION = 1e18 = 100%)
-    uint256 public constant MINT_FEE_RATE = 1e15; // 0.1%
+    // MINT_FEE_RATE removed (audit SC4-7): dead constant — the mint fee is charged
+    // by QuantillonVault, not by the token. Never read anywhere.
 
     // =============================================================================
     // STATE VARIABLES - Dynamic configuration

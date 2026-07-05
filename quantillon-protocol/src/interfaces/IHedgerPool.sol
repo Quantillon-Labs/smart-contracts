@@ -340,20 +340,6 @@ interface IHedgerPool {
     function setSingleHedger(address hedger) external;
 
     /**
-     * @notice Applies a previously proposed single‑hedger rotation.
-     * @dev Finalizes the transition to `pendingSingleHedger` once any activation delay has elapsed.
-     * @custom:security Restricted to governance; relies on internal timing/quorum checks.
-     * @custom:validation Reverts if there is no pending rotation or delay not met.
-     * @custom:state-changes Updates `singleHedger` and clears pending rotation state.
-     * @custom:events Emits `SingleHedgerRotationApplied`.
-     * @custom:errors Reverts with protocol‑specific rotation errors.
-     * @custom:reentrancy Not applicable – configuration only.
-     * @custom:access Restricted to governance roles.
-     * @custom:oracle No oracle dependency.
-     */
-    function applySingleHedgerRotation() external;
-
-    /**
      * @notice Funds the reward reserve used to pay hedger rewards.
      * @dev Transfers USDC from caller into the reward reserve accounting balance.
      * @param amount Amount of USDC to add to the reserve.
@@ -627,36 +613,6 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependency.
      */
     function MAX_REWARD_FEE_SPLIT() external view returns (uint256 maxSplit);
-
-    /**
-     * @notice Returns the pending single hedger address, if any.
-     * @dev When non‑zero, this address will become `singleHedger` once rotation is applied.
-     * @return pending Address that will become the single hedger after rotation is applied.
-     * @custom:security View‑only; no access restriction.
-     * @custom:validation None.
-     * @custom:state-changes None.
-     * @custom:events None.
-     * @custom:errors None.
-     * @custom:reentrancy Not applicable.
-     * @custom:access Public.
-     * @custom:oracle No oracle dependency.
-     */
-    function pendingSingleHedger() external view returns (address pending);
-
-    /**
-     * @notice Returns the timestamp at which the pending single hedger can be applied.
-     * @dev After this timestamp, `applySingleHedgerRotation` may finalize the rotation.
-     * @return pendingAt Unix timestamp when rotation becomes executable.
-     * @custom:security View‑only; no access restriction.
-     * @custom:validation None.
-     * @custom:state-changes None.
-     * @custom:events None.
-     * @custom:errors None.
-     * @custom:reentrancy Not applicable.
-     * @custom:access Public.
-     * @custom:oracle No oracle dependency.
-     */
-    function singleHedgerPendingAt() external view returns (uint256 pendingAt);
 
     /**
      * @notice Returns the last block number at which a hedger claimed rewards.

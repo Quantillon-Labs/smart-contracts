@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -163,11 +163,12 @@ contract HedgerPool is
     /// @notice Maximum allowed value for rewardFeeSplit
     uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18;
 
-    /// @notice Pending single-hedger address awaiting delayed activation
-    address public pendingSingleHedger;
-
-    /// @notice Earliest timestamp at which pendingSingleHedger can be applied (0 = none pending)
-    uint256 public singleHedgerPendingAt;
+    /// @notice Vestigial (audit SC4-7): retained as private to preserve the live proxy
+    ///         storage layout; the public getters were removed (dead — never set/read).
+    // slither-disable-next-line unused-state
+    address private __deprecated_pendingSingleHedger;
+    // slither-disable-next-line unused-state
+    uint256 private __deprecated_singleHedgerPendingAt;
 
     struct HedgePosition {
         address hedger;
@@ -1497,25 +1498,8 @@ contract HedgerPool is
         emit SingleHedgerRotationApplied(previousHedger, hedger);
     }
 
-    /**
-     * @notice Deprecated relic of the abandoned multi-hedger rotation; always reverts.
-     * @dev The protocol is single-hedger-only. The former delayed rotation could overwrite the
-     *      live backing position (fixed positionId 1) and corrupt aggregate accounting, so it is
-     *      disabled. Hedger reassignment now happens synchronously via `setSingleHedger`, only
-     *      while position 1 is inactive. Retained (reverting) for ABI compatibility; the
-     *      `pendingSingleHedger` / `singleHedgerPendingAt` storage fields are now vestigial.
-     * @custom:security No state changes; unconditional revert.
-     * @custom:validation None.
-     * @custom:state-changes None.
-     * @custom:events None.
-     * @custom:errors Always reverts with `NotActive`.
-     * @custom:reentrancy Not applicable - no external calls.
-     * @custom:access Open (reverts for all callers).
-     * @custom:oracle No oracle interaction.
-     */
-    function applySingleHedgerRotation() external pure {
-        revert CommonErrorLibrary.NotActive();
-    }
+    // applySingleHedgerRotation() removed (audit SC4-7): dead reverting relic of the
+    // abandoned multi-hedger rotation. Reassignment is synchronous via setSingleHedger.
 
     /**
      * @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.

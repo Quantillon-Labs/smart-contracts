@@ -480,7 +480,6 @@ interface IUserPool {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Not applicable - no oracle dependency
      */
-    function BLOCKS_PER_DAY() external view returns (uint256);
     
     /**
      * @notice Returns the maximum reward period

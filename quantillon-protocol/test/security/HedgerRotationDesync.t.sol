@@ -20,14 +20,6 @@ import {CommonErrorLibrary} from "../../src/libraries/CommonErrorLibrary.sol";
 contract HedgerRotationDesyncTest is DeploymentSmokeTest {
     address internal hedger2 = address(0xBEEF);
 
-    /// @notice The delayed-rotation relic is disabled and always reverts.
-    function test_ApplySingleHedgerRotationDisabled() public {
-        deployFullProtocol();
-        vm.prank(governance);
-        vm.expectRevert(CommonErrorLibrary.NotActive.selector);
-        hedgerPool.applySingleHedgerRotation();
-    }
-
     /// @notice Reassigning the single hedger while a backing position is active fails loudly.
     function test_SetSingleHedgerRevertsWhilePositionActive() public {
         deployFullProtocol();

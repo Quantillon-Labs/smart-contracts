@@ -71,11 +71,11 @@
     "note": "Pre-versioning deploy: on-chain impl (0x138e...37fb, verified vs the ERC1967 slot) has no version(). Parked since the HyperliquidEurUsdOracle took the router slot; version() ships if it is ever upgraded."
   },
   "OracleRouter": {
-    "deployedAt": 1781721199,
-    "gitCommit": "84c4db1",
-    "implementation": "0x8c592C6e03eF8D85Ed8289c1904d2701E376E3D1",
+    "deployedAt": 1783239201,
+    "gitCommit": "1bf5597",
+    "implementation": "0xE8655E0fae165980b1aaDCBbe41Bd6Bb0a0D7Da8",
     "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "SlippageStorage": {
     "deployedAt": 1781721489,

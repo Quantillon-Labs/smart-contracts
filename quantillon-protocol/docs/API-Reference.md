@@ -584,11 +584,7 @@ function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view r
 - `currentPrice > 0`
 
 #### `setSingleHedger(address hedger)`
-Governance entrypoint for bootstrap/rotation proposal.  
-If no hedger is currently configured, assignment is immediate. Otherwise it creates a delayed pending rotation.
-
-#### `applySingleHedgerRotation()`
-Executes a pending single-hedger rotation after delay.
+Governance entrypoint for bootstrap/reassignment. Assignment is synchronous: it succeeds only while the backing position (positionId 1) is inactive, and reverts otherwise. (The former delayed `applySingleHedgerRotation` path was removed as dead code — it could overwrite a live backing position.)
 
 #### `fundRewardReserve(uint256 amount)`
 Permissionless reserve top-up path for hedger rewards.
@@ -1208,7 +1204,7 @@ Verified against deployed contracts on Base mainnet (2026-07-04). Values marked 
 - Supply model: **no fixed tokenomic supply cap** — supply is economically bounded by hedging capacity (minting requires ≥105% protocol CR)
 - `maxSupply`: administrative safety ceiling, currently 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY`; governance-raisable at any time via `updateMaxSupply`, only constrained to ≥ current supply)
 - Decimals: 18
-- Mint/burn rate limiting (safety guardrail, global): max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
+- **Mint** rate limiting (supply-abuse guardrail, global): max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`). Burns are **not** rate-limited: they are vault-driven redemptions/liquidations of the holder's own QEURO and must not be throttled during a run.
 
 ### QTIToken
 - `TOTAL_SUPPLY_CAP`: 100,000,000 QTI — **current supply is 0 (dormant: no mint path is wired)**

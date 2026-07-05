@@ -75,7 +75,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -1077,8 +1077,11 @@ contract ChainlinkOracle is
             if (seqRoundId == 0 || seqAnsweredInRound < seqRoundId || seqUpdatedAt < seqStartedAt) {
                 return (lastValidEurUsdPrice, false);
             }
-            // seqAnswer == 0 means sequencer is up; non-zero means down
-            if (seqAnswer != 0 || TIME_PROVIDER.currentTime() - seqStartedAt < sequencerGracePeriod) {
+            // seqAnswer == 0 means sequencer is up; non-zero means down.
+            // Audit SC3-6: guard a future-dated seqStartedAt so the subtraction can't
+            // underflow-revert a fail-safe read (a malfunctioning feed => treat as unsafe).
+            uint256 nowT = TIME_PROVIDER.currentTime();
+            if (seqAnswer != 0 || nowT < seqStartedAt || nowT - seqStartedAt < sequencerGracePeriod) {
                 return (lastValidEurUsdPrice, false);
             }
         }
@@ -1289,7 +1292,7 @@ contract ChainlinkOracle is
     /**
      * @notice Configure the L2 sequencer uptime feed for Base/Arbitrum deployments
      * @dev Set `feed` to address(0) on L1 to skip the sequencer check.
-     *      On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892E69A2E01D7580D
+     *      On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433
      * @param feed Chainlink sequencer uptime feed address (address(0) to disable)
      * @param gracePeriod Seconds to wait after sequencer restart before trusting prices again
      * @custom:security Restricted to ORACLE_MANAGER_ROLE; sequencer checks gate oracle usage on L2s

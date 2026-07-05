@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.4";
+        return "1.1.5";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -964,6 +964,21 @@ contract QuantillonVault is
         internal
         view
     {
+        _enforceProjectedCollateralizationFloor(netAmount, qeuroToMint, eurUsdPrice, minCollateralizationRatioForMinting);
+    }
+
+    /// @notice Projected-CR guard against an arbitrary floor (18-dec ratio).
+    /// @dev Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
+    ///      path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
+    ///      only pull CR toward 100% and can never make the protocol under-backed. Gating
+    ///      it on the mint floor made yield undistributable whenever CR sat at the floor
+    ///      (the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
+    function _enforceProjectedCollateralizationFloor(
+        uint256 netAmount,
+        uint256 qeuroToMint,
+        uint256 eurUsdPrice,
+        uint256 minRatio
+    ) internal view {
         uint256 currentSupply = qeuro.totalSupply();
         uint256 collateralBeforeMint = _getTotalCollateralWithAccruedYield();
         uint256 projectedSupply = currentSupply + qeuroToMint;
@@ -971,7 +986,7 @@ contract QuantillonVault is
         uint256 projectedBackingRequirement = projectedSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
         if (projectedBackingRequirement == 0) revert CommonErrorLibrary.InvalidAmount();
         uint256 projectedCollateralizationRatio = projectedCollateral.mulDiv(1e20, projectedBackingRequirement);
-        if (projectedCollateralizationRatio < minCollateralizationRatioForMinting) {
+        if (projectedCollateralizationRatio < minRatio) {
             revert CommonErrorLibrary.InsufficientCollateralization();
         }
     }
@@ -1836,7 +1851,10 @@ contract QuantillonVault is
         qeuroMinted = netUsdcAmount.mulDiv(1e30, eurUsdPrice);
         if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
 
-        _enforceProjectedMintCollateralization(netUsdcAmount, qeuroMinted, eurUsdPrice);
+        // Yield crediting adds fully-backed collateral (1:1), so gate on a 100% floor
+        // rather than the 105% mint floor (audit SC1-2) so yield stays distributable
+        // when protocol CR sits at the minting equilibrium.
+        _enforceProjectedCollateralizationFloor(netUsdcAmount, qeuroMinted, eurUsdPrice, 100e18);
 
         _commitPriceCache(eurUsdPrice, isValidPrice);
 
@@ -2730,6 +2748,15 @@ contract QuantillonVault is
         address token,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Audit SC3-3: recover only stray tokens, never accounted collateral. Without
+        // this, DEFAULT_ADMIN could instantly move the vault's USDC backing (or QEURO)
+        // to treasury, bypassing the 12h upgrade timelock the trust model relies on.
+        if (token == address(qeuro)) revert CommonErrorLibrary.CannotRecoverOwnToken();
+        if (token == address(usdc)) {
+            // Only the excess over tracked collateral is recoverable.
+            uint256 recoverable = usdc.balanceOf(address(this)) - totalUsdcHeld;
+            if (amount > recoverable) revert CommonErrorLibrary.InsufficientBalance();
+        }
         // Use the shared library for secure token recovery to treasury
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }

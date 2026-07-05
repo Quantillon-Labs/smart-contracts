@@ -26,7 +26,7 @@ library YieldShiftCalculationLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     using VaultMath for uint256;
@@ -54,27 +54,34 @@ library YieldShiftCalculationLibrary {
         uint256 maxYieldShift,
         uint256 targetPoolRatio
     ) external pure returns (uint256 optimalShift) {
+        // `optimalShift` is the USER share of yield (hedgers get the remainder), and
+        // `poolRatio = userPool / hedgerPool` (higher = user pool bigger). The shift
+        // must incentivize the DEFICIENT pool, so a larger user pool LOWERS the user
+        // share (more to hedgers) and vice-versa. Audit SC2-2: both the edge cases and
+        // the deviation branches below were inverted (they routed yield to the already-
+        // oversized pool); corrected here.
         if (poolRatio == type(uint256).max) {
-            // Edge case: hedger pool is zero
+            // Edge case: hedger pool is zero (maximally under-hedged) -> give hedgers
+            // the most -> user share at the floor.
+            return 10000 - maxYieldShift;
+        }
+
+        if (poolRatio == 0) {
+            // Edge case: user pool is zero (maximally over-hedged) -> give users the most.
             return maxYieldShift;
         }
-        
-        if (poolRatio == 0) {
-            // Edge case: user pool is zero
-            return 0;
-        }
-        
+
         // Calculate deviation from target ratio
         uint256 deviation;
         if (poolRatio > targetPoolRatio) {
-            // User pool is larger than target - shift more yield to hedgers
+            // User pool is larger than target - shift more yield to hedgers (lower user share)
             deviation = poolRatio - targetPoolRatio;
-            optimalShift = baseYieldShift + (deviation * 100) / targetPoolRatio;
-        } else {
-            // Hedger pool is larger than target - shift more yield to users
-            deviation = targetPoolRatio - poolRatio;
             uint256 reduction = (deviation * 100) / targetPoolRatio;
             optimalShift = reduction < baseYieldShift ? baseYieldShift - reduction : 0;
+        } else {
+            // Hedger pool is larger than target - shift more yield to users (raise user share)
+            deviation = targetPoolRatio - poolRatio;
+            optimalShift = baseYieldShift + (deviation * 100) / targetPoolRatio;
         }
         
         // Clamp to valid range

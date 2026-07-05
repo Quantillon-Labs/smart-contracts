@@ -164,6 +164,53 @@ contract SlippageStorageTest is Test {
         store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
     }
 
+    // =========================================================================
+    // midPrice write-side guards (audit SC3-1 / FLAG-1 on-chain)
+    // =========================================================================
+
+    function test_midGuards_disabledByDefault_acceptsAnyInBand() public {
+        // Guards default off (min/max/dev = 0), so a wild mid is still accepted.
+        vm.prank(writer);
+        store.updateSlippage(5e18, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
+        assertEq(store.getSlippage().midPrice, 5e18);
+    }
+
+    function test_midGuards_bandRejectsOutOfRange() public {
+        vm.prank(admin);
+        store.setMidPriceGuards(0.80e18, 1.40e18, 500); // band + 5% deviation
+        // In-band first write succeeds and seeds the baseline.
+        vm.prank(writer);
+        store.updateSlippage(1.10e18, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
+        // Out-of-band write reverts.
+        vm.prank(writer);
+        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        store.updateSlippage(1.60e18, DEPTH_EUR, WORST_BPS + 100, SPREAD_BPS, _defaultBuckets());
+    }
+
+    function test_midGuards_deviationRejectsWalkStep() public {
+        vm.prank(admin);
+        store.setMidPriceGuards(0.80e18, 1.40e18, 500); // 5% max per-write deviation
+        vm.prank(writer);
+        store.updateSlippage(1.10e18, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
+        // A >5% jump vs the last stored mid (1.10 -> 1.20 ~ 9%) is rejected even though
+        // it is inside the absolute band.
+        vm.prank(writer);
+        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        store.updateSlippage(1.20e18, DEPTH_EUR, WORST_BPS + 100, SPREAD_BPS, _defaultBuckets());
+    }
+
+    function test_setMidPriceGuards_revertsOnBadBounds() public {
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        store.setMidPriceGuards(1.40e18, 1.00e18, 500); // min > max
+    }
+
+    function test_setMidPriceGuards_onlyManager() public {
+        vm.prank(outsider);
+        vm.expectRevert();
+        store.setMidPriceGuards(0.80e18, 1.40e18, 500);
+    }
+
     function test_updateSlippage_revertsIfPaused() public {
         vm.prank(admin);
         store.pause();

@@ -63,7 +63,7 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -113,6 +113,19 @@ contract SlippageStorage is
 
     /// @notice Bitmask of enabled sources: bit N = source N enabled. 0x03 = both Lighter + Hyperliquid.
     uint8 public override enabledSources;
+
+    // ── midPrice write-side guards (audit SC3-1 / FLAG-1 on-chain) ────────────
+    // Writer-side validation of the published EUR/USD mid, independent of the
+    // downstream oracle (which only bounds the worst case and can be walked). All
+    // OPT-IN: default 0 means "disabled", so an upgrade of the live proxy is inert
+    // until governance configures them via setMidPriceGuards — no risk of freezing
+    // an already-running feed on upgrade.
+    /// @notice Absolute lower bound for an accepted midPrice (18 dec). 0 with maxMidPrice==0 = band disabled.
+    uint128 public minMidPrice;
+    /// @notice Absolute upper bound for an accepted midPrice (18 dec). 0 = band check disabled.
+    uint128 public maxMidPrice;
+    /// @notice Max per-write deviation (bps) vs the source's last stored mid. 0 = deviation check disabled.
+    uint16 public maxMidDeviationBps;
 
     /// @notice Shared time provider for deterministic timestamp reads
     TimeProvider public immutable TIME_PROVIDER;
@@ -244,6 +257,12 @@ contract SlippageStorage is
             }
         }
 
+        // Writer-side midPrice guard (audit SC3-1). Revert on the single-source path
+        // so the writer sees the rejection; the batch path skips instead.
+        if (!_midWithinGuards(_snapshot.midPrice, midPrice)) {
+            revert CommonErrorLibrary.InvalidPrice();
+        }
+
         uint48 ts = nowTs;
         // forge-lint: disable-next-line(unsafe-typecast)
         uint48 bn = uint48(block.number);
@@ -310,6 +329,11 @@ contract SlippageStorage is
                     if (diff <= deviationThresholdBps) continue; // skip this source, don't revert
                 }
             }
+
+            // Writer-side midPrice guard (audit SC3-1): skip a source whose mid is
+            // out of band or deviates too far from its last value, rather than write
+            // a value we don't trust (the downstream staleness freeze is the fail-safe).
+            if (!_midWithinGuards(snap.midPrice, u.midPrice)) continue;
 
             snap.midPrice     = u.midPrice;
             snap.depthEur     = u.depthEur;
@@ -404,6 +428,62 @@ contract SlippageStorage is
         uint16 old = deviationThresholdBps;
         deviationThresholdBps = newThreshold;
         emit ConfigUpdated("deviationThresholdBps", uint256(old), uint256(newThreshold));
+    }
+
+    /**
+     * @notice Configure the writer-side midPrice guards (audit SC3-1).
+     * @dev Set band and per-write deviation for the published EUR/USD mid. Pass
+     *      `maxMid=0` to disable the band and `devBps=0` to disable the deviation check.
+     *      Must be called after an upgrade to activate the guards (they default off).
+     * @param minMid Absolute lower bound (18 dec)
+     * @param maxMid Absolute upper bound (18 dec); 0 disables the band
+     * @param devBps Max per-write deviation vs the source's last mid; 0 disables it
+     * @custom:security Restricted to MANAGER_ROLE
+     * @custom:validation Requires minMid <= maxMid when the band is enabled; devBps bounded
+     * @custom:state-changes Sets minMidPrice/maxMidPrice/maxMidDeviationBps
+     * @custom:events Emits ConfigUpdated for each changed field
+     * @custom:errors ConfigValueTooHigh / InvalidPrice on bad bounds
+     * @custom:reentrancy No external calls
+     * @custom:access MANAGER_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function setMidPriceGuards(uint128 minMid, uint128 maxMid, uint16 devBps) external onlyRole(MANAGER_ROLE) {
+        if (maxMid != 0 && minMid > maxMid) revert CommonErrorLibrary.InvalidPrice();
+        if (devBps > 10000) revert CommonErrorLibrary.ConfigValueTooHigh();
+        minMidPrice = minMid;
+        maxMidPrice = maxMid;
+        maxMidDeviationBps = devBps;
+        emit ConfigUpdated("minMidPrice", 0, uint256(minMid));
+        emit ConfigUpdated("maxMidPrice", 0, uint256(maxMid));
+        emit ConfigUpdated("maxMidDeviationBps", 0, uint256(devBps));
+    }
+
+    /**
+     * @notice Whether a candidate midPrice passes the configured writer-side guards.
+     * @dev Returns true when guards are disabled (default). Enforces the absolute band
+     *      (when maxMidPrice != 0) and the per-write deviation vs `lastMid` (when
+     *      maxMidDeviationBps != 0 and a baseline exists).
+     * @param lastMid The source's currently stored mid (0 when no baseline yet)
+     * @param newMid The candidate mid to validate (18 decimals)
+     * @return True if the candidate is acceptable (or guards are disabled)
+     * @custom:security Pure guard logic over configured bounds; no external calls
+     * @custom:validation Band and deviation checks are each opt-in via config
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None - returns a bool
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal
+     * @custom:oracle No oracle dependencies
+     */
+    function _midWithinGuards(uint128 lastMid, uint128 newMid) internal view returns (bool) {
+        if (maxMidPrice != 0) {
+            if (newMid < minMidPrice || newMid > maxMidPrice) return false;
+        }
+        if (maxMidDeviationBps != 0 && lastMid != 0) {
+            uint256 diff = newMid > lastMid ? uint256(newMid - lastMid) : uint256(lastMid - newMid);
+            if (diff * 10000 > uint256(lastMid) * uint256(maxMidDeviationBps)) return false;
+        }
+        return true;
     }
 
     // ============ Emergency Functions ============

@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.1";
+        return "1.1.2";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -1723,6 +1723,13 @@ contract QuantillonVault is
             uint256 vaultId = vaultIds[i];
             if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
             if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+            // Reject duplicates (audit SC1-1): a repeated id would make
+            // _getExternalVaultCollateralBalance double-count that vault's principal,
+            // inflating the collateralization ratio and permitting minting below the
+            // 105% floor against phantom collateral.
+            for (uint256 j = 0; j < i; ++j) {
+                if (vaultIds[j] == vaultId) revert CommonErrorLibrary.InvalidVault();
+            }
             redemptionPriorityVaultIds.push(vaultId);
         }
         emit RedemptionPriorityUpdated(vaultIds);

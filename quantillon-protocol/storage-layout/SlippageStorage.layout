@@ -4,3 +4,6 @@
 2:8	address	20
 3:0	mapping(uint8 => struct ISlippageStorage.SlippageSnapshot)	32
 4:0	uint8	1
+4:1	uint128	16
+5:0	uint128	16
+5:16	uint16	2

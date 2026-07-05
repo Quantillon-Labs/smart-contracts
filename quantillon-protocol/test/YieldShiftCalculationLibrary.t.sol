@@ -37,7 +37,7 @@ contract YieldShiftCalculationLibraryTest is Test {
     /**
      * @notice Test optimal shift with hedger pool at zero (edge case)
      */
-    function test_CalculateOptimalYieldShift_HedgerPoolZero_ReturnsMaxShift() public pure {
+    function test_CalculateOptimalYieldShift_HedgerPoolZero_ReturnsFloorShift() public pure {
         uint256 optimalShift = YieldShiftCalculationLibrary.calculateOptimalYieldShift(
             type(uint256).max, // poolRatio = max when hedger pool is zero
             BASE_YIELD_SHIFT,
@@ -45,13 +45,15 @@ contract YieldShiftCalculationLibraryTest is Test {
             TARGET_POOL_RATIO
         );
 
-        assertEq(optimalShift, MAX_YIELD_SHIFT, "Zero hedger pool should return max shift");
+        // Audit SC2-2: user share is the fraction going to USERS; a zero hedger pool
+        // (maximally under-hedged) must route the MOST to hedgers => user share at the floor.
+        assertEq(optimalShift, 10000 - MAX_YIELD_SHIFT, "Zero hedger pool should return the floor user share");
     }
 
     /**
      * @notice Test optimal shift with user pool at zero (edge case)
      */
-    function test_CalculateOptimalYieldShift_UserPoolZero_ReturnsZero() public pure {
+    function test_CalculateOptimalYieldShift_UserPoolZero_ReturnsMaxShift() public pure {
         uint256 optimalShift = YieldShiftCalculationLibrary.calculateOptimalYieldShift(
             0, // poolRatio = 0 when user pool is zero
             BASE_YIELD_SHIFT,
@@ -59,7 +61,8 @@ contract YieldShiftCalculationLibraryTest is Test {
             TARGET_POOL_RATIO
         );
 
-        assertEq(optimalShift, 0, "Zero user pool should return zero shift");
+        // Audit SC2-2: a zero user pool (maximally over-hedged) must route the MOST to users.
+        assertEq(optimalShift, MAX_YIELD_SHIFT, "Zero user pool should return the max user share");
     }
 
     /**
@@ -79,7 +82,7 @@ contract YieldShiftCalculationLibraryTest is Test {
     /**
      * @notice Test optimal shift when user pool larger increases shift
      */
-    function test_CalculateOptimalYieldShift_UserPoolLarger_IncreasesShift() public pure {
+    function test_CalculateOptimalYieldShift_UserPoolLarger_LowersUserShare() public pure {
         uint256 optimalShift = YieldShiftCalculationLibrary.calculateOptimalYieldShift(
             15000, // User pool 1.5x hedger pool
             BASE_YIELD_SHIFT,
@@ -87,13 +90,14 @@ contract YieldShiftCalculationLibraryTest is Test {
             TARGET_POOL_RATIO
         );
 
-        assertGt(optimalShift, BASE_YIELD_SHIFT, "Larger user pool should increase shift to hedgers");
+        // Audit SC2-2: a larger user pool must shift more yield to hedgers => LOWER user share.
+        assertLt(optimalShift, BASE_YIELD_SHIFT, "Larger user pool should lower the user share");
     }
 
     /**
      * @notice Test optimal shift when hedger pool larger decreases shift
      */
-    function test_CalculateOptimalYieldShift_HedgerPoolLarger_DecreasesShift() public pure {
+    function test_CalculateOptimalYieldShift_HedgerPoolLarger_RaisesUserShare() public pure {
         uint256 optimalShift = YieldShiftCalculationLibrary.calculateOptimalYieldShift(
             5000, // User pool 0.5x hedger pool
             BASE_YIELD_SHIFT,
@@ -101,7 +105,8 @@ contract YieldShiftCalculationLibraryTest is Test {
             TARGET_POOL_RATIO
         );
 
-        assertLt(optimalShift, BASE_YIELD_SHIFT, "Larger hedger pool should decrease shift");
+        // Audit SC2-2: a larger hedger pool must shift more yield to users => HIGHER user share.
+        assertGt(optimalShift, BASE_YIELD_SHIFT, "Larger hedger pool should raise the user share");
     }
 
     /**

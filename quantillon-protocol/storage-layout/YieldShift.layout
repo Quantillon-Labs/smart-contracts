@@ -24,6 +24,7 @@
 2:0	contract IERC20	20
 30:0	mapping(address => uint256)	32
 31:0	bool	1
+32:0	uint256	32
 3:0	contract IUserPool	20
 4:0	contract IHedgerPool	20
 5:0	contract IMockAaveVault	20

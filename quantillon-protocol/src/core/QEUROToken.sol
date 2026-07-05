@@ -91,7 +91,7 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.0.5";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -606,8 +606,9 @@ contract QEUROToken is
         // Parameter validation
         TokenLibrary.validateBurn(from, amount, balanceOf(from));
 
-        // Rate limiting check
-        _checkAndUpdateBurnRateLimit(amount);
+        // Audit SC1-4: no burn rate limit. Burns are vault-driven redemptions/
+        // liquidations of the holder's own QEURO and must not be throttled during a
+        // run; the mint rate limiter remains the supply-abuse cap.
 
         // Actual burn (secure OpenZeppelin function)
         _burn(from, amount);
@@ -657,8 +658,7 @@ contract QEUROToken is
             totalAmount = totalAmount + amount;
         }
         
-        // Rate limiting for the whole batch
-        _checkAndUpdateBurnRateLimit(totalAmount);
+        // Audit SC1-4: no burn rate limit on vault-driven redemptions/liquidations.
 
         address burner = msg.sender;
         
@@ -714,46 +714,7 @@ contract QEUROToken is
         }
     }
 
-    /**
-     * @notice Checks and updates the burn rate limit for the caller
-     * @dev Implements sliding window rate limiting using block numbers to prevent abuse
-     * @param amount The amount to be burned (18 decimals), used to check against rate limits
-     * @custom:security Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
-     * @custom:validation Validates amount against current rate limit caps
-     * @custom:state-changes Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
-     * @custom:events No events emitted
-     * @custom:errors Throws RateLimitExceeded if amount would exceed current rate limit
-     * @custom:reentrancy Not protected - internal function only
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
-        // Reset rate limit if reset period has passed (using block numbers)
-        uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
-        
-        // Caps blocks elapsed at 7200 blocks maximum (~24 hours) to prevent excessive manipulation
-        if (blocksSinceReset > 7200) {
-            blocksSinceReset = 7200; // Cap at 7200 blocks maximum (~24 hours)
-        }
-        
-        if (blocksSinceReset >= RATE_LIMIT_RESET_PERIOD) {
-            rateLimitInfo.currentHourMinted = 0;
-            rateLimitInfo.currentHourBurned = 0;
-            rateLimitInfo.lastRateLimitReset = uint64(block.number);
-            emit RateLimitReset(block.number);
-        }
-
-        // Check if the new amount would exceed the rate limit
-        if (rateLimitInfo.currentHourBurned + amount > rateLimitCaps.burn) {
-            revert TokenErrorLibrary.RateLimitExceeded();
-        }
-
-        // Update the current hour burned amount - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            rateLimitInfo.currentHourBurned = uint96(rateLimitInfo.currentHourBurned + amount);
-        }
-    }
+    // _checkAndUpdateBurnRateLimit removed (audit SC1-4): burns are no longer rate-limited.
 
     /**
      * @notice Updates rate limits for mint and burn operations

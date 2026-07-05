@@ -911,8 +911,10 @@ contract QEUROTokenTestSuite is Test {
     }
     
     /**
-     * @notice Test rate limiting for burning exceeds limit
-     * @dev Verifies that burning beyond rate limit is prevented
+     * @notice Audit SC1-4: vault-driven burns are NOT rate-limited.
+     * @dev Redemptions/liquidations must not be throttled during a run; burning more than
+     *      the (retained) burn-cap value in a single call now succeeds. The mint limiter
+     *      remains the supply-abuse cap and is covered by its own tests.
       * @custom:security No security implications - test function
       * @custom:validation No input validation required - test function
       * @custom:state-changes No state changes - test function
@@ -922,39 +924,27 @@ contract QEUROTokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_RateLimit_BurnExceedsLimit_Revert() public {
+    function test_RateLimit_BurnNotThrottled() public {
         uint256 rateLimit = qeuroToken.burnRateLimit();
-        
-        // Mint tokens first (need to handle rate limiting)
+
+        // Mint more than the burn-cap value (respecting the still-active mint limiter).
         uint256 totalToMint = rateLimit + 1;
         uint256 mintRateLimit = qeuroToken.mintRateLimit();
-        
-        if (totalToMint > mintRateLimit) {
-            // Mint in chunks
-            uint256 remaining = totalToMint;
-            while (remaining > 0) {
-                uint256 toMint = remaining > mintRateLimit ? mintRateLimit : remaining;
-                vm.prank(vault);
-                qeuroToken.mint(user1, toMint);
-                remaining -= toMint;
-                
-                if (remaining > 0) {
-                    vm.roll(block.number + 300); // Advance 300 blocks (~1 hour)
-                }
-            }
-        } else {
+        uint256 remaining = totalToMint;
+        while (remaining > 0) {
+            uint256 toMint = remaining > mintRateLimit ? mintRateLimit : remaining;
             vm.prank(vault);
-            qeuroToken.mint(user1, totalToMint);
+            qeuroToken.mint(user1, toMint);
+            remaining -= toMint;
+            if (remaining > 0) {
+                vm.roll(block.number + 300); // Advance past the mint limiter window
+            }
         }
-        
-        // Burn up to the rate limit
+
+        // Burn more than the old burn cap in a single call: must NOT revert (SC1-4).
         vm.prank(vault);
-        qeuroToken.burn(user1, rateLimit);
-        
-        // Try to burn one more token
-        vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.RateLimitExceeded.selector);
-        qeuroToken.burn(user1, 1);
+        qeuroToken.burn(user1, rateLimit + 1);
+        assertEq(qeuroToken.balanceOf(user1), 0, "full balance burned without a rate-limit revert");
     }
     
     /**

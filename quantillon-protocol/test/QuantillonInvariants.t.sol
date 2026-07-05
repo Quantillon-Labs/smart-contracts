@@ -435,6 +435,51 @@ contract QuantillonInvariants is Test {
             assertGt(vaultUsdcBalance, 0, "Vault should have USDC backing QEURO");
         }
     }
+
+    /**
+     * @notice Audit SC1-6: the vault physically holds at least the USDC it accounts as
+     *         backing. `totalUsdcHeld` excludes USDC deployed to external vaults (it is
+     *         decremented on deploy), so the on-hand balance must never fall below it.
+     *         A break means backing was moved out without updating the tracker (the class
+     *         of bug SC3-3's recover-excess guard and the mint/redeem accounting protect).
+     * @custom:security Core solvency invariant across random mint/redeem/stake/unstake sequences
+     * @custom:validation None
+     * @custom:state-changes None - view
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public view
+     * @custom:oracle No oracle dependency
+     */
+    function invariant_vaultBackingSolvency() public view {
+        assertGe(
+            usdc.balanceOf(address(vault)),
+            vault.totalUsdcHeld(),
+            "Vault on-hand USDC below tracked backing (totalUsdcHeld)"
+        );
+    }
+
+    /**
+     * @notice Audit SC1-6: circulating QEURO exactly equals the vault's mint tracker.
+     *         The vault is the sole minter/burner; every mint bumps totalMinted and every
+     *         redeem/liquidation lowers it, so totalSupply() and totalMinted() must stay
+     *         equal. A break means a mint or burn bypassed the accounting.
+     * @custom:security Conservation invariant tying ERC20 supply to vault accounting
+     * @custom:validation None
+     * @custom:state-changes None - view
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public view
+     * @custom:oracle No oracle dependency
+     */
+    function invariant_qeuroSupplyEqualsMintTracker() public view {
+        assertEq(
+            qeuroToken.totalSupply(),
+            vault.totalMinted(),
+            "QEURO totalSupply diverged from vault.totalMinted"
+        );
+    }
     
     /**
      * @notice Verify that supply caps are never exceeded

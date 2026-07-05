@@ -124,7 +124,7 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -202,6 +202,13 @@ contract YieldShift is
     YieldShiftSnapshot[] public yieldShiftHistory;
     mapping(address => uint256) public sourceToVaultId;
     bool public enforceSourceVaultBinding;
+
+    /// @notice Monotonic count of pool snapshots recorded (audit SC4-5).
+    /// @dev Drives the O(1) ring-buffer write position for userPoolHistory/hedgerPoolHistory
+    ///      (both written in lockstep), replacing the O(MAX_HISTORY_LENGTH) shift-and-pop that
+    ///      created a permanent gas cliff on the permissionless updateYieldDistribution path.
+    ///      Appended at the end of storage (append-only).
+    uint256 public poolHistoryCount;
 
     struct YieldModelConfig {
         uint256 baseYieldShift;
@@ -1255,8 +1262,10 @@ contract YieldShift is
         }
         
         if (totalWeight == 0) {
-            // Cache the last snapshot to avoid another storage read
-            snapshot = poolHistory[length - 1];
+            // No in-window entries: fall back to the NEWEST snapshot. With the ring
+            // buffer (audit SC4-5) the newest is at (count-1) % MAX, not length-1.
+            uint256 newestIdx = (poolHistoryCount - 1) % MAX_HISTORY_LENGTH;
+            snapshot = poolHistory[newestIdx];
             return isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
         }
         
@@ -1277,9 +1286,28 @@ contract YieldShift is
      */
     function _recordPoolSnapshot() internal {
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
-        
-        _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true);
-        _addToPoolHistory(hedgerPoolHistory, eligibleHedgerPoolSize, false);
+        _recordSnapshotPair(eligibleUserPoolSize, eligibleHedgerPoolSize);
+    }
+
+    /**
+     * @notice Writes one snapshot to both pool histories in lockstep (audit SC4-5).
+     * @dev Both arrays share `poolHistoryCount`, so the ring write position is computed once.
+     * @param eligibleUserPoolSize Eligible user-pool size to record (holding-period filtered)
+     * @param eligibleHedgerPoolSize Eligible hedger-pool size to record
+     * @custom:security Bounded O(1) write; no external calls
+     * @custom:validation None - values are pre-computed by the caller
+     * @custom:state-changes Appends/overwrites both pool histories and increments poolHistoryCount
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not protected - internal, no external calls
+     * @custom:access Internal
+     * @custom:oracle No oracle dependency
+     */
+    function _recordSnapshotPair(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal {
+        uint256 writePos = poolHistoryCount % MAX_HISTORY_LENGTH;
+        _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true, writePos);
+        _addToPoolHistory(hedgerPoolHistory, eligibleHedgerPoolSize, false, writePos);
+        unchecked { ++poolHistoryCount; }
     }
     
     /**
@@ -1297,8 +1325,7 @@ contract YieldShift is
      * @custom:oracle Not applicable - no oracle dependency
      */
     function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal {
-        _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true);
-        _addToPoolHistory(hedgerPoolHistory, eligibleHedgerPoolSize, false);
+        _recordSnapshotPair(eligibleUserPoolSize, eligibleHedgerPoolSize);
     }
 
     /**
@@ -1307,6 +1334,7 @@ contract YieldShift is
      * @param poolHistory Array of pool snapshots to add to
      * @param poolSize Size of the pool to record
      * @param isUserPool Whether this is for user pool or hedger pool
+     * @param writePos Ring-buffer slot to overwrite once the array is full (= count % MAX)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -1316,26 +1344,27 @@ contract YieldShift is
      * @custom:access Restricted to authorized roles
      * @custom:oracle Not applicable - no oracle dependency
      */
-    function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal {
-        uint256 length = poolHistory.length;
-        
-        if (length >= MAX_HISTORY_LENGTH) {
-            // Optimize the shift operation by using unchecked arithmetic
-            for (uint256 i = 0; i < length - 1;) {
-                poolHistory[i] = poolHistory[i + 1];
-                unchecked { ++i; }
-            }
-            poolHistory.pop();
-        }
-        
-        poolHistory.push(PoolSnapshot({
+    function _addToPoolHistory(
+        PoolSnapshot[] storage poolHistory,
+        uint256 poolSize,
+        bool isUserPool,
+        uint256 writePos
+    ) internal {
+        // Audit SC4-5: O(1) ring buffer. Grow the array until full, then overwrite the
+        // oldest slot at `writePos` (= count % MAX) instead of shifting every element.
+        PoolSnapshot memory snap = PoolSnapshot({
             // forge-lint: disable-next-line(unsafe-typecast)
             timestamp: uint64(TIME_PROVIDER.currentTime()),
             // forge-lint: disable-next-line(unsafe-typecast)
             userPoolSize: isUserPool ? uint128(poolSize) : 0,
             // forge-lint: disable-next-line(unsafe-typecast)
             hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
-        }));
+        });
+        if (poolHistory.length < MAX_HISTORY_LENGTH) {
+            poolHistory.push(snap);
+        } else {
+            poolHistory[writePos] = snap;
+        }
     }
 
     /**

@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.5";
+        return "1.1.6";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -858,9 +858,9 @@ contract QuantillonVault is
     function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid) {
         (eurUsdPrice, isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-
-        (uint256 usdcUsdPrice, bool usdcIsValid) = oracle.getUsdcUsdPrice();
-        if (!usdcIsValid || usdcUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        // Audit SC1-3: the USDC/USD price is not used (mint/redeem value USDC at $1),
+        // so the previous fetch+validate only added a revert surface that could block
+        // mint/redeem when the unused USDC feed went stale. Removed.
     }
 
     /**
@@ -967,12 +967,26 @@ contract QuantillonVault is
         _enforceProjectedCollateralizationFloor(netAmount, qeuroToMint, eurUsdPrice, minCollateralizationRatioForMinting);
     }
 
-    /// @notice Projected-CR guard against an arbitrary floor (18-dec ratio).
-    /// @dev Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
-    ///      path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
-    ///      only pull CR toward 100% and can never make the protocol under-backed. Gating
-    ///      it on the mint floor made yield undistributable whenever CR sat at the floor
-    ///      (the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
+    /**
+     * @notice Projected-CR guard against an arbitrary floor (18-dec ratio).
+     * @dev Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
+     *      path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
+     *      only pull CR toward 100% and can never make the protocol under-backed. Gating
+     *      it on the mint floor made yield undistributable whenever CR sat at the floor
+     *      (the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
+     * @param netAmount Net USDC added by the operation (6 decimals)
+     * @param qeuroToMint QEURO to be minted by the operation (18 decimals)
+     * @param eurUsdPrice Live EUR/USD price used to value QEURO debt (18 decimals)
+     * @param minRatio Minimum acceptable projected CR (18-dec ratio, e.g. 105e18)
+     * @custom:security Reverts the caller if the projected CR would fall below minRatio
+     * @custom:validation Reverts on zero projected backing requirement
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors InsufficientCollateralization / InvalidAmount
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal
+     * @custom:oracle Consumes the supplied validated price; no direct oracle read
+     */
     function _enforceProjectedCollateralizationFloor(
         uint256 netAmount,
         uint256 qeuroToMint,

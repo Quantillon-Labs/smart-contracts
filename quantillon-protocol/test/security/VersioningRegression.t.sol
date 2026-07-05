@@ -21,7 +21,7 @@ contract VersioningRegression is DeploymentSmokeTest {
     /// @dev QuantillonVault is at 1.1.0 (harvestAndDistributeVaultYield / stQEURO yield distribution).
     function test_AllCoreContractsExposeVersion() public {
         deployFullProtocol();
-        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.1");
+        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.2");
         _assertVersioned(address(qtiToken), "QTIToken", "1.0.1");
         _assertVersioned(address(vault), "QuantillonVault", "1.1.1");
         _assertVersioned(address(userPool), "UserPool", "1.0.0");

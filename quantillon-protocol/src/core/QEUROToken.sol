@@ -91,7 +91,7 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -421,6 +421,7 @@ contract QEUROToken is
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        // slither-disable-next-line missing-zero-check -- validated by the library call above (same revert selector; the inline check was removed as unreachable in v1.0.1)
         treasury = _treasury;
         if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
         feeCollector = _feeCollector;
@@ -1541,6 +1542,7 @@ contract QEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        // slither-disable-next-line missing-zero-check -- validated by the library call above (same revert selector; the inline check was removed as unreachable in v1.0.1)
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

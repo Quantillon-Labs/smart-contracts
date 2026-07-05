@@ -30,13 +30,12 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
 
     /// @notice INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
     uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours;
-    /// @notice INFO-4: Canonical block delay for emergency-disable proposals (12s block target)
-    uint256 public constant EMERGENCY_DISABLE_DELAY_BLOCKS = EMERGENCY_DISABLE_DELAY / 12;
 
     /// @notice Emergency-disable approvals required before apply can succeed
     uint256 public constant EMERGENCY_DISABLE_QUORUM = 2;
 
-    /// @notice INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
+    /// @notice INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+    /// @dev Audit SC4-2: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
     uint256 public emergencyDisablePendingAt;
 
     /// @dev Unstructured storage slot to avoid shifting child storage layouts.
@@ -399,7 +398,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         ds.proposalId += 1;
         ds.approvalCount = 0;
 
-        emergencyDisablePendingAt = block.number + EMERGENCY_DISABLE_DELAY_BLOCKS;
+        emergencyDisablePendingAt = _protocolTime() + EMERGENCY_DISABLE_DELAY;
         emit EmergencyDisableProposed(ds.proposalId, emergencyDisablePendingAt);
 
         // Proposer counts as first approval for the new proposal.
@@ -449,7 +448,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      */
     function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
-        if (block.number < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
+        if (_protocolTime() < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
         EmergencyDisableStorage storage ds = _emergencyDisableStorage();
         if (expectedProposalId == 0 || expectedProposalId != ds.proposalId) revert CommonErrorLibrary.NotAuthorized();
         if (ds.approvalCount < EMERGENCY_DISABLE_QUORUM) revert CommonErrorLibrary.NotAuthorized();

@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.3";
+        return "1.1.4";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -315,13 +315,12 @@ contract QuantillonVault is
 
     /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
     uint256 private constant DEV_MODE_DELAY = 48 hours;
-    /// @notice MED-1: Canonical block delay for dev-mode proposals (12s block target)
-    uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12;
 
     /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
 
-    /// @notice MED-1: Block at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @dev Audit SC4-1: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
     uint256 public devModePendingAt;
 
     // =============================================================================
@@ -2855,7 +2854,7 @@ contract QuantillonVault is
     /// @param enabled The desired dev-mode value
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
-        devModePendingAt = block.number + DEV_MODE_DELAY_BLOCKS;
+        devModePendingAt = block.timestamp + DEV_MODE_DELAY;
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
@@ -2873,7 +2872,7 @@ contract QuantillonVault is
      */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
-        if (block.number < devModePendingAt) revert CommonErrorLibrary.NotActive();
+        if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();
         devModeEnabled = pendingDevMode;
         devModePendingAt = 0;
         emit DevModeToggled(devModeEnabled, msg.sender);

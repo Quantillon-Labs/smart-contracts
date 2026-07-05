@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.6";
+        return "1.1.7";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -777,7 +777,7 @@ contract QuantillonVault is
         (uint256 fee, uint256 netAmount, uint256 computedQeuroToMint) =
             _computeMintAmounts(usdcAmount, eurUsdPrice, minQeuroOut);
         qeuroToMint = computedQeuroToMint;
-        _enforceProjectedMintCollateralization(netAmount, qeuroToMint, eurUsdPrice);
+        _enforceProjectedCollateralizationFloor(netAmount, qeuroToMint, eurUsdPrice, minCollateralizationRatioForMinting);
 
         MintCommitPayload memory payload;
         payload.payer = payer;
@@ -943,28 +943,6 @@ contract QuantillonVault is
         netAmount = usdcAmount - fee;
         qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
-    }
-
-    /**
-     * @notice Ensures projected collateralization remains above mint threshold after this mint.
-     * @dev Simulates post-mint collateral/supply state and compares to configured minimum ratio.
-     * @param netAmount Net USDC that will be added as collateral.
-     * @param qeuroToMint QEURO amount that will be minted.
-     * @param eurUsdPrice Validated EUR/USD price used for backing requirement conversion.
-     * @custom:security Prevents minting that would violate collateralization policy.
-     * @custom:validation Reverts if projected backing requirement is zero or projected ratio is too low.
-     * @custom:state-changes No state changes.
-     * @custom:events No events emitted.
-     * @custom:errors Reverts with `InvalidAmount` or `InsufficientCollateralization`.
-     * @custom:reentrancy Not applicable for view helper.
-     * @custom:access Internal helper.
-     * @custom:oracle Uses supplied validated oracle input.
-     */
-    function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuroToMint, uint256 eurUsdPrice)
-        internal
-        view
-    {
-        _enforceProjectedCollateralizationFloor(netAmount, qeuroToMint, eurUsdPrice, minCollateralizationRatioForMinting);
     }
 
     /**
@@ -2762,12 +2740,11 @@ contract QuantillonVault is
         address token,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Audit SC3-3: recover only stray tokens, never accounted collateral. Without
-        // this, DEFAULT_ADMIN could instantly move the vault's USDC backing (or QEURO)
-        // to treasury, bypassing the 12h upgrade timelock the trust model relies on.
-        if (token == address(qeuro)) revert CommonErrorLibrary.CannotRecoverOwnToken();
+        // Audit SC3-3: cap USDC recovery to the excess over tracked collateral, so
+        // DEFAULT_ADMIN can never move the vault's USDC backing to treasury (bypassing
+        // the 12h upgrade timelock). QEURO is not an accounted vault balance, so stray
+        // QEURO remains freely recoverable via the shared library below.
         if (token == address(usdc)) {
-            // Only the excess over tracked collateral is recoverable.
             uint256 recoverable = usdc.balanceOf(address(this)) - totalUsdcHeld;
             if (amount > recoverable) revert CommonErrorLibrary.InsufficientBalance();
         }

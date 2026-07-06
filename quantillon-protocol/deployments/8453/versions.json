@@ -1,45 +1,10 @@
 {
-  "QEUROToken": {
-    "deployedAt": 1783067181,
-    "gitCommit": "cbccfda",
-    "implementation": "0x5E0be969Bf20Ed21D87AAAC7d1C5b43CCf62695B",
-    "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
-    "version": "1.0.1"
-  },
-  "QuantillonVault": {
-    "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "implementation": "0xa9b29Ad1EE6efF392fBC44F91808273aE4B37Bd8",
-    "version": "1.1.1",
-    "gitCommit": "cbccfda",
-    "deployedAt": 1783068964
-  },
-  "QTIToken": {
-    "deployedAt": 1781721113,
-    "gitCommit": "84c4db1",
-    "implementation": "0xf401C020F0EDa96D499e08CE2140CE010Bdbf0aB",
-    "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
-    "version": "1.0.0"
-  },
-  "UserPool": {
-    "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "implementation": "0xbc3216351789ed71384324d1d9dfd2ee1cec048b",
-    "version": "1.0.0",
-    "gitCommit": "84c4db1",
-    "deployedAt": 1781771857
-  },
-  "HedgerPool": {
-    "deployedAt": 1783067133,
-    "gitCommit": "cbccfda",
-    "implementation": "0x261B353cdaD72A489432feaDE0aF9Aa75a3dc3fE",
-    "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
+  "ChainlinkOracle": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x6a944b0cf9a9ea2da0bf078026f8b6b67b125caa",
+    "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
     "version": "1.0.2"
-  },
-  "stQEUROFactory": {
-    "deployedAt": 1781721189,
-    "gitCommit": "84c4db1",
-    "implementation": "0xa1ce6e6aa494235d3F26Ea543590d88aD7E2E3E6",
-    "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
-    "version": "1.0.0"
   },
   "FeeCollector": {
     "deployedAt": 1781721479,
@@ -48,41 +13,12 @@
     "proxy": "0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD",
     "version": "1.0.0"
   },
-  "YieldShift": {
-    "deployedAt": 1781721173,
-    "gitCommit": "84c4db1",
-    "implementation": "0x068AD436AeB54e62e741aC70b9F49F66753d7b0E",
-    "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
-    "version": "1.0.0"
-  },
-  "ChainlinkOracle": {
-    "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
-    "implementation": "0xac890f5cb8f908e8483fe67cd3d93cef6f3be279",
-    "version": "1.0.0",
-    "gitCommit": "84c4db1",
-    "deployedAt": 1781771857
-  },
-  "StorkOracle": {
-    "proxy": "0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC",
-    "implementation": "0x138ee16fe71ad2172eda44fa44532a75e56937fb",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808,
-    "note": "Pre-versioning deploy: on-chain impl (0x138e...37fb, verified vs the ERC1967 slot) has no version(). Parked since the HyperliquidEurUsdOracle took the router slot; version() ships if it is ever upgraded."
-  },
-  "OracleRouter": {
-    "deployedAt": 1783239201,
-    "gitCommit": "1bf5597",
-    "implementation": "0xE8655E0fae165980b1aaDCBbe41Bd6Bb0a0D7Da8",
-    "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
-    "version": "1.1.0"
-  },
-  "SlippageStorage": {
-    "deployedAt": 1781721489,
-    "gitCommit": "84c4db1",
-    "implementation": "0xD888effF50ef03B777EBE37F36dDbb60211D0f5c",
-    "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
-    "version": "1.0.0"
+  "HedgerPool": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x32a636270b566a40dc02498d331ebb1560e8cb3d",
+    "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
+    "version": "1.0.4"
   },
   "HyperliquidEurUsdOracle": {
     "deployedAt": 1783062491,
@@ -91,12 +27,83 @@
     "proxy": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
     "version": "1.0.2"
   },
-  "TimeProvider": {
-    "proxy": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
-    "implementation": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
+  "OracleRouter": {
+    "deployedAt": 1783239201,
+    "gitCommit": "1bf5597",
+    "implementation": "0xE8655E0fae165980b1aaDCBbe41Bd6Bb0a0D7Da8",
+    "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
+    "version": "1.1.0"
+  },
+  "QEUROToken": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x8b2d1e6c30cc19de920135004e7e698ec39d1dc9",
+    "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
+    "version": "1.0.5"
+  },
+  "QTIToken": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0xcaa06f891adb999ca5efafc55268ac7b91786597",
+    "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
+    "version": "1.0.2"
+  },
+  "QuantillonVault": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x5f836c7ab938B77A56BF0Fb3400BD60d735625A5",
+    "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
+    "version": "1.1.7"
+  },
+  "SlippageStorage": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x7659a63c6fd500a1323b3acf8220c960234977b1",
+    "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
+    "version": "1.0.1"
+  },
+  "StorkOracle": {
     "deployedAt": 1781716808,
-    "note": "Deployed directly, NOT behind a proxy (ERC1967 impl slot is empty; proxy==implementation here means the single direct deployment). Not upgradeable in place; no on-chain version()."
+    "gitCommit": "f1c55ad",
+    "implementation": "0x138ee16fe71ad2172eda44fa44532a75e56937fb",
+    "note": "Pre-versioning deploy: on-chain impl (0x138e...37fb, verified vs the ERC1967 slot) has no version(). Parked since the HyperliquidEurUsdOracle took the router slot; version() ships if it is ever upgraded.",
+    "proxy": "0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC",
+    "version": "0.0.0-unversioned"
+  },
+  "TimeProvider": {
+    "deployedAt": 1781716808,
+    "gitCommit": "f1c55ad",
+    "implementation": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
+    "note": "Deployed directly, NOT behind a proxy (ERC1967 impl slot is empty; proxy==implementation here means the single direct deployment). Not upgradeable in place; no on-chain version().",
+    "proxy": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
+    "version": "0.0.0-unversioned"
+  },
+  "UserPool": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0xc9d59709d8ccd436fe9ce1aec116c8ba905f8df6",
+    "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
+    "version": "1.0.2"
+  },
+  "YieldShift": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x9e0f97459cb49af041a270f39c8aa78f776b11c7",
+    "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
+    "version": "1.0.3"
+  },
+  "stQEUROFactory": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x0e5629093c5644dfdeec6b2cd19b8e769fef1900",
+    "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
+    "version": "1.0.1"
+  },
+  "stQEUROToken": {
+    "deployedAt": 1783321653,
+    "gitCommit": "f4dad73",
+    "implementation": "0x74c0f282294296361999f4a55c2a7b870cafa140",
+    "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
+    "version": "1.0.1"
   }
 }

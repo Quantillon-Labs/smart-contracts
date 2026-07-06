@@ -115,7 +115,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -322,7 +322,7 @@ contract UserPool is
 
     /// @notice Pending USDC withdrawals for users whose transfers failed (e.g. USDC blacklist)
     mapping(address => uint256) public pendingUsdcWithdrawals;
-    // BLOCKS_PER_DAY removed (audit SC4-7): dead constant, never used in arithmetic.
+    // BLOCKS_PER_DAY removed: dead constant, never used in arithmetic.
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
     /// @notice Maximum batch size for deposit operations to prevent DoS
@@ -1416,8 +1416,7 @@ contract UserPool is
     ) {
         UserInfo storage userdata = userInfo[user];
         
-        // The staking-reward claim path was removed (audit F-6: it minted unbacked
-        // QEURO; L-2/L-3: the index was never funded and this view diverged from it).
+        // The staking-reward claim path was removed (user yield accrues via stQEURO).
         // No rewards are claimable, so report 0 rather than a phantom accrual.
         uint256 calculatedPendingRewards = 0;
         

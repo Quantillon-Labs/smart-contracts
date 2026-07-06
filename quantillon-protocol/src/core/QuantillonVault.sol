@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.8";
+        return "1.1.9";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -268,7 +268,7 @@ contract QuantillonVault is
     /// @notice Maximum value allowed for hedgerRewardFeeSplit
     uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18;
 
-    // INFO-3: TAKES_FEES_DURING_LIQUIDATION was a named constant for the immutable value `true`.
+    // TAKES_FEES_DURING_LIQUIDATION was a named constant for the immutable value `true`.
     //         Replaced with inline logic throughout to remove the misleading implication
     //         that this value is configurable by governance.
 
@@ -836,7 +836,7 @@ contract QuantillonVault is
         if (targetVaultId == 0) return;
         if (!stakingVaultActiveById[targetVaultId]) revert CommonErrorLibrary.InvalidVault();
         if (address(stakingVaultAdapterById[targetVaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        // F-2: principal may only be auto-deployed to a vault in the redemption set, so counted
+        // Principal may only be auto-deployed to a vault in the redemption set, so counted
         // collateral, withdrawal capacity, and deployed principal stay in lockstep.
         _requireInRedemptionSet(targetVaultId);
     }
@@ -858,7 +858,7 @@ contract QuantillonVault is
     function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid) {
         (eurUsdPrice, isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        // Audit SC1-3: the USDC/USD price is not used (mint/redeem value USDC at $1),
+        // The USDC/USD price is not used (mint/redeem value USDC at $1),
         // so the previous fetch+validate only added a revert surface that could block
         // mint/redeem when the unused USDC feed went stale. Removed.
     }
@@ -1303,7 +1303,7 @@ contract QuantillonVault is
         // Calculate fees and net payout
         (uint256 fee, uint256 netUsdcPayout) = _calculateLiquidationFees(usdcPayout);
 
-        // LOW-7: validate slippage against net (post-fee) amount so minUsdcOut applies to what user actually receives
+        // Validate slippage against net (post-fee) amount so minUsdcOut applies to what user actually receives
         if (netUsdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
 
         // Determine if premium or haircut
@@ -1407,7 +1407,7 @@ contract QuantillonVault is
      * @custom:oracle None
      */
     function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (uint256 fee, uint256 netPayout) {
-        // INFO-3: fees are always taken during liquidation (TAKES_FEES_DURING_LIQUIDATION was always true)
+        // Fees are always taken during liquidation (TAKES_FEES_DURING_LIQUIDATION was always true)
         fee = usdcPayout.mulDiv(redemptionFee, 1e18);
         netPayout = usdcPayout - fee;
     }
@@ -1431,7 +1431,7 @@ contract QuantillonVault is
         if (address(hedgerPool) == address(0)) return;
         uint256 hedgerCollateral = hedgerPool.totalMargin();
         if (hedgerCollateral == 0) return;
-        // LOW-3 fix: liquidation accounting must be atomic when hedger collateral exists.
+        // Liquidation accounting must be atomic when hedger collateral exists.
         hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply);
     }
 
@@ -2002,7 +2002,7 @@ contract QuantillonVault is
         if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
         IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
         if (address(adapter) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        // F-2: only deploy principal into a vault that is counted as collateral and reachable by
+        // Only deploy principal into a vault that is counted as collateral and reachable by
         // the withdrawal path (in redemption priority, or the default when priority is empty).
         _requireInRedemptionSet(vaultId);
 
@@ -2570,9 +2570,9 @@ contract QuantillonVault is
      * @custom:oracle Uses supplied oracle price.
      */
     function _canMintAtPrice(uint256 eurUsdPrice) internal view returns (bool allowed) {
-        // LOW-5: minting requires initialized cached oracle price.
+        // Minting requires initialized cached oracle price.
         if (lastValidEurUsdPrice == 0) return false;
-        // INFO-2 safeguard: require configured and active single hedger before minting.
+        // Safeguard: require configured and active single hedger before minting.
         if (address(hedgerPool) == address(0) || !hedgerPool.hasActiveHedger()) return false;
 
         uint256 currentQeuroSupply = qeuro.totalSupply();
@@ -2740,7 +2740,7 @@ contract QuantillonVault is
         address token,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Audit SC3-3: cap USDC recovery to the excess over tracked collateral, so
+        // Cap USDC recovery to the excess over tracked collateral, so
         // DEFAULT_ADMIN can never move the vault's USDC backing to treasury (bypassing
         // the 12h upgrade timelock). QEURO is not an accounted vault balance, so stray
         // QEURO remains freely recoverable via the shared library below.

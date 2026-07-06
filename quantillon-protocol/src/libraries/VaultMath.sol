@@ -31,7 +31,7 @@ library VaultMath {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     /// @notice Precision for percentage calculations (10000 = 100%)
@@ -61,7 +61,7 @@ library VaultMath {
      */
     function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
         if (c == 0) revert CommonErrorLibrary.DivisionByZero();
-        // INFO-6: Solidity 0.8.x checked arithmetic reverts on overflow automatically;
+        // Solidity 0.8.x checked arithmetic reverts on overflow automatically;
         // the manual overflow guard below was unreachable dead code.
         result = (a * b) / c;
     }

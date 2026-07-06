@@ -1,5 +1,5 @@
 # PriceValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/libraries/PriceValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/libraries/PriceValidationLibrary.sol)
 
 **Title:**
 PriceValidationLibrary
@@ -24,7 +24,7 @@ Library version (semver); see deployments/{chainId}/versions.json for provenance
 
 
 ```solidity
-string internal constant VERSION = "1.0.0"
+string internal constant VERSION = "1.0.1"
 ```
 
 

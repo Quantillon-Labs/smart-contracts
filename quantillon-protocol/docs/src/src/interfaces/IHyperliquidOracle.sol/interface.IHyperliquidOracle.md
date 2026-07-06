@@ -1,5 +1,5 @@
 # IHyperliquidOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/interfaces/IHyperliquidOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/interfaces/IHyperliquidOracle.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)

@@ -36,7 +36,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     
     // ============ Constants ============
@@ -239,10 +239,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
             implementation: newImplementation,
-            proposingProxy: msg.sender,              // HIGH-1: caller is the proxy (via SecureUpgradeable.proposeUpgrade)
+            proposingProxy: msg.sender,              // Caller is the proxy (via SecureUpgradeable.proposeUpgrade)
             proposedAt: proposedAt,
             executableAt: executableAt,
-            expiryAt: proposedAt + MAX_PROPOSAL_AGE, // LOW-6: proposal expires after 30 days
+            expiryAt: proposedAt + MAX_PROPOSAL_AGE, // Proposal expires after 30 days
             description: description,
             isEmergency: false,
             proposer: msg.sender
@@ -316,10 +316,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         CommonValidationLibrary.validateCondition(upgrade.implementation != address(0), "pending");
         CommonValidationLibrary.validateCondition(TIME_PROVIDER.currentTime() >= upgrade.executableAt, "timelock");
         CommonValidationLibrary.validateMinAmount(upgradeApprovalCount[implementation], MIN_MULTISIG_APPROVALS);
-        // LOW-6: Reject stale proposals
+        // Reject stale proposals
         if (TIME_PROVIDER.currentTime() > upgrade.expiryAt) revert CommonErrorLibrary.NotActive();
 
-        // Capture proxy address before clearing state (HIGH-1)
+        // Capture proxy address before clearing state
         address proxy = upgrade.proposingProxy;
 
         // Clear the pending upgrade
@@ -330,7 +330,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
 
         emit UpgradeExecuted(implementation, msg.sender, TIME_PROVIDER.currentTime());
 
-        // HIGH-1: Actually perform the proxy upgrade — this was missing, causing upgrades to silently no-op.
+        // Perform the actual proxy upgrade (executing a proposal must not be bookkeeping-only).
         // SecureUpgradeable.executeUpgrade() checks msg.sender == address(timelock), which passes here
         // because this call originates from the TimelockUpgradeable contract itself.
         // Only call if proposingProxy is a contract (guards against EOA proposers in unit tests).

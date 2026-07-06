@@ -75,7 +75,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.3";
+        return "1.0.4";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -1078,7 +1078,7 @@ contract ChainlinkOracle is
                 return (lastValidEurUsdPrice, false);
             }
             // seqAnswer == 0 means sequencer is up; non-zero means down.
-            // Audit SC3-6: guard a future-dated seqStartedAt so the subtraction can't
+            // Guard a future-dated seqStartedAt so the subtraction can't
             // underflow-revert a fail-safe read (a malfunctioning feed => treat as unsafe).
             uint256 nowT = TIME_PROVIDER.currentTime();
             if (seqAnswer != 0 || nowT < seqStartedAt || nowT - seqStartedAt < sequencerGracePeriod) {

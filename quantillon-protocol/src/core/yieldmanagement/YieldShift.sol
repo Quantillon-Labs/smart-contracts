@@ -124,7 +124,7 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.0.5";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -1045,7 +1045,7 @@ contract YieldShift is
     function updateYieldAllocation(address user, uint256 amount, bool isUser) external {
         AccessControlLibrary.onlyYieldManager(this);
         if (isUser) {
-            // F-8: the user yield-pool path is vestigial and unsupported. `userYieldPool` is
+            // The user yield-pool path is vestigial and unsupported. `userYieldPool` is
             // never funded (user yield accrues via creditVaultYield -> stQEURO) and
             // claimUserYield() was removed, so any `userPendingYield` recorded here would be
             // unclaimable. Reject isUser=true rather than write dead state.
@@ -1348,7 +1348,7 @@ contract YieldShift is
         bool isUserPool,
         uint256 writePos
     ) internal {
-        // Audit SC4-5: O(1) ring buffer. Grow the array until full, then overwrite the
+        // O(1) ring buffer. Grow the array until full, then overwrite the
         // oldest slot at `writePos` (= count % MAX) instead of shifting every element.
         PoolSnapshot memory snap = PoolSnapshot({
             // forge-lint: disable-next-line(unsafe-typecast)

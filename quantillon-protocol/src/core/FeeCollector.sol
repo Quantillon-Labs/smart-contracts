@@ -59,7 +59,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -170,7 +170,7 @@ contract FeeCollector is
      * @custom:oracle None
      */
     function _onlyFeeSource() internal view {
-        // MED-3: check FEE_SOURCE_ROLE instead of TREASURY_ROLE so fee depositors
+        // Check FEE_SOURCE_ROLE instead of TREASURY_ROLE so fee depositors
         // cannot also call distributeFees() (which requires TREASURY_ROLE separately)
         if (!hasRole(GOVERNANCE_ROLE, msg.sender) &&
             !hasRole(FEE_SOURCE_ROLE, msg.sender) &&
@@ -231,7 +231,7 @@ contract FeeCollector is
         CommonValidationLibrary.validateNonZeroAddress(_devFund, "devFund");
         CommonValidationLibrary.validateNonZeroAddress(_communityFund, "communityFund");
         
-        // MED-4: Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
+        // Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
         __AccessControl_init();
         __ReentrancyGuard_init();
         __Pausable_init();
@@ -586,7 +586,7 @@ contract FeeCollector is
         CommonValidationLibrary.validateNonZeroAddress(_devFund, "devFund");
         CommonValidationLibrary.validateNonZeroAddress(_communityFund, "communityFund");
         
-        // MED-4: Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
+        // Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
 
         // Remove old addresses from whitelist
         authorizedETHRecipients[treasury] = false;
@@ -624,7 +624,7 @@ contract FeeCollector is
      */
     function authorizeFeeSource(address feeSource) external onlyRole(GOVERNANCE_ROLE) {
         if (feeSource == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        // MED-3: grant FEE_SOURCE_ROLE (depositor right) not TREASURY_ROLE (distributor right)
+        // Grant FEE_SOURCE_ROLE (depositor right) not TREASURY_ROLE (distributor right)
         _grantRole(FEE_SOURCE_ROLE, feeSource);
     }
     
@@ -643,7 +643,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function revokeFeeSource(address feeSource) external onlyRole(GOVERNANCE_ROLE) {
-        // MED-3: revoke FEE_SOURCE_ROLE, not TREASURY_ROLE
+        // Revoke FEE_SOURCE_ROLE, not TREASURY_ROLE
         _revokeRole(FEE_SOURCE_ROLE, feeSource);
     }
 
@@ -803,7 +803,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function _isAuthorizedFeeSource(address feeSource) internal view returns (bool) {
-        // MED-3: use FEE_SOURCE_ROLE (depositor right), not TREASURY_ROLE (distributor right)
+        // Use FEE_SOURCE_ROLE (depositor right), not TREASURY_ROLE (distributor right)
         return hasRole(FEE_SOURCE_ROLE, feeSource);
     }
     

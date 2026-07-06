@@ -26,7 +26,7 @@ library YieldShiftCalculationLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
 
     using VaultMath for uint256;
@@ -57,9 +57,8 @@ library YieldShiftCalculationLibrary {
         // `optimalShift` is the USER share of yield (hedgers get the remainder), and
         // `poolRatio = userPool / hedgerPool` (higher = user pool bigger). The shift
         // must incentivize the DEFICIENT pool, so a larger user pool LOWERS the user
-        // share (more to hedgers) and vice-versa. Audit SC2-2: both the edge cases and
-        // the deviation branches below were inverted (they routed yield to the already-
-        // oversized pool); corrected here.
+        // share (more to hedgers) and vice-versa — the edge cases and deviation
+        // branches below must all route yield toward the deficient pool.
         if (poolRatio == type(uint256).max) {
             // Edge case: hedger pool is zero (maximally under-hedged) -> give hedgers
             // the most -> user share at the floor.

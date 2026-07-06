@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.5";
+        return "1.0.6";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -364,7 +364,7 @@ contract HedgerPool is
         coreParams.eurInterestRate = 350;
         coreParams.usdInterestRate = 450;
 
-        // MED-2 default: route 20% of protocol fees into the reward reserve.
+        // Default: route 20% of protocol fees into the reward reserve.
         rewardFeeSplit = 2e17;
     }
 
@@ -753,7 +753,7 @@ contract HedgerPool is
         totalMargin += netAmount;
         totalExposure += deltaPositionSize;
 
-        // MED-6: Pull full amount (including fee) from hedger into this contract first,
+        // Pull full amount (including fee) from hedger into this contract first,
         //        then route netAmount to vault and fee to FeeCollector to prevent CR inflation.
         usdc.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -1052,7 +1052,7 @@ contract HedgerPool is
         nonReentrant
         returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards)
     {
-        // CRIT-1: Only the authorized single hedger may claim rewards
+        // Only the authorized single hedger may claim rewards
         if (msg.sender != singleHedger) revert CommonErrorLibrary.NotAuthorized();
         address hedger = msg.sender;
         HedgerRewardState storage rewardState = hedgerRewards[hedger];
@@ -1181,7 +1181,7 @@ contract HedgerPool is
         uint256 amount = pendingRewardWithdrawals[msg.sender];
         if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
 
-        // F-5: pay out only what the reward reserve can currently cover, leaving any unfunded
+        // Pay out only what the reward reserve can currently cover, leaving any unfunded
         // remainder escrowed for a later withdrawal once the reserve is topped up. This prevents an
         // over-accrued escrow (interest accrues on exposure regardless of reserve balance) from
         // bricking withdrawals entirely — the funded portion is always claimable instead of the
@@ -1397,7 +1397,7 @@ contract HedgerPool is
             cachedPositionSize
         );
 
-        // F-6: surface whether this emergency closure removes backing from an outstanding supply.
+        // Surface whether this emergency closure removes backing from an outstanding supply.
         uint256 outstandingQeuro = vault.totalMinted();
         emit EmergencyPositionClosed(hedger, positionId, cachedMargin, outstandingQeuro);
 

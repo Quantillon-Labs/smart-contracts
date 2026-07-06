@@ -91,7 +91,7 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.5";
+        return "1.0.6";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -151,7 +151,7 @@ contract QEUROToken is
     /// @dev Prevents out-of-gas attacks through large blacklist/whitelist arrays
     uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
 
-    // MINT_FEE_RATE removed (audit SC4-7): dead constant — the mint fee is charged
+    // MINT_FEE_RATE removed: dead constant — the mint fee is charged
     // by QuantillonVault, not by the token. Never read anywhere.
 
     // =============================================================================
@@ -531,8 +531,8 @@ contract QEUROToken is
         if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
         if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
-        // INFO-1: totalFeeAmount was accumulated here but never used; fees are collected at the
-        // vault level (QuantillonVault) before this function is called. Removed dead code.
+        // No fee accounting happens here: fees are collected at the vault level
+        // (QuantillonVault) before this function is called.
         uint256 totalAmount = 0;
 
         // Pre-validate inputs and compliance per recipient
@@ -606,7 +606,7 @@ contract QEUROToken is
         // Parameter validation
         TokenLibrary.validateBurn(from, amount, balanceOf(from));
 
-        // Audit SC1-4: no burn rate limit. Burns are vault-driven redemptions/
+        // No burn rate limit. Burns are vault-driven redemptions/
         // liquidations of the holder's own QEURO and must not be throttled during a
         // run; the mint rate limiter remains the supply-abuse cap.
 
@@ -658,7 +658,7 @@ contract QEUROToken is
             totalAmount = totalAmount + amount;
         }
         
-        // Audit SC1-4: no burn rate limit on vault-driven redemptions/liquidations.
+        // No burn rate limit on vault-driven redemptions/liquidations.
 
         address burner = msg.sender;
         
@@ -714,7 +714,7 @@ contract QEUROToken is
         }
     }
 
-    // _checkAndUpdateBurnRateLimit removed (audit SC1-4): burns are no longer rate-limited.
+    // _checkAndUpdateBurnRateLimit removed: burns are no longer rate-limited.
 
     /**
      * @notice Updates rate limits for mint and burn operations

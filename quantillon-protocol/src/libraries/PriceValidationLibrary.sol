@@ -15,7 +15,7 @@ pragma solidity 0.8.24;
  */
 library PriceValidationLibrary {
     /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
-    string internal constant VERSION = "1.0.0";
+    string internal constant VERSION = "1.0.1";
 
     /**
      * @notice Checks if price deviation exceeds maximum allowed
@@ -44,7 +44,7 @@ library PriceValidationLibrary {
         uint256 minBlocksBetweenUpdates
     ) internal view returns (bool shouldRevert, uint256 deviationBps) {
         // Only check deviation if enough blocks have passed since last update
-        // LOW-2: use >= so deviation check activates exactly at the boundary block
+        // Use >= so deviation check activates exactly at the boundary block
         if (lastValidPrice > 0 && block.number >= lastUpdateBlock + minBlocksBetweenUpdates) {
             uint256 priceDiff = currentPrice > lastValidPrice ? 
                 currentPrice - lastValidPrice : lastValidPrice - currentPrice;

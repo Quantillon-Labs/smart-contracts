@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
@@ -688,34 +688,6 @@ function setSingleHedger(address hedger) external;
 |`hedger`|`address`|Address proposed as single hedger.|
 
 
-### applySingleHedgerRotation
-
-Applies a previously proposed single‑hedger rotation.
-
-Finalizes the transition to `pendingSingleHedger` once any activation delay has elapsed.
-
-**Notes:**
-- security: Restricted to governance; relies on internal timing/quorum checks.
-
-- validation: Reverts if there is no pending rotation or delay not met.
-
-- state-changes: Updates `singleHedger` and clears pending rotation state.
-
-- events: Emits `SingleHedgerRotationApplied`.
-
-- errors: Reverts with protocol‑specific rotation errors.
-
-- reentrancy: Not applicable – configuration only.
-
-- access: Restricted to governance roles.
-
-- oracle: No oracle dependency.
-
-
-```solidity
-function applySingleHedgerRotation() external;
-```
-
 ### fundRewardReserve
 
 Funds the reward reserve used to pay hedger rewards.
@@ -1317,74 +1289,6 @@ function MAX_REWARD_FEE_SPLIT() external view returns (uint256 maxSplit);
 |Name|Type|Description|
 |----|----|-----------|
 |`maxSplit`|`uint256`|Maximum allowed split constant.|
-
-
-### pendingSingleHedger
-
-Returns the pending single hedger address, if any.
-
-When non‑zero, this address will become `singleHedger` once rotation is applied.
-
-**Notes:**
-- security: View‑only; no access restriction.
-
-- validation: None.
-
-- state-changes: None.
-
-- events: None.
-
-- errors: None.
-
-- reentrancy: Not applicable.
-
-- access: Public.
-
-- oracle: No oracle dependency.
-
-
-```solidity
-function pendingSingleHedger() external view returns (address pending);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`pending`|`address`|Address that will become the single hedger after rotation is applied.|
-
-
-### singleHedgerPendingAt
-
-Returns the timestamp at which the pending single hedger can be applied.
-
-After this timestamp, `applySingleHedgerRotation` may finalize the rotation.
-
-**Notes:**
-- security: View‑only; no access restriction.
-
-- validation: None.
-
-- state-changes: None.
-
-- events: None.
-
-- errors: None.
-
-- reentrancy: Not applicable.
-
-- access: Public.
-
-- oracle: No oracle dependency.
-
-
-```solidity
-function singleHedgerPendingAt() external view returns (uint256 pendingAt);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`pendingAt`|`uint256`|Unix timestamp when rotation becomes executable.|
 
 
 ### hedgerLastRewardBlock

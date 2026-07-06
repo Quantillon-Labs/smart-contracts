@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -266,21 +266,20 @@ uint256 public rewardFeeSplit
 ```
 
 
-### pendingSingleHedger
-Pending single-hedger address awaiting delayed activation
+### __deprecated_pendingSingleHedger
+Vestigial (audit SC4-7): retained as private to preserve the live proxy
+storage layout; the public getters were removed (dead — never set/read).
 
 
 ```solidity
-address public pendingSingleHedger
+address private __deprecated_pendingSingleHedger
 ```
 
 
-### singleHedgerPendingAt
-Earliest timestamp at which pendingSingleHedger can be applied (0 = none pending)
-
+### __deprecated_singleHedgerPendingAt
 
 ```solidity
-uint256 public singleHedgerPendingAt
+uint256 private __deprecated_singleHedgerPendingAt
 ```
 
 
@@ -1539,38 +1538,6 @@ function setSingleHedger(address hedger) external;
 |----|----|-----------|
 |`hedger`|`address`|Address of the single hedger|
 
-
-### applySingleHedgerRotation
-
-Deprecated relic of the abandoned multi-hedger rotation; always reverts.
-
-The protocol is single-hedger-only. The former delayed rotation could overwrite the
-live backing position (fixed positionId 1) and corrupt aggregate accounting, so it is
-disabled. Hedger reassignment now happens synchronously via `setSingleHedger`, only
-while position 1 is inactive. Retained (reverting) for ABI compatibility; the
-`pendingSingleHedger` / `singleHedgerPendingAt` storage fields are now vestigial.
-
-**Notes:**
-- security: No state changes; unconditional revert.
-
-- validation: None.
-
-- state-changes: None.
-
-- events: None.
-
-- errors: Always reverts with `NotActive`.
-
-- reentrancy: Not applicable - no external calls.
-
-- access: Open (reverts for all callers).
-
-- oracle: No oracle interaction.
-
-
-```solidity
-function applySingleHedgerRotation() external pure;
-```
 
 ### fundRewardReserve
 

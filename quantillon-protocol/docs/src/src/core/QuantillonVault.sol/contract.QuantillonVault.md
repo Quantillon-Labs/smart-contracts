@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -186,15 +186,6 @@ MED-1: Minimum delay before a proposed dev-mode change takes effect
 
 ```solidity
 uint256 private constant DEV_MODE_DELAY = 48 hours
-```
-
-
-### DEV_MODE_DELAY_BLOCKS
-MED-1: Canonical block delay for dev-mode proposals (12s block target)
-
-
-```solidity
-uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
 ```
 
 
@@ -514,7 +505,9 @@ bool public pendingDevMode
 
 
 ### devModePendingAt
-MED-1: Block at which pendingDevMode may be applied (0 = no pending proposal)
+MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+
+Audit SC4-1: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
 
 
 ```solidity
@@ -1153,42 +1146,50 @@ function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 mi
 |`qeuroToMint`|`uint256`|QEURO output to mint.|
 
 
-### _enforceProjectedMintCollateralization
+### _enforceProjectedCollateralizationFloor
 
-Ensures projected collateralization remains above mint threshold after this mint.
+Projected-CR guard against an arbitrary floor (18-dec ratio).
 
-Simulates post-mint collateral/supply state and compares to configured minimum ratio.
+Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
+path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
+only pull CR toward 100% and can never make the protocol under-backed. Gating
+it on the mint floor made yield undistributable whenever CR sat at the floor
+(the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
 
 **Notes:**
-- security: Prevents minting that would violate collateralization policy.
+- security: Reverts the caller if the projected CR would fall below minRatio
 
-- validation: Reverts if projected backing requirement is zero or projected ratio is too low.
+- validation: Reverts on zero projected backing requirement
 
-- state-changes: No state changes.
+- state-changes: None - view function
 
-- events: No events emitted.
+- events: None
 
-- errors: Reverts with `InvalidAmount` or `InsufficientCollateralization`.
+- errors: InsufficientCollateralization / InvalidAmount
 
-- reentrancy: Not applicable for view helper.
+- reentrancy: Not applicable - view function
 
-- access: Internal helper.
+- access: Internal
 
-- oracle: Uses supplied validated oracle input.
+- oracle: Consumes the supplied validated price; no direct oracle read
 
 
 ```solidity
-function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuroToMint, uint256 eurUsdPrice)
-    internal
-    view;
+function _enforceProjectedCollateralizationFloor(
+    uint256 netAmount,
+    uint256 qeuroToMint,
+    uint256 eurUsdPrice,
+    uint256 minRatio
+) internal view;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`netAmount`|`uint256`|Net USDC that will be added as collateral.|
-|`qeuroToMint`|`uint256`|QEURO amount that will be minted.|
-|`eurUsdPrice`|`uint256`|Validated EUR/USD price used for backing requirement conversion.|
+|`netAmount`|`uint256`|Net USDC added by the operation (6 decimals)|
+|`qeuroToMint`|`uint256`|QEURO to be minted by the operation (18 decimals)|
+|`eurUsdPrice`|`uint256`|Live EUR/USD price used to value QEURO debt (18 decimals)|
+|`minRatio`|`uint256`|Minimum acceptable projected CR (18-dec ratio, e.g. 105e18)|
 
 
 ### _mintQEUROCommit
@@ -3791,17 +3792,6 @@ event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed 
 |----|----|-----------|
 |`oldRecipient`|`address`|Previous recipient address|
 |`newRecipient`|`address`|New recipient address|
-
-### HedgerSyncFailed
-Deprecated: retained for ABI compatibility with existing off-chain consumers
-
-No longer emitted. Redeem hedger-sync is atomic (failures
-revert rather than being swallowed), so this event can never fire.
-
-
-```solidity
-event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
-```
 
 ### UsdcWithdrawnFromExternalVault
 

@@ -1,5 +1,5 @@
 # SlippageStorage
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/oracle/SlippageStorage.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/oracle/SlippageStorage.sol)
 
 **Inherits:**
 [ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -157,6 +157,33 @@ Bitmask of enabled sources: bit N = source N enabled. 0x03 = both Lighter + Hype
 
 ```solidity
 uint8 public override enabledSources
+```
+
+
+### minMidPrice
+Absolute lower bound for an accepted midPrice (18 dec). 0 with maxMidPrice==0 = band disabled.
+
+
+```solidity
+uint128 public minMidPrice
+```
+
+
+### maxMidPrice
+Absolute upper bound for an accepted midPrice (18 dec). 0 = band check disabled.
+
+
+```solidity
+uint128 public maxMidPrice
+```
+
+
+### maxMidDeviationBps
+Max per-write deviation (bps) vs the source's last stored mid. 0 = deviation check disabled.
+
+
+```solidity
+uint16 public maxMidDeviationBps
 ```
 
 
@@ -498,6 +525,87 @@ function setDeviationThreshold(uint16 newThreshold) external override onlyRole(M
 |Name|Type|Description|
 |----|----|-----------|
 |`newThreshold`|`uint16`|New deviation threshold in bps (0..MAX_DEVIATION_THRESHOLD)|
+
+
+### setMidPriceGuards
+
+Configure the writer-side midPrice guards (audit SC3-1).
+
+Set band and per-write deviation for the published EUR/USD mid. Pass
+`maxMid=0` to disable the band and `devBps=0` to disable the deviation check.
+Must be called after an upgrade to activate the guards (they default off).
+
+**Notes:**
+- security: Restricted to MANAGER_ROLE
+
+- validation: Requires minMid <= maxMid when the band is enabled; devBps bounded
+
+- state-changes: Sets minMidPrice/maxMidPrice/maxMidDeviationBps
+
+- events: Emits ConfigUpdated for each changed field
+
+- errors: ConfigValueTooHigh / InvalidPrice on bad bounds
+
+- reentrancy: No external calls
+
+- access: MANAGER_ROLE
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function setMidPriceGuards(uint128 minMid, uint128 maxMid, uint16 devBps) external onlyRole(MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`minMid`|`uint128`|Absolute lower bound (18 dec)|
+|`maxMid`|`uint128`|Absolute upper bound (18 dec); 0 disables the band|
+|`devBps`|`uint16`|Max per-write deviation vs the source's last mid; 0 disables it|
+
+
+### _midWithinGuards
+
+Whether a candidate midPrice passes the configured writer-side guards.
+
+Returns true when guards are disabled (default). Enforces the absolute band
+(when maxMidPrice != 0) and the per-write deviation vs `lastMid` (when
+maxMidDeviationBps != 0 and a baseline exists).
+
+**Notes:**
+- security: Pure guard logic over configured bounds; no external calls
+
+- validation: Band and deviation checks are each opt-in via config
+
+- state-changes: None - view function
+
+- events: None
+
+- errors: None - returns a bool
+
+- reentrancy: Not applicable - view function
+
+- access: Internal
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _midWithinGuards(uint128 lastMid, uint128 newMid) internal view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`lastMid`|`uint128`|The source's currently stored mid (0 when no baseline yet)|
+|`newMid`|`uint128`|The candidate mid to validate (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if the candidate is acceptable (or guards are disabled)|
 
 
 ### pause

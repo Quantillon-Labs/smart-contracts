@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -172,7 +172,7 @@ live proxy's storage layout and ABI; do not wire or rely on it.
 
 
 ```solidity
-IMockAaveVault public mockAaveVault
+IMockAaveVault private mockAaveVault
 ```
 
 
@@ -355,6 +355,20 @@ mapping(address => uint256) public sourceToVaultId
 
 ```solidity
 bool public enforceSourceVaultBinding
+```
+
+
+### poolHistoryCount
+Monotonic count of pool snapshots recorded (audit SC4-5).
+
+Drives the O(1) ring-buffer write position for userPoolHistory/hedgerPoolHistory
+(both written in lockstep), replacing the O(MAX_HISTORY_LENGTH) shift-and-pop that
+created a permanent gas cliff on the permissionless updateYieldDistribution path.
+Appended at the end of storage (append-only).
+
+
+```solidity
+uint256 public poolHistoryCount
 ```
 
 
@@ -1685,6 +1699,41 @@ Records current pool metrics as a snapshot for historical tracking
 function _recordPoolSnapshot() internal;
 ```
 
+### _recordSnapshotPair
+
+Writes one snapshot to both pool histories in lockstep (audit SC4-5).
+
+Both arrays share `poolHistoryCount`, so the ring write position is computed once.
+
+**Notes:**
+- security: Bounded O(1) write; no external calls
+
+- validation: None - values are pre-computed by the caller
+
+- state-changes: Appends/overwrites both pool histories and increments poolHistoryCount
+
+- events: None
+
+- errors: None
+
+- reentrancy: Not protected - internal, no external calls
+
+- access: Internal
+
+- oracle: No oracle dependency
+
+
+```solidity
+function _recordSnapshotPair(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eligibleUserPoolSize`|`uint256`|Eligible user-pool size to record (holding-period filtered)|
+|`eligibleHedgerPoolSize`|`uint256`|Eligible hedger-pool size to record|
+
+
 ### _recordPoolSnapshotWithEligibleSizes
 
 Record pool snapshot using eligible pool sizes to prevent manipulation
@@ -1746,7 +1795,8 @@ Adds a pool snapshot to the history array with size management
 
 
 ```solidity
-function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal;
+function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool, uint256 writePos)
+    internal;
 ```
 **Parameters**
 
@@ -1755,6 +1805,7 @@ function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize,
 |`poolHistory`|`PoolSnapshot[]`|Array of pool snapshots to add to|
 |`poolSize`|`uint256`|Size of the pool to record|
 |`isUserPool`|`bool`|Whether this is for user pool or hedger pool|
+|`writePos`|`uint256`|Ring-buffer slot to overwrite once the array is full (= count % MAX)|
 
 
 ### recoverToken

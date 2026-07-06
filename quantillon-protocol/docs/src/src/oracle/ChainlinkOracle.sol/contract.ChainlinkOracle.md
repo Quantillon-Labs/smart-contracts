@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -101,17 +101,6 @@ Prevents timestamp manipulation attacks by miners
 
 ```solidity
 uint256 public constant MAX_TIMESTAMP_DRIFT = 900
-```
-
-
-### BLOCKS_PER_HOUR
-Blocks per hour for block-based staleness checks
-
-~12 second blocks on Ethereum, ~2 second blocks on L2s
-
-
-```solidity
-uint256 public constant BLOCKS_PER_HOUR = 300
 ```
 
 
@@ -1472,7 +1461,7 @@ function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE);
 Configure the L2 sequencer uptime feed for Base/Arbitrum deployments
 
 Set `feed` to address(0) on L1 to skip the sequencer check.
-On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892E69A2E01D7580D
+On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433
 
 **Notes:**
 - security: Restricted to ORACLE_MANAGER_ROLE; sequencer checks gate oracle usage on L2s

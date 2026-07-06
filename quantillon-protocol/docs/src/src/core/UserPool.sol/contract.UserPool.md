@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -106,13 +106,6 @@ Used to replace direct block.timestamp usage for testability and consistency
 
 ```solidity
 TimeProvider public immutable TIME_PROVIDER
-```
-
-
-### BLOCKS_PER_DAY
-
-```solidity
-uint256 public constant BLOCKS_PER_DAY = 7200
 ```
 
 
@@ -909,7 +902,6 @@ Updates user and pool state before external calls for reentrancy protection
 ```solidity
 function _updateUserAndPoolState(
     uint256[] calldata usdcAmounts,
-    uint256[] calldata minQeuroOuts,
     uint256 /* totalNetAmount */
 )
     internal;
@@ -919,7 +911,6 @@ function _updateUserAndPoolState(
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcAmounts`|`uint256[]`|Array of USDC amounts (6 decimals)|
-|`minQeuroOuts`|`uint256[]`|Array of minimum QEURO outputs (18 decimals)|
 |`<none>`|`uint256`||
 
 

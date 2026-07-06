@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -34,15 +34,6 @@ INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
 
 ```solidity
 uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours
-```
-
-
-### EMERGENCY_DISABLE_DELAY_BLOCKS
-INFO-4: Canonical block delay for emergency-disable proposals (12s block target)
-
-
-```solidity
-uint256 public constant EMERGENCY_DISABLE_DELAY_BLOCKS = EMERGENCY_DISABLE_DELAY / 12
 ```
 
 
@@ -85,7 +76,9 @@ bool public secureUpgradesEnabled
 
 
 ### emergencyDisablePendingAt
-INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
+INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+
+Audit SC4-2: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
 
 
 ```solidity

@@ -1,5 +1,5 @@
 # IUserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/interfaces/IUserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/interfaces/IUserPool.sol)
 
 **Title:**
 IUserPool
@@ -1009,11 +1009,15 @@ function UPGRADER_ROLE() external view returns (bytes32);
 |`<none>`|`bytes32`|The upgrader role bytes32 identifier|
 
 
-### BLOCKS_PER_DAY
+### MAX_REWARD_PERIOD
 
 Returns the number of blocks per day
 
+Returns the maximum reward period
+
 Used for reward calculations
+
+Maximum duration for reward calculations
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1032,24 +1036,6 @@ Used for reward calculations
 
 - oracle: Not applicable - no oracle dependency
 
-
-```solidity
-function BLOCKS_PER_DAY() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Number of blocks per day|
-
-
-### MAX_REWARD_PERIOD
-
-Returns the maximum reward period
-
-Maximum duration for reward calculations
-
-**Notes:**
 - security: Validates input parameters and enforces security checks
 
 - validation: Validates input parameters and business logic constraints
@@ -1074,7 +1060,7 @@ function MAX_REWARD_PERIOD() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Maximum reward period in seconds|
+|`<none>`|`uint256`|Number of blocks per day|
 
 
 ### qeuro

@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -161,19 +161,6 @@ Prevents out-of-gas attacks through large blacklist/whitelist arrays
 
 ```solidity
 uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50
-```
-
-
-### MINT_FEE_RATE
-Protocol fee rate for minting (0.1% = 1e15)
-
-Fee is calculated as: fee = amount * MINT_FEE_RATE / PRECISION
-
-Value: 1e15 = 0.1% (since PRECISION = 1e18 = 100%)
-
-
-```solidity
-uint256 public constant MINT_FEE_RATE = 1e15
 ```
 
 
@@ -673,40 +660,6 @@ function _checkAndUpdateMintRateLimit(uint256 amount) internal;
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|The amount to be minted (18 decimals), used to check against rate limits|
-
-
-### _checkAndUpdateBurnRateLimit
-
-Checks and updates the burn rate limit for the caller
-
-Implements sliding window rate limiting using block numbers to prevent abuse
-
-**Notes:**
-- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
-
-- validation: Validates amount against current rate limit caps
-
-- state-changes: Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
-
-- events: No events emitted
-
-- errors: Throws RateLimitExceeded if amount would exceed current rate limit
-
-- reentrancy: Not protected - internal function only
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _checkAndUpdateBurnRateLimit(uint256 amount) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|The amount to be burned (18 decimals), used to check against rate limits|
 
 
 ### updateRateLimits

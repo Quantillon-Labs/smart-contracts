@@ -121,4 +121,16 @@ contract HedgerPoolFeeRoutingAndRewardsTest is HedgerVaultIntegrationTest {
         assertEq(recorder.callCount(), 1, "FeeCollector called once on exit");
         assertGt(usdc.balanceOf(hedger), hedgerBefore, "hedger received net payout");
     }
+    /// @notice A hedger with an already-active position cannot open a second one
+    ///         (would double-count totalMargin/totalExposure).
+    function test_enterHedgePosition_reentersActive_reverts() public {
+        _approveHedger();
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(10_000e6, 5);
+
+        // Second open while the first is active reverts before any USDC is pulled.
+        vm.prank(hedger);
+        vm.expectRevert();
+        hedgerPool.enterHedgePosition(10_000e6, 5);
+    }
 }

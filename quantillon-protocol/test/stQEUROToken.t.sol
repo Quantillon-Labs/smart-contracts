@@ -213,4 +213,84 @@ contract stQEUROTokenTestSuite is Test {
         vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         stQEURO.recoverToken(address(qeuro), 1);
     }
+
+    // ── ERC20 transfer / transferFrom (coverage) ─────────────────────────────
+    function test_transfer_movesShares() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        uint256 shares = stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        stQEURO.transfer(user2, shares / 2);
+        vm.stopPrank();
+        assertEq(stQEURO.balanceOf(user2), shares / 2);
+        assertEq(stQEURO.balanceOf(user1), shares - shares / 2);
+    }
+
+    function test_transferFrom_withApproval() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        uint256 shares = stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        stQEURO.approve(user2, shares);
+        vm.stopPrank();
+
+        vm.prank(user2);
+        stQEURO.transferFrom(user1, user2, shares);
+        assertEq(stQEURO.balanceOf(user2), shares);
+    }
+
+    function test_transfer_whenPaused_reverts() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        uint256 shares = stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        stQEURO.pause();
+
+        vm.prank(user1);
+        vm.expectRevert(); // EnforcedPause
+        stQEURO.transfer(user2, shares);
+    }
+
+    function test_unpause_restoresTransfers() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        uint256 shares = stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        stQEURO.pause();
+        vm.prank(admin);
+        stQEURO.unpause();
+
+        vm.prank(user1);
+        stQEURO.transfer(user2, shares);
+        assertEq(stQEURO.balanceOf(user2), shares);
+    }
+
+    // ── ERC4626 mint / withdraw (coverage) ───────────────────────────────────
+    function test_mint_ERC4626() public {
+        uint256 wantShares = 50e18;
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), type(uint256).max);
+        uint256 assetsIn = stQEURO.mint(wantShares, user1);
+        vm.stopPrank();
+        assertEq(stQEURO.balanceOf(user1), wantShares);
+        assertGt(assetsIn, 0);
+    }
+
+    function test_withdraw_ERC4626() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        uint256 balBefore = qeuro.balanceOf(user1);
+        stQEURO.withdraw(DEPOSIT_AMOUNT / 2, user1, user1);
+        vm.stopPrank();
+        assertEq(qeuro.balanceOf(user1) - balBefore, DEPOSIT_AMOUNT / 2);
+    }
+
+    function test_recoverETH_noEth_reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(); // NoETHToRecover
+        stQEURO.recoverETH();
+    }
 }

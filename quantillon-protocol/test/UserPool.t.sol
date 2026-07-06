@@ -2155,6 +2155,21 @@ contract UserPoolTestSuite is Test {
         vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         userPool.recoverETH();
     }
+
+    // -- governance setter + failed-withdrawal recovery (coverage) --
+    function test_updateYieldShift_success() public {
+        address newYs = address(0x9111);
+        vm.prank(governance);
+        userPool.updateYieldShift(newYs);
+        assertEq(address(userPool.yieldShift()), newYs);
+    }
+
+    function test_claimPendingWithdrawal_noPending_reverts() public {
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        userPool.claimPendingWithdrawal();
+    }
+
 }
 
 // =============================================================================

@@ -2398,6 +2398,44 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.mint(user1, SMALL_AMOUNT);
         assertEq(qeuroToken.balanceOf(user1), SMALL_AMOUNT);
     }
+
+    // -- governance setters + role views (coverage) --
+    function test_updateFeeCollector_success() public {
+        address newFC = address(0xFEE);
+        vm.prank(admin);
+        qeuroToken.updateFeeCollector(newFC);
+        assertEq(qeuroToken.feeCollector(), newFC);
+    }
+
+    function test_updateFeeCollector_zero_reverts() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        qeuroToken.updateFeeCollector(address(0));
+    }
+
+    function test_updateFeeCollector_unauthorized_reverts() public {
+        vm.prank(user1);
+        vm.expectRevert();
+        qeuroToken.updateFeeCollector(address(0xFEE));
+    }
+
+    function test_updateTreasury_successAndZero() public {
+        address newT = address(0x7EA);
+        vm.prank(admin);
+        qeuroToken.updateTreasury(newT);
+        assertEq(qeuroToken.treasury(), newT);
+        vm.prank(admin);
+        vm.expectRevert();
+        qeuroToken.updateTreasury(address(0));
+    }
+
+    function test_isMinter_isBurner_reflectRoles() public view {
+        assertTrue(qeuroToken.isMinter(vault), "vault holds MINTER_ROLE");
+        assertTrue(qeuroToken.isBurner(vault), "vault holds BURNER_ROLE");
+        assertFalse(qeuroToken.isMinter(user1), "user is not a minter");
+        assertFalse(qeuroToken.isBurner(user1), "user is not a burner");
+    }
+
 }
 
 // =============================================================================

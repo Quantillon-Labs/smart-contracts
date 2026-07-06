@@ -1148,4 +1148,85 @@ contract AaveIntegrationTest is Test {
         uint256 backing2 = (vault.getTotalUsdcAvailable() * 1e18) / qeuro.totalSupply();
         assertApproxEqRel(backing2, backing0, 1e15, "backing per QEURO drifted across sequential liquidation redeems");
     }
+
+    // =============================================================================
+    // VAULT BRANCH COVERAGE (fee routing, admin, pause, no-auto-deploy)
+    // =============================================================================
+
+    /// @notice A non-zero mint fee routes a hedger-reserve share and a collector share at source.
+    function test_cov_feeRoutingSplitsHedgerAndCollector() public {
+        hedgerPool.setActiveHedger(true);
+        vm.startPrank(admin);
+        vault.updateParameters(1e16, 0);          // 1% mint fee
+        vault.updateHedgerRewardFeeSplit(5e17);   // 50/50 hedger/collector
+        feeCollector.authorizeFeeSource(address(vault)); // vault must be an authorized fee source
+        vm.stopPrank();
+
+        uint256 collectedBefore = feeCollector.totalFeesCollected(address(usdc));
+
+        uint256 deposit = 10_000e6;
+        vm.startPrank(user);
+        usdc.approve(address(vault), deposit);
+        vault.mintQEURO(deposit, 0);
+        vm.stopPrank();
+
+        uint256 fee = deposit * 1e16 / 1e18;       // 100 USDC
+        uint256 collectorShare = fee - (fee * 5e17 / 1e18); // fee - hedgerShare
+        assertEq(
+            feeCollector.totalFeesCollected(address(usdc)) - collectedBefore,
+            collectorShare,
+            "collector share routed to FeeCollector"
+        );
+    }
+
+    /// @notice updateFeeCollector accepts a new address and rejects the zero address.
+    function test_cov_updateFeeCollector_successAndZero() public {
+        vm.prank(admin);
+        vault.updateFeeCollector(address(0xFEE));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        vault.updateFeeCollector(address(0));
+    }
+
+    /// @notice harvestConfig returns the funding rate, recipient and last-harvest timestamp.
+    function test_cov_harvestConfig_view() public view {
+        (uint256 rate, address recipient, uint256 last) = vault.harvestConfig(1);
+        assertEq(rate, 0);
+        assertEq(last, 0);
+        recipient; // recipient may be unset (falls back to treasury at distribution time)
+    }
+
+    /// @notice pause blocks minting; unpause restores it.
+    function test_cov_pauseBlocksMintThenUnpause() public {
+        hedgerPool.setActiveHedger(true);
+        vm.prank(admin);
+        vault.pause();
+        vm.startPrank(user);
+        usdc.approve(address(vault), 1_000e6);
+        vm.expectRevert();
+        vault.mintQEURO(1_000e6, 0);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        vault.unpause();
+        vm.startPrank(user);
+        vault.mintQEURO(1_000e6, 0); // succeeds after unpause
+        vm.stopPrank();
+        assertGt(qeuro.balanceOf(user), 0);
+    }
+
+    /// @notice mintQEUROToVault with vaultId 0 mints without auto-deploying (net stays on-hand).
+    function test_cov_mintToVaultZero_noAutoDeploy() public {
+        hedgerPool.setActiveHedger(true);
+        uint256 heldBefore = vault.totalUsdcHeld();
+        uint256 extBefore = vault.totalUsdcInExternalVaults();
+
+        vm.startPrank(user);
+        usdc.approve(address(vault), 5_000e6);
+        vault.mintQEUROToVault(5_000e6, 0, 0); // targetVaultId 0 -> no auto-deploy
+        vm.stopPrank();
+
+        assertEq(vault.totalUsdcInExternalVaults(), extBefore, "no external deployment");
+        assertEq(vault.totalUsdcHeld(), heldBefore + 5_000e6, "net stays on-hand");
+    }
 }

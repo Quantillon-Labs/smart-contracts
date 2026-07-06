@@ -7,6 +7,7 @@ import {IOracle} from "../src/interfaces/IOracle.sol";
 import {ISlippageStorage} from "../src/interfaces/ISlippageStorage.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {MockUSDC} from "./AaveIntegration.t.sol";
 
 /// @notice Minimal SlippageStorage double exposing only getSlippageBySource.
 contract MockSlippageStorage {
@@ -571,6 +572,90 @@ contract HyperliquidEurUsdOracleTest is Test {
         vm.prank(admin);
         vm.expectRevert();
         oracle.recoverETH();
+    }
+
+    // -- additional branch coverage --
+
+    function test_version_returnsSemver() public view {
+        assertEq(oracle.version(), "1.0.2");
+    }
+
+    /// @notice A reverting USDC source does not block the EUR/USD commit: the event read
+    ///         falls back to $1.00 and the price is still valid.
+    function test_getEurUsdPrice_usdcEventFallbackOnRevert() public {
+        slippage.setMid(uint128(INITIAL_MID), uint48(block.timestamp));
+        usdc.setShouldRevert(true);
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertTrue(isValid, "EUR/USD read unaffected by USDC-source revert");
+        assertEq(price, INITIAL_MID);
+    }
+
+    /// @notice getOracleHealth reports usdcUsdFresh=false when the USDC source reverts.
+    function test_getOracleHealth_usdcRevert_notFresh() public {
+        usdc.setShouldRevert(true);
+        (bool healthy, bool eurFresh, bool usdcFresh) = oracle.getOracleHealth();
+        assertFalse(usdcFresh, "USDC source revert -> not fresh");
+        assertFalse(healthy, "overall health degraded");
+        assertTrue(eurFresh, "EUR mid still fresh");
+    }
+
+    /// @notice checkPriceFeedConnectivity: connected on a healthy read, both false when both sources revert.
+    function test_checkPriceFeedConnectivity_successAndCatch() public {
+        slippage.setMid(uint128(INITIAL_MID), uint48(block.timestamp));
+        (bool eurC, bool usdcC,,) = oracle.checkPriceFeedConnectivity();
+        assertTrue(eurC, "EUR connected on healthy mid");
+        assertTrue(usdcC, "USDC connected");
+
+        slippage.setShouldRevert(true);
+        usdc.setShouldRevert(true);
+        (bool eurC2, bool usdcC2,,) = oracle.checkPriceFeedConnectivity();
+        assertFalse(eurC2, "EUR disconnected on source revert");
+        assertFalse(usdcC2, "USDC disconnected on source revert");
+    }
+
+    /// @notice resetCircuitBreaker clears the breaker and re-seeds the baseline from the current mid.
+    function test_resetCircuitBreaker_reseedsBaseline() public {
+        vm.prank(admin);
+        oracle.triggerCircuitBreaker();
+        assertTrue(oracle.circuitBreakerTriggered());
+
+        slippage.setMid(uint128(INITIAL_MID), uint48(block.timestamp));
+        vm.prank(admin);
+        oracle.resetCircuitBreaker();
+        assertFalse(oracle.circuitBreakerTriggered());
+        assertEq(oracle.lastValidEurUsdPrice(), INITIAL_MID);
+    }
+
+    function test_pauseThenUnpause() public {
+        vm.prank(admin);
+        oracle.pause();
+        assertTrue(oracle.paused());
+        vm.prank(admin);
+        oracle.unpause();
+        assertFalse(oracle.paused());
+    }
+
+    function test_recoverETH_success() public {
+        vm.deal(address(oracle), 1 ether);
+        uint256 before = treasury.balance;
+        vm.prank(admin);
+        oracle.recoverETH();
+        assertEq(treasury.balance, before + 1 ether);
+    }
+
+    function test_recoverToken_toTreasury() public {
+        MockUSDC tok = new MockUSDC();
+        tok.mint(address(oracle), 1_000e6);
+        vm.prank(admin);
+        oracle.recoverToken(address(tok), 1_000e6);
+        assertEq(tok.balanceOf(treasury), 1_000e6);
+    }
+
+    function test_authorizeUpgrade_viaUpgrade() public {
+        HyperliquidEurUsdOracle newImpl = new HyperliquidEurUsdOracle(timeProvider);
+        vm.prank(admin);
+        oracle.upgradeToAndCall(address(newImpl), "");
+        assertEq(oracle.version(), "1.0.2");
     }
 
 }

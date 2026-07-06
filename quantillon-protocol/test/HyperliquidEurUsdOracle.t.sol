@@ -549,4 +549,28 @@ contract HyperliquidEurUsdOracleTest is Test {
         assertEq(oracle.minEurUsdPrice(), minP);
         assertEq(oracle.maxEurUsdPrice(), maxP);
     }
+
+    // -- setters + recover (coverage) --
+    function test_updateUsdcTolerance_success() public {
+        vm.prank(admin);
+        oracle.updateUsdcTolerance(150);
+        assertEq(oracle.usdcToleranceBps(), 150);
+    }
+
+    function test_updateTreasury_successAndZero() public {
+        address newT = address(0x7EA);
+        vm.prank(admin);
+        oracle.updateTreasury(newT);
+        assertEq(oracle.treasury(), newT);
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.updateTreasury(address(0));
+    }
+
+    function test_recoverETH_noEth_reverts() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.recoverETH();
+    }
+
 }

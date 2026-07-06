@@ -1449,6 +1449,24 @@ contract ChainlinkOracleTestSuite is Test {
         assertFalse(isValid, "Should reject suspicious timestamp differences");
         assertGt(price, 0, "Should return last valid price when invalid");
     }
+
+    // -- treasury setter + feed connectivity view (coverage) --
+    function test_updateTreasury_successAndZero() public {
+        address newT = address(0x7EA);
+        vm.prank(admin);
+        oracle.updateTreasury(newT);
+        assertEq(oracle.treasury(), newT);
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.updateTreasury(address(0));
+    }
+
+    function test_checkPriceFeedConnectivity_reportsConnected() public view {
+        (bool eur, bool usdc,,) = oracle.checkPriceFeedConnectivity();
+        assertTrue(eur, "EUR/USD feed connected");
+        assertTrue(usdc, "USDC/USD feed connected");
+    }
+
 }
 
 /**

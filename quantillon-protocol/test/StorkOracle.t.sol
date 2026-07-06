@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {StorkOracle} from "../src/oracle/StorkOracle.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {MockUSDC} from "./AaveIntegration.t.sol";
 
 /**
  * @title MockStorkFeed
@@ -733,4 +734,116 @@ contract StorkOracleTest is Test {
     }
     
     event CircuitBreakerTriggered(uint256 attemptedPrice, uint256 lastValidPrice, string indexed reason);
+
+    // =============================================================================
+    // BRANCH COVERAGE (parked oracle — mirrors the active adapter's failure modes)
+    // =============================================================================
+
+    function _freshBoth(int256 eurPrice) internal {
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, eurPrice);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        eurUsdFeed.setPriceForFeed(USDC_USD_FEED_ID, 1.00e18);
+        eurUsdFeed.setUpdatedAtForFeed(USDC_USD_FEED_ID, block.timestamp);
+    }
+
+    function test_cov_version() public view {
+        assertEq(storkOracle.version(), "1.0.1");
+    }
+
+    function test_cov_updateTreasury_successAndZero() public {
+        vm.prank(admin);
+        storkOracle.updateTreasury(address(0x7EA));
+        assertEq(storkOracle.treasury(), address(0x7EA));
+        vm.prank(admin);
+        vm.expectRevert();
+        storkOracle.updateTreasury(address(0));
+    }
+
+    function test_cov_pauseThenUnpause() public {
+        vm.prank(admin);
+        storkOracle.pause();
+        assertTrue(storkOracle.paused());
+        vm.prank(admin);
+        storkOracle.unpause();
+        assertFalse(storkOracle.paused());
+    }
+
+    function test_cov_getUsdcUsdPrice_outOfToleranceFallback() public {
+        // An out-of-tolerance USDC price (fresh) returns the $1.00 fallback with isValid=false.
+        eurUsdFeed.setPriceForFeed(USDC_USD_FEED_ID, 0.50e18); // 50% off peg
+        eurUsdFeed.setUpdatedAtForFeed(USDC_USD_FEED_ID, block.timestamp);
+        (, bool ok) = storkOracle.getUsdcUsdPrice();
+        assertFalse(ok, "out-of-tolerance USDC price is invalid");
+    }
+
+    function test_cov_getOracleHealth_feedRevert() public {
+        eurUsdFeed.setShouldRevert(true);
+        (bool healthy, bool eurFresh, bool usdcFresh) = storkOracle.getOracleHealth();
+        assertFalse(eurFresh);
+        assertFalse(usdcFresh);
+        assertFalse(healthy);
+    }
+
+    function test_cov_getEurUsdDetails_feedRevert() public {
+        eurUsdFeed.setShouldRevert(true);
+        (uint256 cur,,, bool isStale,) = storkOracle.getEurUsdDetails();
+        assertTrue(isStale);
+        assertEq(cur, storkOracle.lastValidEurUsdPrice());
+    }
+
+    function test_cov_getPriceFeedAddresses() public view {
+        (address e, address u,,) = storkOracle.getPriceFeedAddresses();
+        assertEq(e, address(eurUsdFeed));
+        assertEq(u, address(usdcUsdFeed));
+    }
+
+    function test_cov_checkPriceFeedConnectivity_successAndCatch() public {
+        _freshBoth(1.08e18);
+        (bool ec, bool uc,,) = storkOracle.checkPriceFeedConnectivity();
+        assertTrue(ec);
+        assertTrue(uc);
+
+        eurUsdFeed.setShouldRevert(true);
+        (bool ec2, bool uc2,,) = storkOracle.checkPriceFeedConnectivity();
+        assertFalse(ec2);
+        assertFalse(uc2);
+    }
+
+    function test_cov_recoverToken() public {
+        MockUSDC tok = new MockUSDC();
+        tok.mint(address(storkOracle), 1_000e6);
+        vm.prank(admin);
+        storkOracle.recoverToken(address(tok), 1_000e6);
+        assertEq(tok.balanceOf(treasury), 1_000e6);
+    }
+
+    function test_cov_updateUsdcTolerance() public {
+        vm.prank(admin);
+        storkOracle.updateUsdcTolerance(150);
+        assertEq(storkOracle.usdcToleranceBps(), 150);
+    }
+
+    function test_cov_authorizeUpgrade() public {
+        StorkOracle newImpl = new StorkOracle(timeProvider);
+        vm.prank(admin);
+        storkOracle.upgradeToAndCall(address(newImpl), "");
+        assertEq(storkOracle.version(), "1.0.1");
+    }
+
+    /// @notice An out-of-bounds price makes validation fail during _updatePrices, auto-tripping the breaker.
+    function test_cov_circuitBreakerAutoTriggerOnInvalid() public {
+        _freshBoth(1.60e18); // above the max bound
+        vm.prank(admin);
+        storkOracle.resetCircuitBreaker(); // runs _updatePrices -> invalid -> breaker on
+        assertTrue(storkOracle.circuitBreakerTriggered());
+    }
+
+    function test_cov_devModeProposeApply() public {
+        vm.prank(admin);
+        storkOracle.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        storkOracle.applyDevMode();
+        assertTrue(storkOracle.devModeEnabled());
+    }
 }

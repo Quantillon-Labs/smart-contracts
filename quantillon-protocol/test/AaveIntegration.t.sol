@@ -970,4 +970,41 @@ contract AaveIntegrationTest is Test {
         vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         vault.deployUsdcToVault(1, tooMuch);
     }
+
+    /// @notice deployUsdcToVault success path: moves USDC from on-hand backing into the
+    ///         external vault, decreasing totalUsdcHeld and increasing external principal.
+    function test_deployUsdcToVault_success() public {
+        bytes32 opRole = vault.VAULT_OPERATOR_ROLE();
+        vm.prank(admin);
+        vault.grantRole(opRole, admin);
+
+        uint256 amount = 500e6;
+        uint256 heldBefore = vault.totalUsdcHeld();
+        uint256 extBefore = vault.totalUsdcInExternalVaults();
+        assertGe(heldBefore, amount, "harness must seed enough on-hand USDC");
+
+        vm.prank(admin);
+        vault.deployUsdcToVault(1, amount);
+
+        assertEq(vault.totalUsdcHeld(), heldBefore - amount, "on-hand reduced");
+        assertEq(vault.totalUsdcInExternalVaults(), extBefore + amount, "external principal increased");
+    }
+
+    /// @notice Governance can set the hedger reward fee split within bounds; over-max reverts.
+    function test_updateHedgerRewardFeeSplit_successAndBounds() public {
+        vm.prank(admin);
+        vault.updateHedgerRewardFeeSplit(3e17); // 30%
+        assertEq(vault.hedgerRewardFeeSplit(), 3e17);
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
+        vault.updateHedgerRewardFeeSplit(1e18 + 1); // over MAX (100%)
+    }
+
+    /// @notice updateHedgerRewardFeeSplit is restricted to governance.
+    function test_updateHedgerRewardFeeSplit_unauthorized_reverts() public {
+        vm.prank(user);
+        vm.expectRevert();
+        vault.updateHedgerRewardFeeSplit(1e17);
+    }
 }

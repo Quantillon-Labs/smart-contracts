@@ -1007,4 +1007,145 @@ contract AaveIntegrationTest is Test {
         vm.expectRevert();
         vault.updateHedgerRewardFeeSplit(1e17);
     }
+
+    // =============================================================================
+    // COLLATERAL-ACCOUNTING PROPERTIES
+    // Deterministic guards for the vault's core value-flow properties: external-principal
+    // sum-of-parts (no phantom/double-counted collateral), USDC conservation on mint,
+    // redemptions never lowering CR when over-collateralized, and pro-rata liquidation
+    // preserving per-QEURO backing (no first-mover advantage).
+    // =============================================================================
+
+    /// @notice Counted external collateral = totalUsdcInExternalVaults = Σ per-vault principal.
+    function _externalCollateral() internal view returns (uint256) {
+        return vault.getTotalUsdcAvailable() - vault.totalUsdcHeld();
+    }
+
+    /// @notice Across two counted external vaults, the global tracker and the counted collateral
+    ///         both equal the exact sum of per-vault principals — each vault once, none double-counted
+    ///         — and the lockstep survives a redemption that withdraws from priority order.
+    function test_prop_externalPrincipalSumOfParts_noDoubleCount() public {
+        MockAaveVault adapter2 = new MockAaveVault(address(usdc));
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(adapter2), true);
+        uint256[] memory pr = new uint256[](2);
+        pr[0] = 1;
+        pr[1] = 2;
+        vault.setRedemptionPriority(pr);
+        vm.stopPrank();
+
+        hedgerPool.setActiveHedger(true);
+
+        // Route mint principal into each vault via explicit target routing (auto-deploys net).
+        vm.startPrank(user);
+        usdc.approve(address(vault), 100_000e6);
+        vault.mintQEUROToVault(6_000e6, 0, 1);
+        vault.mintQEUROToVault(4_000e6, 0, 2);
+        vm.stopPrank();
+
+        (, , uint256 principal1, ) = vault.getVaultExposure(1);
+        (, , uint256 principal2, ) = vault.getVaultExposure(2);
+        assertGt(principal1, 0);
+        assertGt(principal2, 0);
+        assertEq(vault.totalUsdcInExternalVaults(), principal1 + principal2, "tracker != sum of per-vault principal");
+        assertEq(_externalCollateral(), principal1 + principal2, "counted collateral != sum of principals");
+
+        // Redeem a slice; withdrawal drains priority order but the lockstep must hold.
+        vm.startPrank(user);
+        uint256 q = qeuro.balanceOf(user) / 4;
+        qeuro.approve(address(vault), q);
+        vault.redeemQEURO(q, 0);
+        vm.stopPrank();
+
+        (, , uint256 p1After, ) = vault.getVaultExposure(1);
+        (, , uint256 p2After, ) = vault.getVaultExposure(2);
+        assertEq(vault.totalUsdcInExternalVaults(), p1After + p2After, "post-redeem: tracker != sum of principals");
+        assertEq(_externalCollateral(), p1After + p2After, "post-redeem: counted collateral != sum of principals");
+    }
+
+    /// @notice Every USDC a user pays to mint is retained by the protocol (fees are 0 here),
+    ///         split across vault on-hand + external adapter + fee collector — none created or lost —
+    ///         and the mint tracker moves in lockstep with ERC20 supply and the user's balance.
+    function test_prop_mintConservesSystemUsdc() public {
+        hedgerPool.setActiveHedger(true);
+        uint256 depositAmount = 7_000e6;
+
+        uint256 sysBefore = usdc.balanceOf(address(vault))
+            + usdc.balanceOf(address(mockAaveVault))
+            + usdc.balanceOf(address(feeCollector));
+        uint256 userBefore = usdc.balanceOf(user);
+        uint256 mintedBefore = vault.totalMinted();
+        uint256 qBefore = qeuro.balanceOf(user);
+
+        vm.startPrank(user);
+        usdc.approve(address(vault), depositAmount);
+        vault.mintQEURO(depositAmount, 0); // auto-deploys net to the default vault (id 1)
+        vm.stopPrank();
+
+        assertEq(userBefore - usdc.balanceOf(user), depositAmount, "user did not pay exactly the deposit");
+        uint256 sysAfter = usdc.balanceOf(address(vault))
+            + usdc.balanceOf(address(mockAaveVault))
+            + usdc.balanceOf(address(feeCollector));
+        assertEq(sysAfter - sysBefore, depositAmount, "system USDC not conserved on mint");
+
+        uint256 qMinted = qeuro.balanceOf(user) - qBefore;
+        assertEq(vault.totalMinted() - mintedBefore, qMinted, "mint tracker delta != user QEURO delta");
+        assertEq(qeuro.totalSupply(), vault.totalMinted(), "QEURO supply != mint tracker");
+    }
+
+    /// @notice A normal-mode redemption while over-collateralized removes equal fair value from
+    ///         collateral and debt, so it can only raise the CR, never lower it.
+    function test_prop_normalRedeemDoesNotDecreaseCR() public {
+        hedgerPool.setActiveHedger(true);
+        vm.startPrank(user);
+        usdc.approve(address(vault), 10_000e6);
+        vault.mintQEURO(10_000e6, 0);
+        vm.stopPrank();
+
+        uint256 crBefore = vault.getProtocolCollateralizationRatio();
+        assertGt(crBefore, 1e20, "expected CR above 100% before redeem");
+
+        vm.startPrank(user);
+        uint256 q = qeuro.balanceOf(user) / 3;
+        qeuro.approve(address(vault), q);
+        vault.redeemQEURO(q, 0);
+        vm.stopPrank();
+
+        assertGe(
+            vault.getProtocolCollateralizationRatio(),
+            crBefore,
+            "normal-mode redemption lowered CR while over-collateralized"
+        );
+    }
+
+    /// @notice In liquidation mode, pro-rata redemption pays q·C/S, leaving C/S (backing per QEURO)
+    ///         invariant across sequential redemptions — no first-mover advantage.
+    function test_prop_liquidationPreservesPerQeuroBacking() public {
+        hedgerPool.setActiveHedger(true);
+        vm.startPrank(user);
+        usdc.approve(address(vault), 10_000e6);
+        vault.mintQEURO(10_000e6, 0);
+        vm.stopPrank();
+
+        // Push EUR/USD up so outstanding QEURO debt outweighs collateral -> liquidation territory.
+        oracle.setPrice(2.0e18);
+        (bool shouldLiq, ) = vault.shouldTriggerLiquidationLive();
+        assertTrue(shouldLiq, "protocol should be in liquidation mode");
+
+        uint256 backing0 = (vault.getTotalUsdcAvailable() * 1e18) / qeuro.totalSupply();
+
+        vm.startPrank(user);
+        uint256 q1 = qeuro.balanceOf(user) / 4;
+        qeuro.approve(address(vault), q1);
+        vault.redeemQEURO(q1, 0);
+        uint256 backing1 = (vault.getTotalUsdcAvailable() * 1e18) / qeuro.totalSupply();
+        assertApproxEqRel(backing1, backing0, 1e15, "backing per QEURO changed after 1st liquidation redeem");
+
+        uint256 q2 = qeuro.balanceOf(user) / 4;
+        qeuro.approve(address(vault), q2);
+        vault.redeemQEURO(q2, 0);
+        vm.stopPrank();
+        uint256 backing2 = (vault.getTotalUsdcAvailable() * 1e18) / qeuro.totalSupply();
+        assertApproxEqRel(backing2, backing0, 1e15, "backing per QEURO drifted across sequential liquidation redeems");
+    }
 }

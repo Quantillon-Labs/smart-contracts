@@ -2436,6 +2436,134 @@ contract QEUROTokenTestSuite is Test {
         assertFalse(qeuroToken.isBurner(user1), "user is not a burner");
     }
 
+    // =============================================================================
+    // BATCH OPERATION REVERT BRANCHES
+    // The happy path and BatchSizeTooLarge are covered above; these pin the remaining
+    // per-item validation reverts for batchBurn and batchTransfer.
+    // =============================================================================
+
+    function test_BatchBurn_ArrayLengthMismatch_Revert() public {
+        address[] memory froms = new address[](2);
+        froms[0] = user1;
+        froms[1] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(vault);
+        vm.expectRevert(CommonErrorLibrary.ArrayLengthMismatch.selector);
+        qeuroToken.batchBurn(froms, amounts);
+    }
+
+    function test_BatchBurn_ZeroAddress_Revert() public {
+        address[] memory froms = new address[](1);
+        froms[0] = address(0);
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(vault);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        qeuroToken.batchBurn(froms, amounts);
+    }
+
+    function test_BatchBurn_ZeroAmount_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        address[] memory froms = new address[](1);
+        froms[0] = user1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 0;
+        vm.prank(vault);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
+        qeuroToken.batchBurn(froms, amounts);
+    }
+
+    function test_BatchBurn_InsufficientBalance_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 50e18);
+        address[] memory froms = new address[](1);
+        froms[0] = user1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 100e18; // exceeds balance
+        vm.prank(vault);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        qeuroToken.batchBurn(froms, amounts);
+    }
+
+    function test_BatchTransfer_ArrayLengthMismatch_Revert() public {
+        address[] memory recipients = new address[](2);
+        recipients[0] = user2;
+        recipients[1] = user3;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.ArrayLengthMismatch.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchTransfer_ZeroAddress_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        address[] memory recipients = new address[](1);
+        recipients[0] = address(0);
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchTransfer_ZeroAmount_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        address[] memory recipients = new address[](1);
+        recipients[0] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 0;
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchTransfer_SenderBlacklisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.blacklistAddress(user1, "sender blacklisted");
+        address[] memory recipients = new address[](1);
+        recipients[0] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(user1);
+        vm.expectRevert(TokenErrorLibrary.BlacklistedAddress.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchTransfer_RecipientBlacklisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.blacklistAddress(user2, "recipient blacklisted");
+        address[] memory recipients = new address[](1);
+        recipients[0] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(user1);
+        vm.expectRevert(TokenErrorLibrary.BlacklistedAddress.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchTransfer_RecipientNotWhitelisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.toggleWhitelistMode(true);
+        address[] memory recipients = new address[](1);
+        recipients[0] = user2; // not whitelisted
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1e18;
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
 }
 
 // =============================================================================

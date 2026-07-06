@@ -1,7 +1,7 @@
 {
   "ChainlinkOracle": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x6a944b0cf9a9ea2da0bf078026f8b6b67b125caa",
     "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
     "version": "1.0.2"
@@ -15,7 +15,7 @@
   },
   "HedgerPool": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x32a636270b566a40dc02498d331ebb1560e8cb3d",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
     "version": "1.0.4"
@@ -36,28 +36,28 @@
   },
   "QEUROToken": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x8b2d1e6c30cc19de920135004e7e698ec39d1dc9",
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
     "version": "1.0.5"
   },
   "QTIToken": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0xcaa06f891adb999ca5efafc55268ac7b91786597",
     "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
     "version": "1.0.2"
   },
   "QuantillonVault": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x5f836c7ab938B77A56BF0Fb3400BD60d735625A5",
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
     "version": "1.1.7"
   },
   "SlippageStorage": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x7659a63c6fd500a1323b3acf8220c960234977b1",
     "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
     "version": "1.0.1"
@@ -80,28 +80,28 @@
   },
   "UserPool": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0xc9d59709d8ccd436fe9ce1aec116c8ba905f8df6",
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
     "version": "1.0.2"
   },
   "YieldShift": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x9e0f97459cb49af041a270f39c8aa78f776b11c7",
     "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
     "version": "1.0.3"
   },
   "stQEUROFactory": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x0e5629093c5644dfdeec6b2cd19b8e769fef1900",
     "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
     "version": "1.0.1"
   },
   "stQEUROToken": {
     "deployedAt": 1783321653,
-    "gitCommit": "f4dad73",
+    "gitCommit": "d2c3566",
     "implementation": "0x74c0f282294296361999f4a55c2a7b870cafa140",
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
     "version": "1.0.1"

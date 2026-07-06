@@ -2564,6 +2564,64 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchTransfer(recipients, amounts);
     }
 
+    // ---- transfer-hook + compliance revert branches ----
+
+    function test_BatchMint_BlacklistedRecipient_Revert() public {
+        vm.prank(compliance);
+        qeuroToken.blacklistAddress(user2, "recipient");
+        address[] memory recipients = new address[](1);
+        recipients[0] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 100e18;
+        vm.prank(vault);
+        vm.expectRevert(TokenErrorLibrary.BlacklistedAddress.selector);
+        qeuroToken.batchMint(recipients, amounts);
+    }
+
+    function test_Transfer_FromBlacklisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.blacklistAddress(user1, "sender");
+        vm.prank(user1);
+        vm.expectRevert(TokenErrorLibrary.BlacklistedAddress.selector);
+        qeuroToken.transfer(user2, 1e18);
+    }
+
+    function test_Transfer_ToBlacklisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.blacklistAddress(user2, "recipient");
+        vm.prank(user1);
+        vm.expectRevert(TokenErrorLibrary.BlacklistedAddress.selector);
+        qeuroToken.transfer(user2, 1e18);
+    }
+
+    function test_Transfer_ToNotWhitelisted_Revert() public {
+        vm.prank(vault);
+        qeuroToken.mint(user1, 100e18);
+        vm.prank(compliance);
+        qeuroToken.toggleWhitelistMode(true);
+        vm.prank(user1);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
+        qeuroToken.transfer(user2, 1e18);
+    }
+
+    function test_cov_pauseThenUnpause() public {
+        vm.prank(admin);
+        qeuroToken.pause();
+        assertTrue(qeuroToken.paused());
+        vm.prank(admin);
+        qeuroToken.unpause();
+        assertFalse(qeuroToken.paused());
+    }
+
+    function test_normalizePrice_tooManyDecimals_reverts() public {
+        vm.expectRevert(TokenErrorLibrary.TooManyDecimals.selector);
+        qeuroToken.normalizePrice(1_000e18, 20);
+    }
+
 }
 
 // =============================================================================

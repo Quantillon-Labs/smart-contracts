@@ -136,4 +136,53 @@ contract StQEUROYieldAndExternalCollateralTest is AaveIntegrationTest {
         assertGt(usdc.balanceOf(user), userUsdcBefore, "user received USDC payout");
         assertEq(vault.totalUsdcInExternalVaults(), 0, "external principal drained to satisfy redemption");
     }
+
+    // ---- yield credit uses the 100% floor, not the 105% mint floor ----
+
+    /// @notice At a CR above the 105% mint floor, a credit whose projected CR lands in [100%,105%)
+    ///         is accepted (credit is gated on a 100% floor because it adds fully-backed 1:1
+    ///         collateral), whereas a same-sized mint at the same state reverts on the 105% floor.
+    function test_creditVaultYield_succeedsAtProjectedCrBelowMintFloor() public {
+        _setUpStQEURO();
+
+        // Create at least one stQEURO share holder and some outstanding QEURO.
+        vm.startPrank(user);
+        usdc.approve(address(vault), STAKE_USDC);
+        vault.mintAndStakeQEURO(STAKE_USDC, 0, VAULT_ID, 1);
+        vm.stopPrank();
+
+        uint256 collateral = vault.getTotalUsdcAvailable();
+        uint256 supply = qeuro.totalSupply();
+
+        // Position the live price so the current CR sits ~110% — comfortably above the 105% mint
+        // floor, so mint *eligibility* passes and the only thing that can differ is the projected floor.
+        uint256 price = (collateral * 1e30 * 100) / (supply * 110);
+        oracle.setPrice(price);
+
+        // Sanity (test-side, live price): current CR is just above the mint floor.
+        uint256 currentCr = (collateral * 1e50) / (supply * price);
+        assertGt(currentCr, 106e18, "current CR must clear the 105% mint floor");
+        assertLt(currentCr, 114e18, "current CR positioned just above the floor");
+
+        // From ~110%, a credit/mint of 4x the current backing drives projected CR to ~102%
+        // (inside [100%,105%): below the mint floor, above the yield-credit floor).
+        uint256 backing = (supply * price / 1e18) / 1e12;
+        uint256 amount = 4 * backing;
+
+        // A fresh mint of `amount` reverts: projected CR < 105% mint floor.
+        usdc.mint(user, amount);
+        vm.startPrank(user);
+        usdc.approve(address(vault), amount);
+        vm.expectRevert(CommonErrorLibrary.InsufficientCollateralization.selector);
+        vault.mintQEURO(amount, 0);
+        vm.stopPrank();
+
+        // The same-sized yield credit succeeds: gated on the 100% floor, not 105%.
+        usdc.mint(admin, amount);
+        vm.startPrank(admin);
+        usdc.approve(address(vault), amount);
+        uint256 credited = vault.creditVaultYield(VAULT_ID, amount);
+        vm.stopPrank();
+        assertGt(credited, 0, "yield credit must succeed where a same-sized mint reverts on the mint floor");
+    }
 }

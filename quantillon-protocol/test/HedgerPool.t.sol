@@ -2905,6 +2905,123 @@ contract HedgerPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
 
+    // =============================================================================
+    // LIQUIDATION-REDEEM MARGIN MATH + MIN-HOLD WINDOW
+    // The vault calls recordLiquidationRedeem in liquidation mode; these pin the exact
+    // pro-rata margin reduction (and its clamp/early-return branches) and the minimum
+    // position-hold window that guards against oracle front-running on exit.
+    // =============================================================================
+
+    /// @notice recordLiquidationRedeem reduces margin by exactly (qeuro/totalSupply)*margin and
+    ///         reduces filled exposure when a fill is present.
+    function test_recordLiquidationRedeem_reducesMarginProRata() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        _syncVaultFill(10_000e6); // populate filledVolume so its reduction branch runs
+
+        uint256 marginBefore = hedgerPool.totalMargin();
+        uint256 filledBefore = hedgerPool.totalFilledExposure();
+        assertGt(marginBefore, 0);
+        assertGt(filledBefore, 0);
+
+        uint256 totalSupply = 1_000_000e18;
+        uint256 qeuroAmount = 100_000e18; // 10% of supply
+        uint256 expectedLoss = (qeuroAmount * marginBefore) / totalSupply;
+        assertGt(expectedLoss, 0);
+        assertLt(expectedLoss, marginBefore);
+
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply);
+
+        assertEq(marginBefore - hedgerPool.totalMargin(), expectedLoss, "margin loss != pro-rata share");
+        assertLt(hedgerPool.totalFilledExposure(), filledBefore, "filled exposure must reduce");
+    }
+
+    /// @notice Redeeming the whole supply wipes the hedger's margin exactly to zero.
+    function test_recordLiquidationRedeem_fullRedeemWipesMargin() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        assertGt(hedgerPool.totalMargin(), 0);
+
+        uint256 totalSupply = 1_000_000e18;
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(totalSupply, totalSupply); // qeuro == supply
+
+        assertEq(hedgerPool.totalMargin(), 0, "full redeem should wipe margin");
+    }
+
+    /// @notice A loss larger than the remaining margin is clamped to the margin (never underflows).
+    function test_recordLiquidationRedeem_lossClampedToMargin() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        assertGt(hedgerPool.totalMargin(), 0);
+
+        uint256 totalSupply = 1_000_000e18;
+        // qeuro = 2x supply => raw loss = 2*margin; must clamp to margin.
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(totalSupply * 2, totalSupply);
+
+        assertEq(hedgerPool.totalMargin(), 0, "over-supply loss must clamp to margin, not underflow");
+    }
+
+    /// @notice Zero qeuroAmount or zero totalSupply are no-ops (guard branches).
+    function test_recordLiquidationRedeem_zeroArgs_noop() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        uint256 marginBefore = hedgerPool.totalMargin();
+
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(0, 1_000_000e18);
+        assertEq(hedgerPool.totalMargin(), marginBefore, "zero qeuro must not change margin");
+
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(100e18, 0);
+        assertEq(hedgerPool.totalMargin(), marginBefore, "zero supply must not change margin");
+    }
+
+    /// @notice With no active position, recordLiquidationRedeem returns without reverting.
+    function test_recordLiquidationRedeem_noActivePosition_noop() public {
+        // setUp sets the single hedger but opens no position.
+        assertEq(hedgerPool.totalMargin(), 0);
+        vm.prank(_vaultAddress());
+        hedgerPool.recordLiquidationRedeem(100_000e18, 1_000_000e18);
+        assertEq(hedgerPool.totalMargin(), 0, "no-op when there is no active position");
+    }
+
+    /// @notice Exiting inside the minimum hold window reverts; after it elapses, exit succeeds.
+    function test_exitHedgePosition_revertsBeforeMinHold_thenSucceeds() public {
+        cfgMinPositionHoldBlocks = 5;
+        vm.prank(governance);
+        _setHedgingFees(60, 40, 15); // re-applies config with minPositionHoldBlocks = 5
+
+        _setSingleHedger(hedger1);
+        uint256 openBlock = block.number;
+        vm.prank(hedger1);
+        uint256 pid = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        // Same block as open: within the hold window -> revert.
+        vm.prank(hedger1);
+        vm.expectRevert(HedgerPoolErrorLibrary.MinHoldPeriodNotElapsed.selector);
+        hedgerPool.exitHedgePosition(pid);
+
+        // Advance past the hold window and close successfully.
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(EUR_USD_PRICE, true)
+        );
+        vm.roll(openBlock + 5);
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(pid);
+
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(pid);
+        assertFalse(isActive, "position should be closed once the hold window elapses");
+        assertEq(hedgerPool.totalMargin(), 0, "margin released on close");
+    }
 
 }
 

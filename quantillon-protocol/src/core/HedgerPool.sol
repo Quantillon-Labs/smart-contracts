@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.0.5";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -140,7 +140,7 @@ contract HedgerPool is
 
     /// @notice Address of the single hedger allowed to open positions
     /// @dev This replaces the previous multi-hedger whitelist model
-    /// @dev INFO-2: ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
+    /// @dev ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
     ///      If the single hedger exits or becomes unavailable, the protocol's hedging
     ///      guarantee collapses. Multi-hedger support requires a protocol redesign.
     address public singleHedger;
@@ -154,7 +154,7 @@ contract HedgerPool is
     /// @notice Pending reward withdrawals for hedgers whose direct transfer failed (e.g. USDC blacklist)
     mapping(address => uint256) public pendingRewardWithdrawals;
 
-    /// @notice MED-6: Address of the FeeCollector that receives margin fees
+    /// @notice Address of the FeeCollector that receives margin fees
     address public feeCollector;
 
     /// @notice Share of protocol fees routed to the local reward reserve (1e18 = 100%)
@@ -163,7 +163,7 @@ contract HedgerPool is
     /// @notice Maximum allowed value for rewardFeeSplit
     uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18;
 
-    /// @notice Vestigial (audit SC4-7): retained as private to preserve the live proxy
+    /// @notice Vestigial: retained as private to preserve the live proxy
     ///         storage layout; the public getters were removed (dead — never set/read).
     // slither-disable-next-line unused-state
     address private __deprecated_pendingSingleHedger;
@@ -215,10 +215,10 @@ contract HedgerPool is
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event ETHRecovered(address indexed to, uint256 indexed amount);
-    /// @notice MED-2: Emitted when USDC is deposited into the reward reserve
+    /// @notice Emitted when USDC is deposited into the reward reserve
     event RewardReserveFunded(address indexed funder, uint256 amount);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
-    /// @notice F-6: Emitted when EMERGENCY_ROLE force-closes a position.
+    /// @notice Emitted when EMERGENCY_ROLE force-closes a position.
     /// @dev When `outstandingQeuro` is non-zero the closure withdraws hedger margin while QEURO is
     ///      still outstanding, which reduces protocol collateralization and may push redemptions
     ///      into liquidation mode. This is an intentional emergency escape hatch; the event exists
@@ -1358,7 +1358,7 @@ contract HedgerPool is
      * @dev Security features:
      *      1. Role-based access control (EMERGENCY_ROLE)
      *      2. Position ownership validation
-     * @dev WARNING (audit F-6): unlike the normal `exitHedgePosition` flow, this deliberately does
+     * @dev WARNING: unlike the normal `exitHedgePosition` flow, this deliberately does
      *      NOT run `_validatePositionClosureSafety`. If invoked while QEURO is outstanding
      *      (`vault.totalMinted() > 0`) it withdraws the hedger's full margin and can leave QEURO
      *      under-collateralized, pushing redemptions into liquidation mode. This is an accepted
@@ -1498,11 +1498,11 @@ contract HedgerPool is
         emit SingleHedgerRotationApplied(previousHedger, hedger);
     }
 
-    // applySingleHedgerRotation() removed (audit SC4-7): dead reverting relic of the
+    // applySingleHedgerRotation() removed: dead reverting relic of the
     // abandoned multi-hedger rotation. Reassignment is synchronous via setSingleHedger.
 
     /**
-     * @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
+     * @notice Deposit USDC into the reward reserve so hedging rewards can be paid out.
      * @dev Permissionless funding path; caller must approve USDC before calling.
      * @param amount Amount of USDC to deposit (6 decimals).
      * @custom:security Uses nonReentrant protection and pulls tokens from caller.

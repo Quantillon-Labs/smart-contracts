@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -29,7 +29,7 @@ bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 
 
 ### EMERGENCY_DISABLE_DELAY
-INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
+Minimum delay before a proposed emergency-disable takes effect (24h)
 
 
 ```solidity
@@ -76,9 +76,9 @@ bool public secureUpgradesEnabled
 
 
 ### emergencyDisablePendingAt
-INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
 
-Audit SC4-2: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
+Deadline in seconds, compared against block.timestamp.
 
 
 ```solidity
@@ -233,9 +233,9 @@ Enables secure upgrades. Disabling is intentionally NOT possible through
 this function: it must go through the quorum-gated, timelocked
 emergency-disable flow (proposeEmergencyDisableSecureUpgrades →
 approveEmergencyDisableSecureUpgrades → applyEmergencyDisableSecureUpgrades).
-Passing enabled=false reverts. (F-5 audit fix: an instant disable here let
-a single admin bypass the emergency flow and then call emergencyUpgrade with
-no timelock.)
+Passing enabled=false reverts (an instant disable here would let a single
+admin bypass the emergency flow and then call emergencyUpgrade with no
+timelock).
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -555,7 +555,7 @@ function getUpgradeSecurityStatus()
 
 Disable secure upgrades in emergency
 
-INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
+Propose disabling secure upgrades; enforces a 24-hour timelock
 
 Disables secure upgrades for emergency situations
 
@@ -583,7 +583,7 @@ function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN
 
 ### approveEmergencyDisableSecureUpgrades
 
-INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+Register an admin approval for the active emergency-disable proposal.
 
 Records an approval from a DEFAULT_ADMIN_ROLE address for the current proposal.
 Uses per-proposal bitmap to prevent duplicate approvals from the same address.
@@ -612,7 +612,7 @@ function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN
 
 ### applyEmergencyDisableSecureUpgrades
 
-INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed.
+Apply a previously proposed emergency-disable after the timelock has elapsed.
 
 Disables secure upgrades permanently for this deployment once quorum and delay are satisfied.
 Resets pending state so a fresh proposal is required for any future changes.
@@ -836,7 +836,7 @@ event SecureUpgradeAuthorized(address indexed newImplementation, address indexed
 ```
 
 ### EmergencyDisableProposed
-INFO-4: Emitted when an emergency-disable proposal is created
+Emitted when an emergency-disable proposal is created
 
 
 ```solidity

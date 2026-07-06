@@ -137,7 +137,7 @@ async function stakeQEURO(qeuroAmount) {
 
 ### Staking Rewards — removed
 
-There is no `claimStakingRewards` call. The old UserPool staking-reward path was removed in the post-audit cleanup (it minted unbacked QEURO and was non-functional). Protocol yield for users accrues **automatically** through the **stQEURO** wrapper — its exchange rate rises as yield is credited, so simply holding stQEURO earns yield. See *Staking in stQEURO Token* below.
+There is no `claimStakingRewards` call. The UserPool staking-reward path has been removed. Protocol yield for users accrues **automatically** through the **stQEURO** wrapper — its exchange rate rises as yield is credited, so simply holding stQEURO earns yield. See *Staking in stQEURO Token* below.
 
 ### Staking in stQEURO Token
 

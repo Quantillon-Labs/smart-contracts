@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -181,7 +181,7 @@ uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
 
 
 ### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
+Minimum delay before a proposed dev-mode change takes effect
 
 
 ```solidity
@@ -372,7 +372,7 @@ mapping(uint256 => address) public stQEUROTokenByVaultId
 ### mintFee
 Protocol fee charged on minting QEURO
 
-INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
+Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
 
 Revenue source for the protocol
 
@@ -385,7 +385,7 @@ uint256 public mintFee
 ### redemptionFee
 Protocol fee charged on redeeming QEURO
 
-INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
+Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
 
 Revenue source for the protocol
 
@@ -407,7 +407,7 @@ uint256 public hedgerRewardFeeSplit
 ### minCollateralizationRatioForMinting
 Minimum collateralization ratio required for minting QEURO (in 1e18 precision, NOT basis points)
 
-INFO-7: Example: 105000000000000000000 = 105% collateralization ratio required for minting
+Example: 105000000000000000000 = 105% collateralization ratio required for minting
 
 When protocol collateralization >= this threshold, minting is allowed
 
@@ -496,7 +496,7 @@ bool public devModeEnabled
 
 
 ### pendingDevMode
-MED-1: Pending dev-mode value awaiting the timelock delay
+Pending dev-mode value awaiting the timelock delay
 
 
 ```solidity
@@ -505,9 +505,9 @@ bool public pendingDevMode
 
 
 ### devModePendingAt
-MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
 
-Audit SC4-1: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
+Deadline in seconds, compared against block.timestamp.
 
 
 ```solidity
@@ -1150,11 +1150,11 @@ function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 mi
 
 Projected-CR guard against an arbitrary floor (18-dec ratio).
 
-Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
-path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
-only pull CR toward 100% and can never make the protocol under-backed. Gating
-it on the mint floor made yield undistributable whenever CR sat at the floor
-(the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
+The mint path uses the 105% minting floor, but the yield-credit path must
+NOT — crediting yield adds fully-backed collateral (1:1), so it can only pull
+CR toward 100% and can never make the protocol under-backed. Gating it on the
+mint floor would make yield undistributable whenever CR sits at the floor
+(the natural equilibrium), so yield crediting uses a 100% fully-backed floor.
 
 **Notes:**
 - security: Reverts the caller if the projected CR would fall below minRatio
@@ -1588,7 +1588,7 @@ function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (ui
 
 Notifies hedger pool of liquidation redemption for margin adjustment.
 
-LOW-3 hardening: when hedger collateral exists, this call is atomic and must succeed.
+When hedger collateral exists, this call is atomic and must succeed.
 It is skipped only when HedgerPool is unset or has zero collateral.
 
 **Notes:**
@@ -2701,7 +2701,7 @@ function getTotalUsdcAvailable() external view returns (uint256);
 
 Refreshes the deviation-baseline price cache to the current valid oracle price
 
-F-3: PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
+PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
 reports as valid (this reverts on `!isValid`), so anyone (e.g. a keeper) can re-baseline
 during a sharp EUR move to clear the vault's 2% deviation guard and restore mint/redeem
 availability without waiting on a governance multisig. It cannot commit a manipulated or
@@ -2887,7 +2887,7 @@ function _isInRedemptionSet(uint256 vaultId) internal view returns (bool inSet);
 Reverts unless the vault id is in the redemption set (counted + withdrawable).
 
 Used to gate external-vault deployment so collateral counting, withdrawal capacity, and
-deployed principal stay in lockstep (audit F-2). A vault that is active but absent from
+deployed principal stay in lockstep. A vault that is active but absent from
 the redemption priority/default set would otherwise hold principal that is excluded from
 collateral and unreachable by the withdrawal path, stranding funds in liquidation.
 
@@ -2958,7 +2958,7 @@ function _getTotalCollateralWithAccruedYield() internal view returns (uint256);
 
 ### _routeProtocolFees
 
-MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
+Routes protocol fees between HedgerPool reserve and FeeCollector at source.
 
 Splits fee flow using `hedgerRewardFeeSplit` and transfers shares to each destination.
 
@@ -3115,7 +3115,7 @@ Evaluates mint eligibility using a supplied EUR/USD price.
 
 Shared by the cached `canMint()` view and the live-price binding gate
 `_enforceMintEligibility`. The `lastValidEurUsdPrice == 0` guard enforces the
-LOW-5 invariant that the price cache is bootstrapped before any mint, independent
+invariant that the price cache is bootstrapped before any mint, independent
 of which price values the collateralization ratio.
 
 **Notes:**
@@ -3154,9 +3154,9 @@ function _canMintAtPrice(uint256 eurUsdPrice) internal view returns (bool allowe
 
 ### initializePriceCache
 
-LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
+Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
 
-LOW-5: Seeds the oracle price cache so minting checks have a baseline.
+Seeds the oracle price cache so minting checks have a baseline.
 
 Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh.
 
@@ -3419,7 +3419,7 @@ function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Internal helper to notify HedgerPool about user mints.
 
-LOW-5 / INFO-2: mint path must fail if hedger synchronization fails.
+Mint path must fail if hedger synchronization fails.
 
 **Notes:**
 - security: Internal hard-fail synchronization helper.
@@ -3492,7 +3492,7 @@ function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeu
 
 Toggles dev mode to disable price caching requirements
 
-MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
+Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
 
@@ -3526,7 +3526,7 @@ function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### applyDevMode
 
-MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+Apply a previously proposed dev-mode change after the timelock has elapsed.
 
 Finalizes the pending proposal created by `proposeDevMode`.
 
@@ -3695,7 +3695,7 @@ event DevModeToggled(bool enabled, address indexed caller);
 |`caller`|`address`|Address that triggered the toggle|
 
 ### DevModeProposed
-MED-1: Emitted when a dev-mode change is proposed
+Emitted when a dev-mode change is proposed
 
 
 ```solidity

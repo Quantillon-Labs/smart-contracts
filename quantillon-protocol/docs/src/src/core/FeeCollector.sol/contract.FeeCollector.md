@@ -1,5 +1,5 @@
 # FeeCollector
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/FeeCollector.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/FeeCollector.sol)
 
 **Inherits:**
 AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -51,7 +51,7 @@ bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE")
 
 
 ### FEE_SOURCE_ROLE
-MED-3: Separate role for authorized fee depositors (vault, hedger pool, etc.)
+Separate role for authorized fee depositors (vault, hedger pool, etc.)
 
 Distinct from TREASURY_ROLE so depositors cannot also withdraw/distribute fees
 
@@ -239,7 +239,7 @@ Locks the implementation so it cannot be initialized directly
 
 Disables initializers on the implementation contract; only proxies may be
 initialized. Brings FeeCollector in line with the other core contracts,
-which all call _disableInitializers() (F-3/F-4 audit fix).
+which all call _disableInitializers().
 
 **Notes:**
 - security: Prevents implementation-contract initialization

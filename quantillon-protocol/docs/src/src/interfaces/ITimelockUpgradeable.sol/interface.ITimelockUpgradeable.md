@@ -1,5 +1,5 @@
 # ITimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/interfaces/ITimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/interfaces/ITimelockUpgradeable.sol)
 
 **Title:**
 ITimelockUpgradeable
@@ -1122,10 +1122,10 @@ event EmergencyModeToggled(bool enabled, string reason);
 ```solidity
 struct PendingUpgrade {
     address implementation;
-    address proposingProxy; // HIGH-1: proxy that initiated this upgrade
+    address proposingProxy; // proxy that initiated this upgrade
     uint256 proposedAt;
     uint256 executableAt;
-    uint256 expiryAt; // LOW-6: proposal expires after MAX_PROPOSAL_AGE
+    uint256 expiryAt; // proposal expires after MAX_PROPOSAL_AGE
     string description;
     bool isEmergency;
     address proposer;

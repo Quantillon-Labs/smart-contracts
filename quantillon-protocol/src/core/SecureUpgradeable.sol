@@ -28,14 +28,14 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     /// @notice Whether the contract is using secure upgrades
     bool public secureUpgradesEnabled;
 
-    /// @notice INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
+    /// @notice Minimum delay before a proposed emergency-disable takes effect (24h)
     uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours;
 
     /// @notice Emergency-disable approvals required before apply can succeed
     uint256 public constant EMERGENCY_DISABLE_QUORUM = 2;
 
-    /// @notice INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
-    /// @dev Audit SC4-2: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
+    /// @notice Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+    /// @dev Deadline in seconds, compared against block.timestamp.
     uint256 public emergencyDisablePendingAt;
 
     /// @dev Unstructured storage slot to avoid shifting child storage layouts.
@@ -53,7 +53,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     event TimelockSet(address indexed timelock);
     event SecureUpgradesToggled(bool enabled);
     event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy, string description);
-    /// @notice INFO-4: Emitted when an emergency-disable proposal is created
+    /// @notice Emitted when an emergency-disable proposal is created
     event EmergencyDisableProposed(uint256 indexed proposalId, uint256 activatesAt);
     event EmergencyDisableApproved(uint256 indexed proposalId, address indexed approver, uint256 approvalCount);
 
@@ -166,9 +166,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      *      this function: it must go through the quorum-gated, timelocked
      *      emergency-disable flow (proposeEmergencyDisableSecureUpgrades →
      *      approveEmergencyDisableSecureUpgrades → applyEmergencyDisableSecureUpgrades).
-     *      Passing enabled=false reverts. (F-5 audit fix: an instant disable here let
-     *      a single admin bypass the emergency flow and then call emergencyUpgrade with
-     *      no timelock.)
+     *      Passing enabled=false reverts (an instant disable here would let a single
+     *      admin bypass the emergency flow and then call emergencyUpgrade with no
+     *      timelock).
      * @param enabled Must be true; false reverts (use the emergency-disable flow)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -391,7 +391,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:access Restricted to authorized roles
      * @custom:oracle Not applicable - no oracle dependency
      */
-    /// @notice INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
+    /// @notice Propose disabling secure upgrades; enforces a 24-hour timelock
     function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (!secureUpgradesEnabled) revert CommonErrorLibrary.NotActive();
         EmergencyDisableStorage storage ds = _emergencyDisableStorage();
@@ -408,7 +408,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     }
 
     /**
-     * @notice INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+     * @notice Register an admin approval for the active emergency-disable proposal.
      * @dev Records an approval from a DEFAULT_ADMIN_ROLE address for the current proposal.
      *      Uses per-proposal bitmap to prevent duplicate approvals from the same address.
      * @custom:security Only callable by DEFAULT_ADMIN_ROLE; prevents double-approval per admin.
@@ -433,7 +433,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     }
 
     /**
-     * @notice INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed.
+     * @notice Apply a previously proposed emergency-disable after the timelock has elapsed.
      * @dev Disables secure upgrades permanently for this deployment once quorum and delay are satisfied.
      *      Resets pending state so a fresh proposal is required for any future changes.
      * @param expectedProposalId Proposal id the caller expects to apply (replay/mismatch protection).

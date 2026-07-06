@@ -30,10 +30,10 @@ interface ITimelockUpgradeable {
     
     struct PendingUpgrade {
         address implementation;
-        address proposingProxy;  // HIGH-1: proxy that initiated this upgrade
+        address proposingProxy;  // proxy that initiated this upgrade
         uint256 proposedAt;
         uint256 executableAt;
-        uint256 expiryAt;        // LOW-6: proposal expires after MAX_PROPOSAL_AGE
+        uint256 expiryAt;        // proposal expires after MAX_PROPOSAL_AGE
         string description;
         bool isEmergency;
         address proposer;

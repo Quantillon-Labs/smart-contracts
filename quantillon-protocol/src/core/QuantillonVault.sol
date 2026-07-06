@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.7";
+        return "1.1.8";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -253,12 +253,12 @@ contract QuantillonVault is
     // Protocol parameters (configurable by governance)
     
     /// @notice Protocol fee charged on minting QEURO
-    /// @dev INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
+    /// @dev Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
     /// @dev Revenue source for the protocol
     uint256 public mintFee;
 
     /// @notice Protocol fee charged on redeeming QEURO
-    /// @dev INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
+    /// @dev Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
     /// @dev Revenue source for the protocol
     uint256 public redemptionFee;
 
@@ -275,7 +275,7 @@ contract QuantillonVault is
     // Collateralization parameters (configurable by governance)
     
     /// @notice Minimum collateralization ratio required for minting QEURO (in 1e18 precision, NOT basis points)
-    /// @dev INFO-7: Example: 105000000000000000000 = 105% collateralization ratio required for minting
+    /// @dev Example: 105000000000000000000 = 105% collateralization ratio required for minting
     /// @dev When protocol collateralization >= this threshold, minting is allowed
     /// @dev When protocol collateralization < this threshold, minting is halted
     /// @dev Can be updated by governance to adjust protocol risk parameters
@@ -313,14 +313,14 @@ contract QuantillonVault is
     /// @dev When enabled, price deviation checks and caching requirements are skipped (dev/testing only)
     bool public devModeEnabled;
 
-    /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
+    /// @notice Minimum delay before a proposed dev-mode change takes effect
     uint256 private constant DEV_MODE_DELAY = 48 hours;
 
-    /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
+    /// @notice Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
 
-    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
-    /// @dev Audit SC4-1: timestamp-based (was block-number * /12, which under-delayed 6x on 2s Base).
+    /// @notice Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @dev Deadline in seconds, compared against block.timestamp.
     uint256 public devModePendingAt;
 
     // =============================================================================
@@ -418,7 +418,7 @@ contract QuantillonVault is
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
 
-    /// @notice MED-1: Emitted when a dev-mode change is proposed
+    /// @notice Emitted when a dev-mode change is proposed
     /// @param pending The proposed dev-mode value
     /// @param activatesAt Timestamp at which the change can be applied
     event DevModeProposed(bool pending, uint256 activatesAt);
@@ -459,7 +459,7 @@ contract QuantillonVault is
     /// @param newRecipient New recipient address
     event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
 
-    // HedgerSyncFailed event removed (audit SC4-7): dead — redeem hedger-sync is atomic
+    // HedgerSyncFailed event removed: dead — redeem hedger-sync is atomic
     // (failures revert rather than being swallowed), so it could never fire.
 
     event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
@@ -947,11 +947,11 @@ contract QuantillonVault is
 
     /**
      * @notice Projected-CR guard against an arbitrary floor (18-dec ratio).
-     * @dev Audit SC1-2: the mint path uses the 105% minting floor, but the yield-credit
-     *      path must NOT — crediting yield adds fully-backed collateral (1:1), so it can
-     *      only pull CR toward 100% and can never make the protocol under-backed. Gating
-     *      it on the mint floor made yield undistributable whenever CR sat at the floor
-     *      (the natural equilibrium). Yield crediting instead uses a 100% fully-backed floor.
+     * @dev The mint path uses the 105% minting floor, but the yield-credit path must
+     *      NOT — crediting yield adds fully-backed collateral (1:1), so it can only pull
+     *      CR toward 100% and can never make the protocol under-backed. Gating it on the
+     *      mint floor would make yield undistributable whenever CR sits at the floor
+     *      (the natural equilibrium), so yield crediting uses a 100% fully-backed floor.
      * @param netAmount Net USDC added by the operation (6 decimals)
      * @param qeuroToMint QEURO to be minted by the operation (18 decimals)
      * @param eurUsdPrice Live EUR/USD price used to value QEURO debt (18 decimals)
@@ -1414,7 +1414,7 @@ contract QuantillonVault is
 
     /**
      * @notice Notifies hedger pool of liquidation redemption for margin adjustment.
-     * @dev LOW-3 hardening: when hedger collateral exists, this call is atomic and must succeed.
+     * @dev When hedger collateral exists, this call is atomic and must succeed.
      *      It is skipped only when HedgerPool is unset or has zero collateral.
      * @param qeuroAmount Amount of QEURO being redeemed
      * @param totalSupply Total QEURO supply for pro-rata calculation
@@ -1727,7 +1727,7 @@ contract QuantillonVault is
             uint256 vaultId = vaultIds[i];
             if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
             if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-            // Reject duplicates (audit SC1-1): a repeated id would make
+            // Reject duplicates: a repeated id would make
             // _getExternalVaultCollateralBalance double-count that vault's principal,
             // inflating the collateralization ratio and permitting minting below the
             // 105% floor against phantom collateral.
@@ -1844,7 +1844,7 @@ contract QuantillonVault is
         if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
 
         // Yield crediting adds fully-backed collateral (1:1), so gate on a 100% floor
-        // rather than the 105% mint floor (audit SC1-2) so yield stays distributable
+        // rather than the 105% mint floor so yield stays distributable
         // when protocol CR sits at the minting equilibrium.
         _enforceProjectedCollateralizationFloor(netUsdcAmount, qeuroMinted, eurUsdPrice, 100e18);
 
@@ -2263,7 +2263,7 @@ contract QuantillonVault is
 
     /**
      * @notice Refreshes the deviation-baseline price cache to the current valid oracle price
-     * @dev F-3: PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
+     * @dev PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
      *      reports as valid (this reverts on `!isValid`), so anyone (e.g. a keeper) can re-baseline
      *      during a sharp EUR move to clear the vault's 2% deviation guard and restore mint/redeem
      *      availability without waiting on a governance multisig. It cannot commit a manipulated or
@@ -2398,7 +2398,7 @@ contract QuantillonVault is
     /**
      * @notice Reverts unless the vault id is in the redemption set (counted + withdrawable).
      * @dev Used to gate external-vault deployment so collateral counting, withdrawal capacity, and
-     *      deployed principal stay in lockstep (audit F-2). A vault that is active but absent from
+     *      deployed principal stay in lockstep. A vault that is active but absent from
      *      the redemption priority/default set would otherwise hold principal that is excluded from
      *      collateral and unreachable by the withdrawal path, stranding funds in liquidation.
      * @param vaultId Vault id being deployed to.
@@ -2436,7 +2436,7 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
+     * @notice Routes protocol fees between HedgerPool reserve and FeeCollector at source.
      * @dev Splits fee flow using `hedgerRewardFeeSplit` and transfers shares to each destination.
      * @param fee Total fee amount in USDC (6 decimals).
      * @param sourceType Source tag passed through to FeeCollector accounting.
@@ -2556,7 +2556,7 @@ contract QuantillonVault is
      * @notice Evaluates mint eligibility using a supplied EUR/USD price.
      * @dev Shared by the cached `canMint()` view and the live-price binding gate
      *      `_enforceMintEligibility`. The `lastValidEurUsdPrice == 0` guard enforces the
-     *      LOW-5 invariant that the price cache is bootstrapped before any mint, independent
+     *      invariant that the price cache is bootstrapped before any mint, independent
      *      of which price values the collateralization ratio.
      * @param eurUsdPrice EUR/USD price used to value QEURO debt for the CR check (18 decimals).
      * @return allowed Whether minting is permitted at the supplied price.
@@ -2585,7 +2585,7 @@ contract QuantillonVault is
     }
     
     /**
-     * @notice LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
+     * @notice Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
      * @dev Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh.
      * @return ratio Current collateralization ratio in 1e18-scaled percentage format.
      * @custom:security View-only wrapper.
@@ -2598,7 +2598,7 @@ contract QuantillonVault is
      * @custom:oracle Uses cached oracle price.
      */
     /**
-     * @notice LOW-5: Seeds the oracle price cache so minting checks have a baseline.
+     * @notice Seeds the oracle price cache so minting checks have a baseline.
      * @dev Governance MUST call this once immediately after deployment, before any user mints.
      *      Uses an explicit bootstrap price to avoid external oracle interaction in this state-changing call.
      * @param initialEurUsdPrice Initial EUR/USD price in 18 decimals.
@@ -2781,7 +2781,7 @@ contract QuantillonVault is
 
     /**
      * @notice Internal helper to notify HedgerPool about user mints.
-     * @dev LOW-5 / INFO-2: mint path must fail if hedger synchronization fails.
+     * @dev Mint path must fail if hedger synchronization fails.
      * @param amount Gross USDC amount allocated to hedger fills (6 decimals).
      * @param fillPrice EUR/USD price used for fill accounting (18 decimals).
      * @param qeuroAmount QEURO minted amount to track against hedger exposure (18 decimals).
@@ -2868,7 +2868,7 @@ contract QuantillonVault is
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
-    /// @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
+    /// @notice Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
     /// @param enabled The desired dev-mode value
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
@@ -2877,7 +2877,7 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @notice Apply a previously proposed dev-mode change after the timelock has elapsed.
      * @dev Finalizes the pending proposal created by `proposeDevMode`.
      * @custom:security Restricted to default admin and time-locked via `DEV_MODE_DELAY`.
      * @custom:validation Requires active pending proposal and elapsed delay.

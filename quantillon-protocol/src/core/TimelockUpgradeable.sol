@@ -36,7 +36,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     
     // ============ Constants ============
@@ -53,7 +53,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /// @notice Maximum number of multi-sig signers
     uint256 public constant MAX_MULTISIG_SIGNERS = 5;
 
-    /// @notice Maximum age of a pending upgrade proposal (LOW-6: prevents stale proposal execution)
+    /// @notice Maximum age of a pending upgrade proposal (prevents stale proposal execution)
     uint256 public constant MAX_PROPOSAL_AGE = 30 days;
     
     // ============ Roles ============
@@ -107,10 +107,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     struct PendingUpgrade {
         address implementation;
-        address proposingProxy;  // HIGH-1: proxy contract that initiated this upgrade proposal
+        address proposingProxy;  // proxy contract that initiated this upgrade proposal
         uint256 proposedAt;
         uint256 executableAt;
-        uint256 expiryAt;        // LOW-6: proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
+        uint256 expiryAt;        // proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
         string description;
         bool isEmergency;
         address proposer;

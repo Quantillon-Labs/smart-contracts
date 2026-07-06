@@ -1,5 +1,5 @@
 # SlippageStorage
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/oracle/SlippageStorage.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/oracle/SlippageStorage.sol)
 
 **Inherits:**
 [ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -529,7 +529,7 @@ function setDeviationThreshold(uint16 newThreshold) external override onlyRole(M
 
 ### setMidPriceGuards
 
-Configure the writer-side midPrice guards (audit SC3-1).
+Configure the writer-side midPrice guards.
 
 Set band and per-write deviation for the published EUR/USD mid. Pass
 `maxMid=0` to disable the band and `devBps=0` to disable the deviation check.

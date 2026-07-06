@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -56,7 +56,7 @@ uint256 public constant MAX_MULTISIG_SIGNERS = 5
 
 
 ### MAX_PROPOSAL_AGE
-Maximum age of a pending upgrade proposal (LOW-6: prevents stale proposal execution)
+Maximum age of a pending upgrade proposal (prevents stale proposal execution)
 
 
 ```solidity
@@ -1102,10 +1102,10 @@ event EmergencyModeToggled(bool enabled, string reason);
 ```solidity
 struct PendingUpgrade {
     address implementation;
-    address proposingProxy; // HIGH-1: proxy contract that initiated this upgrade proposal
+    address proposingProxy; // proxy contract that initiated this upgrade proposal
     uint256 proposedAt;
     uint256 executableAt;
-    uint256 expiryAt; // LOW-6: proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
+    uint256 expiryAt; // proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
     string description;
     bool isEmergency;
     address proposer;

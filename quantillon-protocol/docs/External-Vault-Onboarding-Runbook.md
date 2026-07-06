@@ -23,17 +23,17 @@ The script performs, for each `--vault` entry:
 4. Grant `VAULT_MANAGER_ROLE` to `QuantillonVault` **on the adapter** (`adapter.grantRole(VAULT_MANAGER_ROLE, vault)`).
 
 > Adapter yield is distributed via `QuantillonVault.harvestAndDistributeVaultYield` — grant
-> `YIELD_DISTRIBUTOR_ROLE` to the yield keeper separately (the former `--yield-shift` wiring was
-> removed with the YieldShift harvest path, d776e83).
+> `YIELD_DISTRIBUTOR_ROLE` to the yield keeper separately (yield distribution no longer routes
+> through YieldShift).
 
-> **Audit N-1 — required, do not skip.** The vault calls `adapter.depositUnderlying` /
+> **Required — do not skip.** The vault calls `adapter.depositUnderlying` /
 > `withdrawUnderlying` / `harvestYieldToVault`, all gated by `VAULT_MANAGER_ROLE` on the adapter. The
 > adapter constructor grants that role only to its admin, so without step 4 every external-vault
 > deploy / redeem-sourcing / harvest **reverts**. Step 4's signer must hold the adapter's
 > `DEFAULT_ADMIN_ROLE`.
 
-> **Recommended — seed each new stQEURO series.** To avoid the first-depositor donation/rounding
-> edge case (audit F-4), the operator should make the first stake into each newly registered
+> **Recommended — seed each new stQEURO series.** To avoid the well-known first-depositor
+> donation/rounding edge case, the operator should make the first stake into each newly registered
 > stQEURO vault (a small deposit) so it is never bootstrapped by an arbitrary first external user.
 
 Then it sets:

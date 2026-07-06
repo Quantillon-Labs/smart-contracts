@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/interfaces/IYieldShift.sol)
 
 
 ## Functions
@@ -1069,7 +1069,7 @@ function hedgerYieldPool() external view returns (uint256 pool);
 
 Returns pending yield for a user.
 
-Per-user pending-yield bookkeeping. NOTE (audit F-8): userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
+Per-user pending-yield bookkeeping. NOTE: userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
 
 **Notes:**
 - security: View‑only.

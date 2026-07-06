@@ -546,7 +546,7 @@ interface IYieldShift {
 
     /**
      * @notice Returns pending yield for a user.
-     * @dev Per-user pending-yield bookkeeping. NOTE (audit F-8): userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
+     * @dev Per-user pending-yield bookkeeping. NOTE: userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
      * @param user User address.
      * @return amount Pending yield amount.
      * @custom:security View‑only.

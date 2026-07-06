@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -211,7 +211,7 @@ Address of the single hedger allowed to open positions
 
 This replaces the previous multi-hedger whitelist model
 
-INFO-2: ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
+ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
 If the single hedger exits or becomes unavailable, the protocol's hedging
 guarantee collapses. Multi-hedger support requires a protocol redesign.
 
@@ -249,7 +249,7 @@ mapping(address => uint256) public pendingRewardWithdrawals
 
 
 ### feeCollector
-MED-6: Address of the FeeCollector that receives margin fees
+Address of the FeeCollector that receives margin fees
 
 
 ```solidity
@@ -267,7 +267,7 @@ uint256 public rewardFeeSplit
 
 
 ### __deprecated_pendingSingleHedger
-Vestigial (audit SC4-7): retained as private to preserve the live proxy
+Vestigial: retained as private to preserve the live proxy
 storage layout; the public getters were removed (dead — never set/read).
 
 
@@ -1374,7 +1374,7 @@ Security features:
 1. Role-based access control (EMERGENCY_ROLE)
 2. Position ownership validation
 
-WARNING (audit F-6): unlike the normal `exitHedgePosition` flow, this deliberately does
+WARNING: unlike the normal `exitHedgePosition` flow, this deliberately does
 NOT run `_validatePositionClosureSafety`. If invoked while QEURO is outstanding
 (`vault.totalMinted() > 0`) it withdraws the hedger's full margin and can leave QEURO
 under-collateralized, pushing redemptions into liquidation mode. This is an accepted
@@ -1541,7 +1541,7 @@ function setSingleHedger(address hedger) external;
 
 ### fundRewardReserve
 
-MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
+Deposit USDC into the reward reserve so hedging rewards can be paid out.
 
 Permissionless funding path; caller must approve USDC before calling.
 
@@ -2098,7 +2098,7 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 ```
 
 ### RewardReserveFunded
-MED-2: Emitted when USDC is deposited into the reward reserve
+Emitted when USDC is deposited into the reward reserve
 
 
 ```solidity
@@ -2112,7 +2112,7 @@ event SingleHedgerRotationApplied(address indexed previousHedger, address indexe
 ```
 
 ### EmergencyPositionClosed
-F-6: Emitted when EMERGENCY_ROLE force-closes a position.
+Emitted when EMERGENCY_ROLE force-closes a position.
 
 When `outstandingQeuro` is non-zero the closure withdraws hedger margin while QEURO is
 still outstanding, which reduces protocol collateralization and may push redemptions

@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -105,7 +105,7 @@ uint256 public constant MAX_TIMESTAMP_DRIFT = 900
 
 
 ### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
+Minimum delay before a proposed dev-mode change takes effect
 
 
 ```solidity
@@ -265,7 +265,7 @@ bool public devModeEnabled
 
 
 ### pendingDevMode
-MED-1: Pending dev-mode value awaiting the timelock delay
+Pending dev-mode value awaiting the timelock delay
 
 
 ```solidity
@@ -274,7 +274,7 @@ bool public pendingDevMode
 
 
 ### devModePendingAt
-MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
 
 
 ```solidity
@@ -1372,7 +1372,7 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external on
 
 Toggles dev mode to disable spread deviation checks
 
-MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
 
@@ -1427,7 +1427,7 @@ function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### applyDevMode
 
-MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+Apply a previously proposed dev-mode change after the timelock has elapsed.
 
 Reads `pendingDevMode` and sets `devModeEnabled` once `block.timestamp`
 is greater than or equal to `devModePendingAt`. Resets `devModePendingAt`
@@ -1577,7 +1577,7 @@ event DevModeToggled(bool enabled, address indexed caller);
 |`caller`|`address`|Address that triggered the toggle|
 
 ### DevModeProposed
-MED-1: Emitted when a dev-mode change is proposed
+Emitted when a dev-mode change is proposed
 
 
 ```solidity

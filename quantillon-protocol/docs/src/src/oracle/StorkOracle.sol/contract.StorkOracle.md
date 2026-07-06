@@ -1,5 +1,5 @@
 # StorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/oracle/StorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/oracle/StorkOracle.sol)
 
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -122,7 +122,7 @@ uint8 public constant STORK_FEED_DECIMALS = 18
 
 
 ### DEV_MODE_DELAY
-MED-1: Minimum delay before a proposed dev-mode change takes effect
+Minimum delay before a proposed dev-mode change takes effect
 
 
 ```solidity
@@ -276,7 +276,7 @@ bool public devModeEnabled
 
 
 ### pendingDevMode
-MED-1: Pending dev-mode value awaiting the timelock delay
+Pending dev-mode value awaiting the timelock delay
 
 
 ```solidity
@@ -285,7 +285,7 @@ bool public pendingDevMode
 
 
 ### devModePendingAt
-MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
 
 
 ```solidity
@@ -1347,7 +1347,7 @@ function updatePriceFeeds(address _storkFeedAddress, bytes32 _eurUsdFeedId, byte
 
 Toggles dev mode to disable spread deviation checks
 
-MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
 
@@ -1386,7 +1386,7 @@ function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### applyDevMode
 
-MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+Apply a previously proposed dev-mode change after the timelock has elapsed.
 
 Checks that `devModePendingAt` is non-zero and that the current block timestamp
 has reached or passed `devModePendingAt`. If so, copies `pendingDevMode` into
@@ -1501,7 +1501,7 @@ event DevModeToggled(bool enabled, address indexed caller);
 |`caller`|`address`|Address that triggered the toggle|
 
 ### DevModeProposed
-MED-1: Emitted when a dev-mode change is proposed
+Emitted when a dev-mode change is proposed
 
 
 ```solidity

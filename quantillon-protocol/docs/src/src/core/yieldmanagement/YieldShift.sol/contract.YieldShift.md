@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e6d6ab67e05d161d0d4815c50b5213a2a6cbb873/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/9c66decc017650bbed0d0184c123aef0af402eaf/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -359,12 +359,10 @@ bool public enforceSourceVaultBinding
 
 
 ### poolHistoryCount
-Monotonic count of pool snapshots recorded (audit SC4-5).
+Monotonic count of pool snapshots recorded.
 
 Drives the O(1) ring-buffer write position for userPoolHistory/hedgerPoolHistory
-(both written in lockstep), replacing the O(MAX_HISTORY_LENGTH) shift-and-pop that
-created a permanent gas cliff on the permissionless updateYieldDistribution path.
-Appended at the end of storage (append-only).
+(both written in lockstep). Appended at the end of storage (append-only).
 
 
 ```solidity
@@ -1701,7 +1699,7 @@ function _recordPoolSnapshot() internal;
 
 ### _recordSnapshotPair
 
-Writes one snapshot to both pool histories in lockstep (audit SC4-5).
+Writes one snapshot to both pool histories in lockstep.
 
 Both arrays share `poolHistoryCount`, so the ring write position is computed once.
 

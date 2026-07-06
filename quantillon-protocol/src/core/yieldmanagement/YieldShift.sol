@@ -124,7 +124,7 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.3";
+        return "1.0.4";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -142,7 +142,7 @@ contract YieldShift is
     /// @custom:deprecated Vestigial state: `mockAaveVault` is never read or called by YieldShift
     /// logic (user yield accrues via creditVaultYield -> stQEURO). Retained only to preserve the
     /// live proxy's storage layout and ABI; do not wire or rely on it.
-    // Private (audit SC4-7): drops the confusing public getter from the mainnet ABI
+    // Private: drops the confusing public getter from the mainnet ABI
     // while preserving the slot and the initialize/updateConfig wiring below.
     IMockAaveVault private mockAaveVault;
     IStQEUROFactory public stQEUROFactory;
@@ -203,11 +203,9 @@ contract YieldShift is
     mapping(address => uint256) public sourceToVaultId;
     bool public enforceSourceVaultBinding;
 
-    /// @notice Monotonic count of pool snapshots recorded (audit SC4-5).
+    /// @notice Monotonic count of pool snapshots recorded.
     /// @dev Drives the O(1) ring-buffer write position for userPoolHistory/hedgerPoolHistory
-    ///      (both written in lockstep), replacing the O(MAX_HISTORY_LENGTH) shift-and-pop that
-    ///      created a permanent gas cliff on the permissionless updateYieldDistribution path.
-    ///      Appended at the end of storage (append-only).
+    ///      (both written in lockstep). Appended at the end of storage (append-only).
     uint256 public poolHistoryCount;
 
     struct YieldModelConfig {
@@ -1263,7 +1261,7 @@ contract YieldShift is
         
         if (totalWeight == 0) {
             // No in-window entries: fall back to the NEWEST snapshot. With the ring
-            // buffer (audit SC4-5) the newest is at (count-1) % MAX, not length-1.
+            // buffer the newest is at (count-1) % MAX, not length-1.
             uint256 newestIdx = (poolHistoryCount - 1) % MAX_HISTORY_LENGTH;
             snapshot = poolHistory[newestIdx];
             return isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
@@ -1290,7 +1288,7 @@ contract YieldShift is
     }
 
     /**
-     * @notice Writes one snapshot to both pool histories in lockstep (audit SC4-5).
+     * @notice Writes one snapshot to both pool histories in lockstep.
      * @dev Both arrays share `poolHistoryCount`, so the ring write position is computed once.
      * @param eligibleUserPoolSize Eligible user-pool size to record (holding-period filtered)
      * @param eligibleHedgerPoolSize Eligible hedger-pool size to record

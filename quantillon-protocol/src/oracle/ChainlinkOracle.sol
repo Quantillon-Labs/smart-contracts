@@ -75,7 +75,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -112,7 +112,7 @@ contract ChainlinkOracle is
     /// @dev Prevents timestamp manipulation attacks by miners
     uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
     
-    // BLOCKS_PER_HOUR removed (audit SC4-7): dead constant, zero consumers.
+    // BLOCKS_PER_HOUR removed: dead constant, zero consumers.
 
     // =============================================================================
     // STATE VARIABLES - Contract state variables
@@ -168,13 +168,13 @@ contract ChainlinkOracle is
     /// @dev When enabled, price deviation checks are skipped (dev/testing only)
     bool public devModeEnabled;
 
-    /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
+    /// @notice Minimum delay before a proposed dev-mode change takes effect
     uint256 public constant DEV_MODE_DELAY = 48 hours;
 
-    /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
+    /// @notice Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
 
-    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @notice Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
     uint256 public devModePendingAt;
 
     // =============================================================================
@@ -219,7 +219,7 @@ contract ChainlinkOracle is
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
 
-    /// @notice MED-1: Emitted when a dev-mode change is proposed
+    /// @notice Emitted when a dev-mode change is proposed
     /// @param pending The proposed dev-mode value
     /// @param activatesAt Timestamp at which the change can be applied
     event DevModeProposed(bool pending, uint256 activatesAt);
@@ -1245,7 +1245,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies
      */
     /**
-     * @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+     * @notice Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
      * @dev Stores the desired `devModeEnabled` value in `pendingDevMode` and sets
      *      `devModePendingAt` to `block.timestamp + DEV_MODE_DELAY`. No immediate effect
      *      on live price checks until `applyDevMode` is called after the delay.
@@ -1267,7 +1267,7 @@ contract ChainlinkOracle is
     }
 
     /**
-     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @notice Apply a previously proposed dev-mode change after the timelock has elapsed.
      * @dev Reads `pendingDevMode` and sets `devModeEnabled` once `block.timestamp`
      *      is greater than or equal to `devModePendingAt`. Resets `devModePendingAt`
      *      back to 0 to clear the proposal.

@@ -74,7 +74,7 @@ contract OracleRouter is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.0";
+        return "1.1.1";
     }
     using Address for address payable;
 
@@ -149,7 +149,7 @@ contract OracleRouter is
      * @notice Locks the implementation so it cannot be initialized directly
      * @dev Disables initializers on the implementation contract; only proxies may be
      *      initialized. Brings OracleRouter in line with the other core/oracle
-     *      contracts, which all call _disableInitializers() (F-3/F-4 audit fix).
+     *      contracts, which all call _disableInitializers().
      * @custom:security Prevents implementation-contract initialization
      * @custom:validation No input validation required - constructor
      * @custom:state-changes Disables initializers on the implementation

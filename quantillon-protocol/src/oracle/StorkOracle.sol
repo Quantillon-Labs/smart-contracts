@@ -152,7 +152,7 @@ contract StorkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -241,13 +241,13 @@ contract StorkOracle is
     /// @dev When enabled, price deviation checks are skipped (dev/testing only)
     bool public devModeEnabled;
 
-    /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
+    /// @notice Minimum delay before a proposed dev-mode change takes effect
     uint256 public constant DEV_MODE_DELAY = 48 hours;
 
-    /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
+    /// @notice Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
 
-    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @notice Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
     uint256 public devModePendingAt;
 
     // =============================================================================
@@ -292,7 +292,7 @@ contract StorkOracle is
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
 
-    /// @notice MED-1: Emitted when a dev-mode change is proposed
+    /// @notice Emitted when a dev-mode change is proposed
     /// @param pending The proposed dev-mode value
     /// @param activatesAt Timestamp at which the change can be applied
     event DevModeProposed(bool pending, uint256 activatesAt);
@@ -1213,7 +1213,7 @@ contract StorkOracle is
      * @param enabled True to enable dev mode, false to disable
      */
     /**
-     * @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+     * @notice Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
      * @dev Records a desired value for `devModeEnabled` in `pendingDevMode` and sets
      *      `devModePendingAt` to `block.timestamp + DEV_MODE_DELAY`. This does not affect
      *      current deviation checks until `applyDevMode` is executed after the delay.
@@ -1235,7 +1235,7 @@ contract StorkOracle is
     }
 
     /**
-     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @notice Apply a previously proposed dev-mode change after the timelock has elapsed.
      * @dev Checks that `devModePendingAt` is non-zero and that the current block timestamp
      *      has reached or passed `devModePendingAt`. If so, copies `pendingDevMode` into
      *      `devModeEnabled` and clears `devModePendingAt`.

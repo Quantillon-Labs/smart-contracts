@@ -63,7 +63,7 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -114,7 +114,7 @@ contract SlippageStorage is
     /// @notice Bitmask of enabled sources: bit N = source N enabled. 0x03 = both Lighter + Hyperliquid.
     uint8 public override enabledSources;
 
-    // ── midPrice write-side guards (audit SC3-1 / FLAG-1 on-chain) ────────────
+    // ── midPrice write-side guards ────────────
     // Writer-side validation of the published EUR/USD mid, independent of the
     // downstream oracle (which only bounds the worst case and can be walked). All
     // OPT-IN: default 0 means "disabled", so an upgrade of the live proxy is inert
@@ -257,7 +257,7 @@ contract SlippageStorage is
             }
         }
 
-        // Writer-side midPrice guard (audit SC3-1). Revert on the single-source path
+        // Writer-side midPrice guard. Revert on the single-source path
         // so the writer sees the rejection; the batch path skips instead.
         if (!_midWithinGuards(_snapshot.midPrice, midPrice)) {
             revert CommonErrorLibrary.InvalidPrice();
@@ -330,7 +330,7 @@ contract SlippageStorage is
                 }
             }
 
-            // Writer-side midPrice guard (audit SC3-1): skip a source whose mid is
+            // Writer-side midPrice guard: skip a source whose mid is
             // out of band or deviates too far from its last value, rather than write
             // a value we don't trust (the downstream staleness freeze is the fail-safe).
             if (!_midWithinGuards(snap.midPrice, u.midPrice)) continue;
@@ -431,7 +431,7 @@ contract SlippageStorage is
     }
 
     /**
-     * @notice Configure the writer-side midPrice guards (audit SC3-1).
+     * @notice Configure the writer-side midPrice guards.
      * @dev Set band and per-write deviation for the published EUR/USD mid. Pass
      *      `maxMid=0` to disable the band and `devBps=0` to disable the deviation check.
      *      Must be called after an upgrade to activate the guards (they default off).

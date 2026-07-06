@@ -144,4 +144,55 @@ contract stQEUROFactoryTest is Test {
         vm.expectRevert();
         unauthorizedVault.selfRegister(address(factory), 1, "AAVE");
     }
+
+    // ---- config setters (governance) + zero-address reverts ----
+
+    function test_cov_version() public view {
+        assertEq(factory.version(), "1.0.1");
+    }
+
+    function test_cov_updateYieldShift() public {
+        vm.prank(admin);
+        factory.updateYieldShift(address(0x1111));
+        assertEq(factory.yieldShift(), address(0x1111));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
+        factory.updateYieldShift(address(0));
+    }
+
+    function test_cov_updateTokenImplementation() public {
+        vm.prank(admin);
+        factory.updateTokenImplementation(address(0x2222));
+        assertEq(factory.tokenImplementation(), address(0x2222));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
+        factory.updateTokenImplementation(address(0));
+    }
+
+    function test_cov_updateOracle() public {
+        vm.prank(admin);
+        factory.updateOracle(address(0x3333));
+        assertEq(factory.oracle(), address(0x3333));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidOracle.selector);
+        factory.updateOracle(address(0));
+    }
+
+    function test_cov_updateTreasury() public {
+        vm.prank(admin);
+        factory.updateTreasury(address(0x4444));
+        assertEq(factory.treasury(), address(0x4444));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
+        factory.updateTreasury(address(0));
+    }
+
+    function test_cov_updateTokenAdmin() public {
+        vm.prank(admin);
+        factory.updateTokenAdmin(address(0x5555));
+        assertEq(factory.tokenAdmin(), address(0x5555));
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidAdmin.selector);
+        factory.updateTokenAdmin(address(0));
+    }
 }

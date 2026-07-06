@@ -2396,6 +2396,27 @@ contract YieldShiftTestSuite is Test {
         yieldShift.updateYieldDistribution();
         assertGt(yieldShift.currentYieldShift(), 0, "Long period should work");
     }
+
+    // ---- bootstrap defaults + pause coverage ----
+
+    /// @notice bootstrapDefaults is governance-only and seeds snapshot history + yield sources.
+    function test_cov_bootstrapDefaults_governanceOnly() public {
+        vm.prank(user);
+        vm.expectRevert();
+        yieldShift.bootstrapDefaults();
+
+        vm.prank(governance);
+        yieldShift.bootstrapDefaults(); // seeds pool snapshot, yield-shift history, source names
+    }
+
+    function test_cov_pauseThenResume() public {
+        vm.prank(emergencyRole);
+        yieldShift.pauseYieldDistribution();
+        assertTrue(yieldShift.paused());
+        vm.prank(emergencyRole);
+        yieldShift.resumeYieldDistribution();
+        assertFalse(yieldShift.paused());
+    }
 }
 
 // =============================================================================

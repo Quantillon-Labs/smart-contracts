@@ -916,4 +916,58 @@ contract AaveIntegrationTest is Test {
         assertEq(vaultNoAave.totalUsdcInExternalVaults(), 0, "No USDC should be in Aave");
         assertGt(vaultNoAave.totalUsdcHeld(), 0, "USDC should be in vault");
     }
+
+    // =============================================================================
+    // EXTERNAL-VAULT ACCOUNTING GUARDS (coverage hardening)
+    // =============================================================================
+
+    /// @notice Duplicate vaultIds in the redemption priority list must be rejected —
+    ///         a repeated id would double-count that vault's principal in the CR and
+    ///         let minting drop below the 105% floor against phantom collateral.
+    function test_setRedemptionPriority_rejectsDuplicates() public {
+        uint256[] memory dup = new uint256[](2);
+        dup[0] = 1; // vaultId 1 is active (registered in setUp)
+        dup[1] = 1;
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
+        vault.setRedemptionPriority(dup);
+    }
+
+    /// @notice recoverToken can move only stray USDC, never the tracked backing:
+    ///         recovery is capped to balanceOf(vault) - totalUsdcHeld.
+    function test_recoverToken_usdcCappedToExcess() public {
+        uint256 stray = 500e6;
+        vm.prank(admin);
+        usdc.mint(address(vault), stray); // direct mint = stray, not tracked as backing
+
+        // Recovering exactly the stray excess succeeds.
+        vm.prank(admin);
+        vault.recoverToken(address(usdc), stray);
+
+        // With no excess left, any further USDC recovery reverts.
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        vault.recoverToken(address(usdc), 1);
+    }
+
+    /// @notice deployUsdcToVault reverts when the target vault id is not active.
+    function test_deployUsdcToVault_invalidVault_reverts() public {
+        bytes32 opRole = vault.VAULT_OPERATOR_ROLE();
+        vm.prank(admin);
+        vault.grantRole(opRole, admin);
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
+        vault.deployUsdcToVault(999, 1e6); // vaultId 999 never registered
+    }
+
+    /// @notice deployUsdcToVault reverts when the requested amount exceeds on-hand USDC.
+    function test_deployUsdcToVault_insufficientBalance_reverts() public {
+        bytes32 opRole = vault.VAULT_OPERATOR_ROLE();
+        vm.prank(admin);
+        vault.grantRole(opRole, admin);
+        uint256 tooMuch = vault.totalUsdcHeld() + 1e6;
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        vault.deployUsdcToVault(1, tooMuch);
+    }
 }

@@ -10,6 +10,7 @@ import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
     /**
      * @title MockAggregatorV3
@@ -798,4 +799,73 @@ contract OracleRouterTest is Test {
         OracleRouter.OracleType indexed newOracle,
         address indexed caller
     );
+
+    event TreasuryUpdated(address indexed newTreasury);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Added coverage (audit SC1-6): initialize validation, treasury mgmt,
+    // recover guards, and the switch-event emission — previously untested branches.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function _initData(address a, address cl, address mkt, address t) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(
+            OracleRouter.initialize.selector, a, cl, mkt, t, OracleRouter.OracleType.CHAINLINK
+        );
+    }
+
+    function test_Initialize_ZeroAdmin_Reverts() public {
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        new ERC1967Proxy(address(implementation), _initData(address(0), address(chainlinkOracle), address(storkOracle), treasury));
+    }
+
+    function test_Initialize_ZeroChainlink_Reverts() public {
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        new ERC1967Proxy(address(implementation), _initData(admin, address(0), address(storkOracle), treasury));
+    }
+
+    function test_Initialize_ZeroMarket_Reverts() public {
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        new ERC1967Proxy(address(implementation), _initData(admin, address(chainlinkOracle), address(0), treasury));
+    }
+
+    function test_Initialize_ZeroTreasury_Reverts() public {
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        new ERC1967Proxy(address(implementation), _initData(admin, address(chainlinkOracle), address(storkOracle), address(0)));
+    }
+
+    function test_UpdateTreasury_Success_EmitsAndUpdates() public {
+        address newTreasury = address(0xBEEF);
+        vm.expectEmit(true, false, false, false);
+        emit TreasuryUpdated(newTreasury);
+        vm.prank(admin);
+        router.updateTreasury(newTreasury);
+        assertEq(router.treasury(), newTreasury);
+    }
+
+    function test_UpdateTreasury_Zero_Reverts() public {
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        router.updateTreasury(address(0));
+    }
+
+    function test_UpdateTreasury_Unauthorized_Reverts() public {
+        vm.prank(address(0x1234));
+        vm.expectRevert();
+        router.updateTreasury(address(0xBEEF));
+    }
+
+    function test_RecoverETH_NoEth_Reverts() public {
+        // Router holds no ETH -> balance < 1 branch.
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
+        router.recoverETH();
+    }
+
+    function test_SwitchOracle_EmitsEvent() public {
+        vm.expectEmit(true, true, true, false);
+        emit OracleSwitched(OracleRouter.OracleType.CHAINLINK, OracleRouter.OracleType.MARKET, admin);
+        vm.prank(admin);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
+        assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.MARKET));
+    }
 }

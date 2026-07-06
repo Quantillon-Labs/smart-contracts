@@ -35,7 +35,11 @@ jobs:
 
       - name: Install mdBook
         run: |
-          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          # -f fails on an HTTP error so a transient GitHub-releases/CDN hiccup
+          # does not pipe an error page into tar; --retry rides out brief blips.
+          curl -fsSL --retry 3 --retry-delay 5 --retry-all-errors \
+            https://github.com/rust-lang/mdBook/releases/download/v0.4.40/mdbook-v0.4.40-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz
           sudo mv mdbook /usr/local/bin/
 
       - name: Generate docs with correct GitHub URLs
@@ -216,24 +220,37 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url || steps.deployment-retry2.outputs.page_url }}
     steps:
+      # The Pages deploy service browns out intermittently ("Deployment failed,
+      # try again later.", observed 2026-07-02/03/04/06). The site artifact is
+      # already built and uploaded, so each attempt is a cheap, idempotent retry
+      # against the same artifact. We try up to 3 times with escalating backoff:
+      # a single brownout has outlasted a 120s wait (run #431 failed both the
+      # first attempt and the 120s retry), so the final attempt waits 300s.
+      # 600000 ms is the action's hard maximum (larger values are clamped with a
+      # warning; see run 28721453974's annotations).
       - id: deployment
         uses: actions/deploy-pages@v4
         continue-on-error: true
         with:
-          # 600000 ms is the action's hard maximum (larger values are clamped
-          # with a warning; see run 28721453974's annotations).
           timeout: 600000
-      # The Pages service fails deploys intermittently ("Deployment failed, try
-      # again later.", observed 2026-07-02/03/04). An immediate retry can land in
-      # the same service brownout (both attempts failed within 17s on run
-      # 28721453974), so back off before retrying; a genuine outage still fails.
-      - name: Back off before retrying the Pages deployment
+      - name: Back off before the 2nd Pages deploy attempt
         if: steps.deployment.outcome == 'failure'
         run: sleep 120
       - id: deployment-retry
         if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+        with:
+          timeout: 600000
+      # Only reached when BOTH prior attempts failed; this one is final (no
+      # continue-on-error) so a genuine multi-minute outage still fails the job.
+      - name: Back off before the 3rd (final) Pages deploy attempt
+        if: steps.deployment.outcome == 'failure' && steps.deployment-retry.outcome == 'failure'
+        run: sleep 300
+      - id: deployment-retry2
+        if: steps.deployment.outcome == 'failure' && steps.deployment-retry.outcome == 'failure'
         uses: actions/deploy-pages@v4
         with:
           timeout: 600000

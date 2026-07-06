@@ -11,6 +11,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {MockUSDC} from "./AaveIntegration.t.sol";
 
     /**
      * @title MockAggregatorV3
@@ -867,5 +868,73 @@ contract OracleRouterTest is Test {
         vm.prank(admin);
         router.switchOracle(OracleRouter.OracleType.MARKET);
         assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.MARKET));
+    }
+
+    // =============================================================================
+    // DELEGATION + ADMIN BRANCH COVERAGE
+    // =============================================================================
+
+    function test_version_returnsSemver() public view {
+        assertEq(router.version(), "1.1.1");
+    }
+
+    /// @notice updateUsdcTolerance delegates to the active oracle on both slots.
+    function test_updateUsdcTolerance_chainlinkAndMarket() public {
+        // CHAINLINK slot active by default.
+        vm.prank(admin);
+        router.updateUsdcTolerance(150);
+        // Switch to MARKET and delegate there.
+        vm.prank(admin);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
+        vm.prank(admin);
+        router.updateUsdcTolerance(200);
+    }
+
+    /// @notice updatePriceFeeds delegates on CHAINLINK and reverts on the MARKET slot.
+    function test_updatePriceFeeds_chainlinkThenMarketReverts() public {
+        vm.prank(admin);
+        router.updatePriceFeeds(address(0xEE), address(0xFF));
+
+        vm.prank(admin);
+        router.switchOracle(OracleRouter.OracleType.MARKET);
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
+        router.updatePriceFeeds(address(0xEE), address(0xFF));
+    }
+
+    /// @notice reset/trigger circuit breaker delegate to the active oracle.
+    function test_resetAndTriggerCircuitBreaker_chainlink() public {
+        // The router needs EMERGENCY_ROLE on the delegate to forward breaker calls.
+        vm.prank(admin);
+        AccessControlUpgradeable(address(chainlinkOracle)).grantRole(keccak256("EMERGENCY_ROLE"), address(router));
+
+        vm.prank(admin);
+        router.triggerCircuitBreaker();
+        vm.prank(admin);
+        router.resetCircuitBreaker();
+    }
+
+    function test_pauseThenUnpause() public {
+        vm.prank(admin);
+        router.pause();
+        assertTrue(router.paused());
+        vm.prank(admin);
+        router.unpause();
+        assertFalse(router.paused());
+    }
+
+    function test_recoverToken_toTreasury() public {
+        MockUSDC tok = new MockUSDC();
+        tok.mint(address(router), 500e6);
+        vm.prank(admin);
+        router.recoverToken(address(tok), 500e6);
+        assertEq(tok.balanceOf(treasury), 500e6);
+    }
+
+    function test_authorizeUpgrade_viaUpgrade() public {
+        OracleRouter newImpl = new OracleRouter();
+        vm.prank(admin);
+        router.upgradeToAndCall(address(newImpl), "");
+        assertEq(router.version(), "1.1.1");
     }
 }

@@ -2170,6 +2170,26 @@ contract UserPoolTestSuite is Test {
         userPool.claimPendingWithdrawal();
     }
 
+    // ---- branch coverage: projected rewards + pause ----
+
+    /// @notice calculateProjectedRewards is zero for zero principal and linear in duration.
+    function test_cov_calculateProjectedRewards_linear() public view {
+        assertEq(userPool.calculateProjectedRewards(0, 365 days), 0, "zero principal -> zero reward");
+        uint256 oneYear = userPool.calculateProjectedRewards(1_000e18, 365 days);
+        uint256 twoYears = userPool.calculateProjectedRewards(1_000e18, 730 days);
+        assertEq(twoYears, 2 * oneYear, "reward is linear in duration");
+    }
+
+    /// @notice pause/unpause toggle the paused flag (EMERGENCY_ROLE).
+    function test_cov_pauseThenUnpause() public {
+        vm.prank(admin);
+        userPool.pause();
+        assertTrue(userPool.paused());
+        vm.prank(admin);
+        userPool.unpause();
+        assertFalse(userPool.paused());
+    }
+
 }
 
 // =============================================================================

@@ -225,13 +225,14 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 - **57 test files, 1,415 passing tests** (0 failing, 11 skipped)
 - Fuzz tests: 1000 runs; Invariant tests: 256 runs, depth 15
 - Naming: `test_*`, `testFuzz_*`, `invariant_*`
-- 11 explicit skips with documented rationale (the misleading pure-skip attack stubs were removed; real attack coverage lives in `EconomicAttackVectorsIntegration` + integration tests)
+- 11 explicit skips with documented rationale; real attack coverage lives in `EconomicAttackVectorsIntegration` + integration tests
 - Run `FOUNDRY_PROFILE=test forge test` (or `make test`) before pushing
 
 ## Security Notes
 
 - Security contact: team@quantillon.money
-- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies. **Accepted risk (F-2, 2026-06-17):** OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS, upgradeable by the Safe *directly* (no 12h Timelock) — a deliberate choice to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate (the single-key risk that drove F-2 is already eliminated).
+- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS and upgrade via the Safe *directly* (no 12h Timelock) — deliberate, to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate.
+- **Public-surface policy:** this repo and the docs site are public — never put internal audit finding IDs, remediation history, or past-vulnerability narratives in NatSpec, struct comments, `docs/*.md`, `README.md`, or this file. Internal security context (git-crypt encrypted, plaintext only in unlocked checkouts): @CLAUDE.private.md
 - Slither: 0 Critical, 0 Medium findings
 - Custom errors required (not `require` strings)
 - NatSpec 100% coverage enforced via `make validate-natspec`

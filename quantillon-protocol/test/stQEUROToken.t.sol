@@ -293,4 +293,94 @@ contract stQEUROTokenTestSuite is Test {
         vm.expectRevert(); // NoETHToRecover
         stQEURO.recoverETH();
     }
+
+    // ── Residual sweep on final exit ─────────────────────────────────────────
+    // Regression for the 2026-07-15 live incident: after a yield mint raised the share
+    // price, the last full redemption's ERC-4626 round-down stranded 1 wei of QEURO in
+    // the zero-share vault, keeping QuantillonVault.totalMinted() != 0 forever and
+    // dead-locking the sole hedger's exit (see HedgerPool.QEURO_DUST_THRESHOLD).
+
+    event ResidualSwept(address indexed receiver, uint256 amount);
+
+    function testRedeemLastShares_SweepsRoundingResidue() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+
+        // Simulate a protocol yield mint with an awkward amount (incident: 0.00153... QEURO)
+        qeuro.mint(address(stQEURO), 1_530_255_334_032_878);
+
+        uint256 shares = stQEURO.balanceOf(user1);
+        uint256 preview = stQEURO.previewRedeem(shares);
+        uint256 vaultBalance = qeuro.balanceOf(address(stQEURO));
+        assertGt(vaultBalance, preview); // round-down residue exists pre-sweep
+        uint256 userBalanceBefore = qeuro.balanceOf(user1);
+
+        vm.expectEmit(true, false, false, true);
+        emit ResidualSwept(user1, vaultBalance - preview);
+        vm.prank(user1);
+        uint256 assetsOut = stQEURO.redeem(shares, user1, user1);
+
+        assertEq(stQEURO.totalSupply(), 0);
+        assertEq(qeuro.balanceOf(address(stQEURO)), 0); // exact-zero vault, nothing stranded
+        assertEq(assetsOut, vaultBalance); // return value includes the sweep
+        assertEq(qeuro.balanceOf(user1) - userBalanceBefore, vaultBalance);
+    }
+
+    function testWithdrawMaxAssets_SweepsRoundingResidue() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+
+        qeuro.mint(address(stQEURO), 1_530_255_334_032_878);
+
+        uint256 maxAssets = stQEURO.maxWithdraw(user1);
+        vm.prank(user1);
+        stQEURO.withdraw(maxAssets, user1, user1);
+
+        assertEq(stQEURO.totalSupply(), 0);
+        assertEq(qeuro.balanceOf(address(stQEURO)), 0);
+    }
+
+    function testRedeemWithRemainingShares_DoesNotSweep() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        vm.startPrank(user2);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user2);
+        vm.stopPrank();
+
+        qeuro.mint(address(stQEURO), 1_530_255_334_032_878);
+
+        uint256 shares = stQEURO.balanceOf(user1);
+        uint256 preview = stQEURO.previewRedeem(shares);
+        vm.prank(user1);
+        uint256 assetsOut = stQEURO.redeem(shares, user1, user1);
+
+        assertEq(assetsOut, preview); // no sweep while shares remain
+        assertGt(stQEURO.totalSupply(), 0);
+        assertGt(qeuro.balanceOf(address(stQEURO)), 0);
+    }
+
+    function testEmergencyWithdrawLastUser_SweepsRoundingResidue() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+
+        qeuro.mint(address(stQEURO), 1_530_255_334_032_878);
+        uint256 vaultBalance = qeuro.balanceOf(address(stQEURO));
+        uint256 userBalanceBefore = qeuro.balanceOf(user1);
+
+        vm.prank(admin);
+        stQEURO.emergencyWithdraw(user1);
+
+        assertEq(stQEURO.totalSupply(), 0);
+        assertEq(qeuro.balanceOf(address(stQEURO)), 0);
+        assertEq(qeuro.balanceOf(user1) - userBalanceBefore, vaultBalance);
+    }
 }

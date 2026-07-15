@@ -50,7 +50,7 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -68,6 +68,8 @@ contract stQEUROToken is
     event YieldParametersUpdated(uint256 yieldFee);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury, address indexed caller);
     event ETHRecovered(address indexed to, uint256 indexed amount);
+    /// @notice Emitted when the rounding residue left by the final exit is swept to its receiver
+    event ResidualSwept(address indexed receiver, uint256 amount);
 
     /**
      * @notice Constructs the implementation contract with its immutable time provider.
@@ -347,6 +349,7 @@ contract stQEUROToken is
         returns (uint256 shares)
     {
         shares = super.withdraw(assets, receiver, owner);
+        _sweepResidualOnEmpty(receiver);
     }
 
     /**
@@ -373,6 +376,35 @@ contract stQEUROToken is
         returns (uint256 assets)
     {
         assets = super.redeem(shares, receiver, owner);
+        assets += _sweepResidualOnEmpty(receiver);
+    }
+
+    /**
+     * @notice Sweeps the vault's remaining QEURO to the final exiter once no shares are left.
+     * @dev ERC-4626 round-down (after yield mints raise the share price) strands a few wei of
+     *      QEURO on the last exit. With `totalSupply() == 0` no share can ever claim them, and
+     *      the stranded wei keep `QuantillonVault.totalMinted()` above zero — which dead-locked
+     *      the sole hedger's exit on 2026-07-15 (see `HedgerPool.QEURO_DUST_THRESHOLD` for the
+     *      tolerance layer). Sweeping returns the vault to an exact-zero state after every full
+     *      exit; the receiver can then redeem the full amount through the protocol.
+     * @param receiver Address that receives the swept residue (same receiver as the exit).
+     * @return residual Amount of QEURO swept (0 when shares remain or nothing is left).
+     * @custom:security Only reachable from `nonReentrant` exit paths; QEURO has no transfer hooks.
+     * @custom:validation No-op unless the share supply is exactly zero.
+     * @custom:state-changes Transfers the vault's full remaining QEURO balance to `receiver`.
+     * @custom:events Emits `ResidualSwept` when a nonzero residue is transferred.
+     * @custom:errors Reverts only if the underlying QEURO transfer fails.
+     * @custom:reentrancy Callers hold the `nonReentrant` guard.
+     * @custom:access Internal helper only.
+     * @custom:oracle Not applicable.
+     */
+    function _sweepResidualOnEmpty(address receiver) private returns (uint256 residual) {
+        if (totalSupply() != 0) return 0;
+        IERC20 assetToken = IERC20(asset());
+        residual = assetToken.balanceOf(address(this));
+        if (residual == 0) return 0;
+        assetToken.safeTransfer(receiver, residual);
+        emit ResidualSwept(receiver, residual);
     }
 
     /**
@@ -516,6 +548,7 @@ contract stQEUROToken is
         IERC20(asset()).safeTransfer(user, assets);
 
         emit Withdraw(msg.sender, user, user, assets, shares);
+        _sweepResidualOnEmpty(user);
     }
 
     /**

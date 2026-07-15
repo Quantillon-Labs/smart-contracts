@@ -3623,4 +3623,145 @@ contract HedgerPoolPositionClosureTest is Test {
         bytes4 expectedSelector = HedgerPoolErrorLibrary.PositionClosureRestricted.selector;
         assertTrue(expectedSelector != bytes4(0));
     }
+
+    /**
+     * @notice Tests that dust QEURO supply does not block the sole hedger's exit
+     * @dev Regression for the 2026-07-15 live deadlock: redemption round-down stranded 1 wei
+     *      of QEURO in a zero-share stQEURO vault, keeping totalMinted() != 0 forever. The
+     *      collateralization check then compared post-removal margin (0 for the sole hedger)
+     *      against the position margin and exitHedgePosition reverted PositionClosureRestricted.
+     * @custom:security Tests the dust tolerance of the closure safety check
+     * @custom:validation Ensures dust supply takes the totalMinted early-return
+     * @custom:state-changes Opens and closes a position with dust supply outstanding
+     * @custom:events Expects HedgePositionClosed event
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
+    function testPositionClosureAllowedWithDustSupply() public {
+        mockVault.setTotalMargin(0);
+
+        vm.prank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20);
+
+        // Reported margin (5000e6 from the enter deposit) <= position margin (5000e6):
+        // with a real supply this exact state reverts (see threshold test below).
+        mockVault.setTotalMinted(1); // 1 wei unredeemable residue
+
+        vm.prank(hedger);
+        hedgerPool.exitHedgePosition(positionId);
+
+        assertEq(hedgerPool.totalMargin(), 0);
+    }
+
+    /**
+     * @notice Tests the exact boundary of the dust tolerance on the closure safety check
+     * @dev Supply at QEURO_DUST_THRESHOLD must close freely; one wei above must still be
+     *      treated as real supply and keep the collateralization restriction active.
+     * @custom:security Tests that the dust carve-out cannot be widened past the threshold
+     * @custom:validation Ensures both sides of the QEURO_DUST_THRESHOLD boundary
+     * @custom:state-changes Opens positions and attempts closures at the boundary
+     * @custom:events Expects HedgePositionClosed for the at-threshold close
+     * @custom:errors Expects PositionClosureRestricted just above the threshold
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
+    function testPositionClosureDustThresholdBoundary() public {
+        mockVault.setTotalMargin(0);
+
+        vm.prank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20);
+
+        // Just above the threshold: still restricted (reported margin <= position margin)
+        mockVault.setTotalMinted(hedgerPool.QEURO_DUST_THRESHOLD() + 1);
+        vm.prank(hedger);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionClosureRestricted.selector);
+        hedgerPool.exitHedgePosition(positionId);
+
+        // At the threshold: treated as dust, close succeeds
+        mockVault.setTotalMinted(hedgerPool.QEURO_DUST_THRESHOLD());
+        vm.prank(hedger);
+        hedgerPool.exitHedgePosition(positionId);
+
+        assertEq(hedgerPool.totalMargin(), 0);
+    }
+
+    /**
+     * @notice Tests that dust qeuroBacked does not block a full margin withdrawal
+     * @dev Regression for the 2026-07-15 live deadlock: a redemption round-down residue in
+     *      position.qeuroBacked forced the margin-ratio branch, which evaluates to ratio 0
+     *      when withdrawing the entire margin and reverted MarginRatioTooLow forever.
+     * @custom:security Tests the dust tolerance of the removeMargin ratio gate
+     * @custom:validation Ensures full withdrawal succeeds with only dust backing left
+     * @custom:state-changes Fills then unwinds the position, withdraws the full margin
+     * @custom:events Expects MarginUpdated events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
+    function testRemoveMarginFullWithdrawalWithDustQeuroBacked() public {
+        mockVault.setTotalMargin(0);
+
+        vm.prank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20);
+
+        // Fill the position, then redeem everything except an unredeemable dust residue.
+        // The USDC share is capped at filledVolume, so filledVolume lands exactly at 0
+        // while qeuroBacked keeps the round-down residue — the live incident state.
+        vm.prank(address(mockVault));
+        hedgerPool.recordUserMint(1000e6, 1e18, 1000e18);
+        vm.prank(address(mockVault));
+        hedgerPool.recordUserRedeem(2000e6, 1.1e18, 1000e18 - 5e11);
+
+        (, , uint96 filledVolume, uint96 marginNow, , , , , , , , uint128 qeuroBacked, ) =
+            hedgerPool.positions(positionId);
+        assertEq(uint256(filledVolume), 0);
+        assertEq(uint256(qeuroBacked), 5e11);
+        assertLe(uint256(qeuroBacked), hedgerPool.QEURO_DUST_THRESHOLD());
+        assertGt(uint256(marginNow), 0);
+
+        vm.prank(hedger);
+        hedgerPool.removeMargin(positionId, uint256(marginNow));
+
+        (, , , uint96 marginAfter, , , , , , , , , ) = hedgerPool.positions(positionId);
+        assertEq(uint256(marginAfter), 0);
+        assertEq(hedgerPool.totalMargin(), 0);
+    }
+
+    /**
+     * @notice Tests that qeuroBacked above the dust threshold still enforces the ratio gate
+     * @dev A full withdrawal with more than dust backing must keep reverting MarginRatioTooLow.
+     * @custom:security Tests that the dust carve-out cannot bypass the ratio check
+     * @custom:validation Ensures the gate still fires above QEURO_DUST_THRESHOLD
+     * @custom:state-changes Fills then unwinds the position, attempts a full withdrawal
+     * @custom:events None
+     * @custom:errors Expects MarginRatioTooLow
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
+    function testRemoveMarginFullWithdrawalRevertsAboveDustThreshold() public {
+        mockVault.setTotalMargin(0);
+
+        vm.prank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20);
+
+        uint256 residue = hedgerPool.QEURO_DUST_THRESHOLD() + 1;
+        vm.prank(address(mockVault));
+        hedgerPool.recordUserMint(1000e6, 1e18, 1000e18);
+        vm.prank(address(mockVault));
+        hedgerPool.recordUserRedeem(2000e6, 1.1e18, 1000e18 - residue);
+
+        (, , uint96 filledVolume, uint96 marginNow, , , , , , , , uint128 qeuroBacked, ) =
+            hedgerPool.positions(positionId);
+        assertEq(uint256(filledVolume), 0);
+        assertEq(uint256(qeuroBacked), residue);
+
+        vm.prank(hedger);
+        vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
+        hedgerPool.removeMargin(positionId, uint256(marginNow));
+    }
 }

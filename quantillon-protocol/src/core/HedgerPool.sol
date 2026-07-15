@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.6";
+        return "1.0.7";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -210,6 +210,13 @@ contract HedgerPool is
     uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
     uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
     uint256 public constant MAX_REWARD_PERIOD = 365 days;
+    /// @notice QEURO amounts (18 decimals) at or below this are treated as unredeemable rounding dust
+    /// @dev Proportional round-down on redemptions/unstakes can strand a few wei of QEURO supply or
+    ///      per-position backing that nobody can redeem (e.g. inside a stQEURO vault whose share
+    ///      supply is zero). Exact-zero guards on those values dead-lock hedger exits and full margin
+    ///      withdrawal forever. 1e12 wei = 1e-6 QEURO, worth at most ~one USDC unit (6 decimals) —
+    ///      economically indistinguishable from zero while 30 orders of magnitude below real supply.
+    uint256 public constant QEURO_DUST_THRESHOLD = 1e12;
 
     event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
@@ -845,9 +852,13 @@ contract HedgerPool is
 
         // Validate margin ratio after removal (based on new position size)
         // Skip when position has no active exposure (all QEURO redeemed) — ratio is meaningless.
+        // qeuroBacked is compared against QEURO_DUST_THRESHOLD rather than zero: redemption
+        // round-down can leave unredeemable wei of backing behind, and an exact-zero gate would
+        // then force the ratio check (which evaluates to 0 when withdrawing everything) and
+        // permanently brick full margin withdrawal.
         // Initialize to zero so events have a well-defined value even when we skip validation.
         uint256 newMarginRatio = 0;
-        if (position.qeuroBacked > 0 || position.filledVolume > 0) {
+        if (position.qeuroBacked > QEURO_DUST_THRESHOLD || position.filledVolume > 0) {
             newMarginRatio = newPositionSize > 0
                 ? newMargin.mulDiv(10000, newPositionSize)
                 : 0;
@@ -1941,7 +1952,7 @@ contract HedgerPool is
      * @dev Checks if protocol remains collateralized after removing this position's margin
      * @param positionMargin Amount of margin in the position being closed
      * @custom:security Internal function - prevents protocol undercollateralization from position closures
-     * @custom:validation Checks vault is set, QEURO supply > 0, protocol is collateralized, and remaining margin > positionMargin
+     * @custom:validation Checks vault is set, QEURO supply is above dust, protocol is collateralized, and remaining margin > positionMargin
      * @custom:state-changes None - view function
      * @custom:events None
      * @custom:errors Reverts with PositionClosureRestricted if closing would cause undercollateralization
@@ -1951,8 +1962,12 @@ contract HedgerPool is
      */
     function _validatePositionClosureSafety(uint256 positionMargin) internal view {
         if (address(vault) == address(0)) return;
-        // If no QEURO is outstanding, closing is always safe (nothing to collateralize)
-        if (vault.totalMinted() == 0) return;
+        // If no QEURO is outstanding, closing is always safe (nothing to collateralize).
+        // Compared against QEURO_DUST_THRESHOLD rather than zero: redemption/unstake round-down
+        // can strand a few wei of supply that nobody can ever redeem (e.g. in a stQEURO vault
+        // whose share supply is zero), and an exact-zero check would dead-lock the sole hedger's
+        // exit forever while the outstanding value rounds to zero USDC.
+        if (vault.totalMinted() <= QEURO_DUST_THRESHOLD) return;
         (bool isCollateralized, uint256 reportedMargin) = vault.isProtocolCollateralized();
         if (!isCollateralized || reportedMargin <= positionMargin) revert HedgerPoolErrorLibrary.PositionClosureRestricted();
     }

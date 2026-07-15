@@ -14,11 +14,11 @@
     "version": "1.0.0"
   },
   "HedgerPool": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x32a636270b566a40dc02498d331ebb1560e8cb3d",
+    "deployedAt": 1784116501,
+    "gitCommit": "18e7e3a",
+    "implementation": "0x7d47300c37D1C7D7973615F84Eb6508b512E6502",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "version": "1.0.4"
+    "version": "1.0.7"
   },
   "HyperliquidEurUsdOracle": {
     "deployedAt": 1783062491,

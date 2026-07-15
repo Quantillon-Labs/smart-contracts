@@ -224,6 +224,7 @@ function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
 - **Mitigation**: Timelock controls, governance
 - **Monitoring**: Upgrade proposal tracking
 - **Version traceability**: every core contract exposes `IVersioned.version()` and any change is traced through a semver bump (CI-enforced via `make check-version-bump`); `deployments/{chainId}/versions.json` records the live implementation + commit per contract, so an auditor can confirm exactly which source version is deployed (`cast call <proxy> "version()(string)"`).
+- **Known limitation (tracked 2026-07-15)**: `SecureUpgradeable.setTimelock` is `DEFAULT_ADMIN_ROLE`-gated but not itself timelocked, so an admin can repoint a proxy at a shorter-delay TimelockController and bypass the intended upgrade window — the same window `toggleSecureUpgrades(false)` deliberately protects behind the quorum-gated, 24h emergency-disable flow. Close by routing `setTimelock` through the active timelock (or the emergency-disable flow) in the next `SecureUpgradeable` revision; until then, treat any `TimelockSet` event on a live proxy as a critical alert.
 
 **Integration Risk**:
 - **Risk**: Third-party protocol failures

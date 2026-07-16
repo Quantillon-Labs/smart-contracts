@@ -100,10 +100,10 @@
     "version": "1.0.1"
   },
   "stQEUROToken": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x74c0f282294296361999f4a55c2a7b870cafa140",
+    "deployedAt": 1784185015,
+    "gitCommit": "4c661c4",
+    "implementation": "0x315F62A1f7aAF80D3a79824fdae2FB01E7a89c07",
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
-    "version": "1.0.1"
+    "version": "1.0.3"
   }
 }

@@ -68,10 +68,13 @@ contract HedgerPoolHarness {
 }
 
 contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test {
+    uint256 internal constant QEURO_DUST_THRESHOLD = 1e12;
+
     address internal admin = address(0xA11CE);
     address internal hedger = address(0xBEEF01);
     address internal bootstrapUser = address(0xB007);
     address internal attacker = address(0xBAD);
+    address internal orphanedDustHolder = address(0xD057);
 
     MockUSDC internal usdc;
     QEUROToken internal qeuro;
@@ -120,6 +123,86 @@ contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test
         usdc.mint(hedger, 1_000_000e6);
         usdc.mint(bootstrapUser, 10_000e6);
         usdc.mint(attacker, 2_000_000e6);
+    }
+
+    function _seedHedgerMargin(uint256 amount) internal {
+        vm.startPrank(hedger);
+        usdc.approve(address(hedgerPool), amount);
+        hedgerPool.seedMargin(amount);
+        vm.stopPrank();
+    }
+
+    function _mintOrphanedDust(uint256 amount) internal {
+        vm.prank(address(vault));
+        qeuro.mint(orphanedDustHolder, amount);
+    }
+
+    function _reproduceOneWeiIncidentDust() internal {
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 1e6);
+        vault.mintQEURO(1e6, 0);
+        qeuro.transfer(orphanedDustHolder, 1);
+        vault.redeemQEURO(1e18 - 1, 0);
+        vm.stopPrank();
+
+        assertEq(qeuro.totalSupply(), 1, "incident should leave one wei of QEURO supply");
+        assertEq(vault.totalMinted(), 1, "vault tracker should retain the same one wei");
+        assertEq(qeuro.balanceOf(orphanedDustHolder), 1, "dust should be stranded outside its former owner");
+    }
+
+    function test_OneWeiIncidentDust_AllowsOneUsdcMint() public {
+        _seedHedgerMargin(50e6);
+        _reproduceOneWeiIncidentDust();
+
+        assertEq(vault.getProtocolCollateralizationRatio(), 0, "sub-USDC backing should keep the empty-state sentinel");
+        assertFalse(vault.shouldTriggerLiquidation(), "dust-only supply must not trigger cached liquidation");
+        (bool liveShouldLiquidate, uint256 liveRatio) = vault.shouldTriggerLiquidationLive();
+        assertFalse(liveShouldLiquidate, "dust-only supply must not trigger live liquidation");
+        assertEq(liveRatio, 0, "live ratio should preserve the empty-state sentinel");
+        assertTrue(vault.canMint(), "bounded orphaned dust must not dead-lock minting");
+
+        uint256 supplyBefore = qeuro.totalSupply();
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 1e6);
+        vault.mintQEURO(1e6, 0);
+        vm.stopPrank();
+
+        assertEq(qeuro.balanceOf(bootstrapUser), 1e18, "one USDC should mint one QEURO at the fixed price");
+        assertEq(qeuro.totalSupply(), supplyBefore + 1e18, "new mint should retain and account for the dust wei");
+    }
+
+    function test_DustBoundaryIsInclusive_AboveBoundaryUsesNormalCrGate() public {
+        _seedHedgerMargin(1);
+        _mintOrphanedDust(QEURO_DUST_THRESHOLD);
+
+        assertEq(vault.getProtocolCollateralizationRatio(), 100e18, "one atomic USDC should give 100% CR");
+        assertTrue(vault.canMint(), "the exact dust boundary should use bootstrap mint eligibility");
+
+        vm.prank(address(vault));
+        qeuro.burn(orphanedDustHolder, QEURO_DUST_THRESHOLD);
+        _mintOrphanedDust(QEURO_DUST_THRESHOLD + 1);
+
+        assertEq(vault.getProtocolCollateralizationRatio(), 100e18, "above-boundary fixture should remain at 100% CR");
+        assertFalse(vault.canMint(), "supply above the dust boundary must use the normal 105% CR gate");
+
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), 1e6);
+        vm.prank(bootstrapUser);
+        vm.expectRevert(CommonErrorLibrary.InsufficientCollateralization.selector);
+        vault.mintQEURO(1e6, 0);
+    }
+
+    function test_DustEligibilityCannotBypassProjectedCollateralizationFloor() public {
+        _seedHedgerMargin(50e6);
+        _mintOrphanedDust(QEURO_DUST_THRESHOLD);
+        assertTrue(vault.canMint(), "dust should pass only the pre-mint eligibility gate");
+
+        uint256 undercollateralizingDeposit = 1_000_000e6;
+        vm.prank(attacker);
+        usdc.approve(address(vault), undercollateralizingDeposit);
+        vm.prank(attacker);
+        vm.expectRevert(CommonErrorLibrary.InsufficientCollateralization.selector);
+        vault.mintQEURO(undercollateralizingDeposit, 0);
     }
 
     function test_PostMintCollateralizationCheck_BlocksMarginExtractionExploit() public {

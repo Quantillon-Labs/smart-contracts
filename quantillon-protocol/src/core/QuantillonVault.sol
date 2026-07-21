@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.9";
+        return "1.1.10";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -170,6 +170,12 @@ contract QuantillonVault is
     uint256 private constant CRITICAL_COLLATERALIZATION_RATIO_BPS = 10100; // 101.000000% (basis points)
     uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18; // 101.000000% - minimum allowed value (18 decimals)
     uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18; // 100.000000% - minimum allowed critical ratio (18 decimals)
+
+    /// @dev QEURO supply at or below 1e-6 QEURO is unredeemable rounding dust and is treated as
+    ///      empty only by pre-operation status checks. Projected mint collateralization still uses
+    ///      the full raw supply, so this tolerance cannot bypass the post-mint 105% floor. Keep this
+    ///      boundary aligned with HedgerPool.QEURO_DUST_THRESHOLD.
+    uint256 private constant QEURO_DUST_THRESHOLD = 1e12;
 
 
     // =============================================================================
@@ -2561,7 +2567,7 @@ contract QuantillonVault is
      * @param eurUsdPrice EUR/USD price used to value QEURO debt for the CR check (18 decimals).
      * @return allowed Whether minting is permitted at the supplied price.
      * @custom:security Internal helper using caller-supplied price.
-     * @custom:validation Requires bootstrapped cache, active hedger, and CR >= mint threshold.
+     * @custom:validation Requires bootstrapped cache, active hedger, and either dust-only supply or CR >= mint threshold.
      * @custom:state-changes None.
      * @custom:events None.
      * @custom:errors None - returns boolean flag.
@@ -2576,7 +2582,10 @@ contract QuantillonVault is
         if (address(hedgerPool) == address(0) || !hedgerPool.hasActiveHedger()) return false;
 
         uint256 currentQeuroSupply = qeuro.totalSupply();
-        if (currentQeuroSupply == 0) {
+        // Redemption/unstake round-down can strand unredeemable supply in a zero-share stQEURO
+        // vault. Treat that bounded residue as an empty bootstrap state here; the projected-CR
+        // guard that follows in every mint path still includes every wei of existing supply.
+        if (currentQeuroSupply <= QEURO_DUST_THRESHOLD) {
             return true;
         }
 

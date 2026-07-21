@@ -1,0 +1,20 @@
+[
+  {
+    "check": "timestamp",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "applyDevMode",
+    "reason": "The 48-hour admin timelock intentionally compares the current timestamp with its activation deadline."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/core/SecureUpgradeable.sol",
+    "function": "approveEmergencyDisableSecureUpgrades",
+    "reason": "The zero deadline check intentionally verifies that an emergency-disable timelock proposal is active."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/core/SecureUpgradeable.sol",
+    "function": "applyEmergencyDisableSecureUpgrades",
+    "reason": "The emergency-disable path intentionally enforces its 24-hour activation deadline."
+  }
+]

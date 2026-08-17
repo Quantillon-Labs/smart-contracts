@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.10";
+        return "1.1.11";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -779,7 +779,7 @@ contract QuantillonVault is
         _validateMintRouting(targetVaultId);
         (uint256 eurUsdPrice, bool isValid) = _getValidatedMintPrices();
         _enforceMintEligibility(eurUsdPrice);
-        _enforceMintPriceDeviation(eurUsdPrice);
+        _enforcePriceDeviation(eurUsdPrice);
         (uint256 fee, uint256 netAmount, uint256 computedQeuroToMint) =
             _computeMintAmounts(usdcAmount, eurUsdPrice, minQeuroOut);
         qeuroToMint = computedQeuroToMint;
@@ -894,10 +894,11 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Enforces mint-time EUR/USD deviation guard unless dev mode is enabled.
-     * @dev Compares live price vs cached baseline and reverts when deviation exceeds configured threshold.
+     * @notice Enforces the EUR/USD deviation guard unless dev mode is enabled.
+     * @dev Compares live price vs cached baseline and reverts when deviation exceeds the configured
+     *      threshold. Shared by the mint and redeem flows so the guard exists once.
      * @param eurUsdPrice Current validated EUR/USD price.
-     * @custom:security Blocks minting during abnormal price moves outside policy limits.
+     * @custom:security Blocks mint/redeem during abnormal price moves outside policy limits.
      * @custom:validation Reverts with `ExcessiveSlippage` when deviation rule is violated.
      * @custom:state-changes No state changes.
      * @custom:events Emits `PriceDeviationDetected` before reverting on violation.
@@ -906,7 +907,7 @@ contract QuantillonVault is
      * @custom:access Internal helper.
      * @custom:oracle Uses provided live oracle price and cached baseline.
      */
-    function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal {
+    function _enforcePriceDeviation(uint256 eurUsdPrice) internal {
         if (devModeEnabled) return;
 
         (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
@@ -1114,19 +1115,7 @@ contract QuantillonVault is
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
         // Price deviation check using cached price (skip if dev mode is enabled)
-        if (!devModeEnabled) {
-            (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
-                eurUsdPrice,
-                lastValidEurUsdPrice,
-                MAX_PRICE_DEVIATION,
-                lastPriceUpdateBlock,
-                MIN_BLOCKS_BETWEEN_UPDATES
-            );
-            if (shouldRevert) {
-                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-                revert CommonErrorLibrary.ExcessiveSlippage();
-            }
-        }
+        _enforcePriceDeviation(eurUsdPrice);
 
         // Check if protocol is in liquidation mode using the same live price used for payout.
         // Route on the raw 18-decimal ratio (no bps flooring) so near-threshold routing is exact;
@@ -1842,7 +1831,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValidPrice) = _getValidatedMintPrices();
         _enforceMintEligibility(eurUsdPrice);
-        _enforceMintPriceDeviation(eurUsdPrice);
+        _enforcePriceDeviation(eurUsdPrice);
 
         uint256 feeUsdc = usdcAmount.percentageOf(IstQEURO(stToken).yieldFee());
         uint256 netUsdcAmount = usdcAmount - feeUsdc;
@@ -2027,17 +2016,17 @@ contract QuantillonVault is
 
     /**
      * @notice Returns current exposure snapshot for a vault id.
-     * @dev Provides adapter address, active flag, tracked principal, and best-effort underlying read.
+     * @dev Provides adapter address, active flag, tracked principal, and the adapter underlying read.
      * @param vaultId Vault id to query.
      * @return adapter Adapter address mapped to vault id.
      * @return active Whether vault id is active.
      * @return principalTracked Principal tracked locally for vault id.
-     * @return currentUnderlying Current underlying balance from adapter (fallbacks to principal on read failure).
+     * @return currentUnderlying Current underlying balance from the adapter (0 when no adapter set).
      * @custom:security Read-only helper.
      * @custom:validation No additional validation; unknown ids return zeroed/default values.
      * @custom:state-changes No state changes.
      * @custom:events No events emitted.
-     * @custom:errors No explicit errors; adapter read failure is handled via fallback.
+     * @custom:errors Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
      * @custom:reentrancy Not applicable for view function.
      * @custom:access Public view.
      * @custom:oracle No oracle dependencies.
@@ -2047,16 +2036,11 @@ contract QuantillonVault is
         view
         returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying)
     {
-        adapter = address(stakingVaultAdapterById[vaultId]);
+        IExternalStakingVault adapterContract = stakingVaultAdapterById[vaultId];
+        adapter = address(adapterContract);
         active = stakingVaultActiveById[vaultId];
         principalTracked = principalUsdcByVaultId[vaultId];
-        if (adapter != address(0)) {
-            try IExternalStakingVault(adapter).totalUnderlying() returns (uint256 underlying) {
-                currentUnderlying = underlying;
-            } catch {
-                currentUnderlying = principalTracked;
-            }
-        }
+        currentUnderlying = _adapterUnderlying(adapterContract);
     }
 
     /**
@@ -2343,33 +2327,81 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Computes aggregate external-vault collateral balance including accrued yield.
-     * @dev Reads adapter `totalUnderlying` values with principal fallback on read failure.
+     * @notice Computes aggregate external-vault collateral, valued loss-aware per position.
+     * @dev Sums `min(principalUsdcByVaultId[id], adapter.totalUnderlying())` over the redemption
+     *      set (see `_externalVaultCollateral`). Fails closed on an adapter read failure.
      * @return externalCollateral Total external collateral balance in USDC units.
-     * @custom:security Internal read helper.
-     * @custom:validation Uses fallback to tracked principal when adapter reads fail.
+     * @custom:security Internal read helper; performs staticcalls to configured adapters.
+     * @custom:validation Per-position value is capped at the live adapter underlying.
      * @custom:state-changes No state changes.
      * @custom:events No events emitted.
-     * @custom:errors No explicit errors; read failures are handled via fallback.
+     * @custom:errors Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
      * @custom:reentrancy Not applicable for view helper.
      * @custom:access Internal helper.
      * @custom:oracle No oracle dependencies.
      */
     function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral) {
-        // Count only tracked principal (the amount that is actually withdrawable),
-        // NOT adapter.totalUnderlying() (principal + unharvested yield). This keeps redemption /
-        // liquidation collateral in lockstep with what `_planExternalVaultWithdrawal` /
-        // `_withdrawFromExternalVault` can source, so a payout can never be sized against yield
-        // that the withdrawal path (capped at principal) is unable to release. Accrued external
-        // yield reaches users only after `harvestAndDistributeVaultYield` -> `creditVaultYield` (the stQEURO
-        // path); it is intentionally not counted as QEURO redemption backing.
+        // Value each external position at min(trackedPrincipal, adapterUnderlying):
+        //  - the principal cap excludes unharvested positive yield from redemption backing (yield is
+        //    routed to stQEURO via harvestAndDistributeVaultYield -> creditVaultYield, never counted
+        //    here); and
+        //  - the underlying cap reflects a loss the moment the ERC-4626 share price falls, so a
+        //    decline in an external vault immediately lowers reported collateral instead of leaving
+        //    stale principal as phantom backing.
+        // Counting stale principal after a loss would let the first redeemer exit at par against a
+        // depleted position (shifting the shortfall onto later redeemers) and would admit QEURO
+        // mints while real backing sits below the collateralization floor.
         uint256[] memory priority = redemptionPriorityVaultIds;
         if (priority.length == 0 && defaultStakingVaultId != 0) {
-            return principalUsdcByVaultId[defaultStakingVaultId];
+            return _externalVaultCollateral(defaultStakingVaultId);
         }
         for (uint256 i = 0; i < priority.length; ++i) {
-            externalCollateral += principalUsdcByVaultId[priority[i]];
+            externalCollateral += _externalVaultCollateral(priority[i]);
         }
+    }
+
+    /**
+     * @notice Loss-aware USDC value of one external vault position: min(principal, adapterUnderlying).
+     * @dev The principal cap keeps unharvested yield out of redemption backing; the underlying cap
+     *      reflects an ERC-4626 share-price loss immediately. Shares the adapter read with
+     *      `getVaultExposure` via `_adapterUnderlying`.
+     * @param vaultId External staking vault id.
+     * @return value Loss-aware collateral contribution for the vault id, in USDC (6 decimals).
+     * @custom:security Read-only helper; performs a staticcall to the adapter.
+     * @custom:validation Returns 0 for a zero-principal vault.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
+    function _externalVaultCollateral(uint256 vaultId) internal view returns (uint256 value) {
+        uint256 principal = principalUsdcByVaultId[vaultId];
+        if (principal == 0) return 0;
+        uint256 underlying = _adapterUnderlying(stakingVaultAdapterById[vaultId]);
+        return underlying < principal ? underlying : principal;
+    }
+
+    /**
+     * @notice Reads an adapter's live `totalUnderlying()`, or 0 when no adapter is configured.
+     * @dev Shared by `_externalVaultCollateral` (collateral accounting) and `getVaultExposure`
+     *      (reporting) so the adapter read exists once. Intentionally NOT wrapped in try/catch: a
+     *      failed read fails closed rather than masking a loss as intact principal. Standard
+     *      ERC-4626 adapters do not revert on this view.
+     * @param adapter External staking vault adapter (may be the zero adapter).
+     * @return underlying Adapter underlying USDC value, or 0 when the adapter is unset.
+     * @custom:security Read-only helper; performs a staticcall to the adapter.
+     * @custom:validation Returns 0 when the adapter is unset.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
+    function _adapterUnderlying(IExternalStakingVault adapter) internal view returns (uint256 underlying) {
+        return address(adapter) == address(0) ? 0 : adapter.totalUnderlying();
     }
 
     /**

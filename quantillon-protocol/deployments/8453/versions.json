@@ -56,11 +56,11 @@
   "version": "1.0.2"
  },
  "QuantillonVault": {
-  "deployedAt": 1783321653,
-  "gitCommit": "d2c3566",
-  "implementation": "0x5f836c7ab938B77A56BF0Fb3400BD60d735625A5",
+  "deployedAt": 1786967249,
+  "gitCommit": "4e0422a",
+  "implementation": "0x6Cd5446DD0293757C01B7B6685E101138B0F4C56",
   "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-  "version": "1.1.7"
+  "version": "1.1.11"
  },
  "SlippageStorage": {
   "deployedAt": 1783321653,

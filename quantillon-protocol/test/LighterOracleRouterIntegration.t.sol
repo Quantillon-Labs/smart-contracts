@@ -72,6 +72,8 @@ contract LighterOracleRouterIntegrationTest is Test {
             )
         );
         lighterOracle = LighterEurUsdOracle(payable(address(lighterProxy)));
+        vm.prank(admin);
+        lighterOracle.setBaselineEurUsdPrice(MID);
 
         OracleRouter rImpl = new OracleRouter();
         ERC1967Proxy rProxy = new ERC1967Proxy(

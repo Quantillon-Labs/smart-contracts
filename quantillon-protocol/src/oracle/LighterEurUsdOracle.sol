@@ -99,7 +99,7 @@ contract LighterEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     // =============================================================================
@@ -192,6 +192,15 @@ contract LighterEurUsdOracle is
     /// @notice Emitted when the maximum staleness window is updated
     event MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness);
 
+    /// @notice Emitted when the reported USDC tolerance is updated
+    event UsdcToleranceUpdated(uint256 oldToleranceBps, uint256 newToleranceBps);
+
+    /// @notice Emitted when a live read is rejected and the last valid price is served (isValid=false)
+    event EurUsdFallbackServed(uint256 lastValidEurUsdPrice);
+
+    /// @notice Emitted when governance explicitly sets the EUR/USD baseline (trusted seed / recovery)
+    event BaselinePriceSet(uint256 oldPrice, uint256 newPrice);
+
     /// @notice Emitted when the treasury address is updated
     event TreasuryUpdated(address indexed newTreasury);
 
@@ -227,8 +236,11 @@ contract LighterEurUsdOracle is
 
     /**
      * @notice Initializes the adapter with its price sources and treasury
-     * @dev Grants admin/manager/emergency/upgrader roles to admin, sets default bounds, tolerance
-     *      and staleness, then attempts a best-effort initial seed from SlippageStorage.
+     * @dev Grants admin/manager/emergency/upgrader roles to admin and sets default bounds, tolerance
+     *      and staleness. Does not auto-seed the EUR/USD baseline from SlippageStorage: the first
+     *      published mid has no deviation check, so a trusted actor must call
+     *      `setBaselineEurUsdPrice` after initialize (or after an upgrade that leaves the baseline
+     *      unset). Until then, `getEurUsdPrice` returns (0, false).
      * @param admin Address with administrator privileges
      * @param _slippageStorage SlippageStorage contract holding the published Lighter mid
      * @param _sourceId Slippage source id to read (SOURCE_LIGHTER = 0)
@@ -236,12 +248,12 @@ contract LighterEurUsdOracle is
      * @param _treasury Treasury address for ETH/token recovery
      * @custom:security Validates all addresses non-zero, grants roles to admin
      * @custom:validation Validates admin/_slippageStorage/_usdcSource/_treasury != address(0)
-     * @custom:state-changes Initializes sources, roles, default bounds/staleness/tolerance, seeds price
-     * @custom:events Emits PriceUpdated if an initial mid is available
+     * @custom:state-changes Initializes sources, roles, default bounds/staleness/tolerance
+     * @custom:events No events emitted
      * @custom:errors Reverts if any address is zero
      * @custom:reentrancy Protected by initializer modifier
      * @custom:access Public - only callable once during proxy deployment
-     * @custom:oracle Reads the initial mid from SlippageStorage if present
+     * @custom:oracle No oracle read at initialize; baseline is set via setBaselineEurUsdPrice
      */
     function initialize(
         address admin,
@@ -274,9 +286,6 @@ contract LighterEurUsdOracle is
         maxEurUsdPrice = 1.40e18;
         usdcToleranceBps = 200; // 2%
         maxPriceStaleness = 900; // 15 minutes - valuation-grade freshness
-
-        // Best-effort seed; never reverts and never trips the breaker if no data is published yet.
-        _seedInitialPrice();
     }
 
     // =============================================================================
@@ -328,33 +337,42 @@ contract LighterEurUsdOracle is
 
     /**
      * @notice Reads the latest Lighter mid and its timestamp from SlippageStorage
-     * @dev try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage reverts.
+     * @dev try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage reverts, so
+     *      the read path fails safe (falls back to the last valid price) instead of bubbling the
+     *      revert. Mirrors the try/catch used by getOracleHealth/getEurUsdDetails on the same call.
      * @return price EUR/USD mid in 18 decimals (0 if unavailable)
-     * @return timestamp On-chain write timestamp of the snapshot
+     * @return timestamp On-chain write timestamp of the snapshot (0 if unavailable)
      * @custom:security Single external view read of the trusted SlippageStorage
      * @custom:validation No validation here - caller validates freshness/bounds
      * @custom:state-changes None - view function
      * @custom:events No events emitted
-     * @custom:errors Reverts only if SlippageStorage reverts (fail-safe for callers that bubble it)
+     * @custom:errors No errors thrown - a reverting source read returns (0, 0)
      * @custom:reentrancy Not protected - external staticcall only
      * @custom:access Internal
      * @custom:oracle Reads SlippageStorage.getSlippageBySource(sourceId)
      */
     function _readMid() internal view returns (uint256 price, uint256 timestamp) {
-        ISlippageStorage.SlippageSnapshot memory snap = slippageStorage.getSlippageBySource(sourceId);
-        price = uint256(snap.midPrice);
-        timestamp = uint256(snap.timestamp);
+        try slippageStorage.getSlippageBySource(sourceId) returns (
+            ISlippageStorage.SlippageSnapshot memory snap
+        ) {
+            price = uint256(snap.midPrice);
+            timestamp = uint256(snap.timestamp);
+        } catch {
+            return (0, 0);
+        }
     }
 
     /**
      * @notice Validates a candidate EUR/USD price against freshness, bounds and deviation
-     * @dev Single validation path combining staleness/zero, min/max bounds, and deviation-vs-baseline checks.
+     * @dev Single validation path combining staleness/zero, min/max bounds, and deviation-vs-baseline
+     *      checks. An unset baseline (`lastValidEurUsdPrice == 0`) is never valid here: the first
+     *      price is governance-only via `setBaselineEurUsdPrice`.
      * @param price Candidate price (18 decimals)
      * @param timestamp Snapshot timestamp
      * @return outPrice The candidate price echoed back (0 if it fails freshness)
      * @return isValid True if the price can advance the baseline
      * @custom:security Enforces staleness, bounds and per-update deviation limits
-     * @custom:validation Returns isValid=false on stale, zero, out-of-bounds or over-deviation input
+     * @custom:validation Returns isValid=false on stale, zero, unseeded, out-of-bounds or over-deviation input
      * @custom:state-changes None - view function
      * @custom:events No events emitted
      * @custom:errors No errors thrown - signals via (price, false)
@@ -372,38 +390,35 @@ contract LighterEurUsdOracle is
         }
 
         outPrice = price;
-        isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
-
-        if (isValid && lastValidEurUsdPrice > 0) {
-            uint256 base = lastValidEurUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
+        uint256 base = lastValidEurUsdPrice;
+        if (base == 0 || price < minEurUsdPrice || price > maxEurUsdPrice) {
+            return (outPrice, false);
         }
+
+        uint256 diff = price > base ? price - base : base - price;
+        uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+        isValid = deviationBps <= MAX_PRICE_DEVIATION;
     }
 
     /**
      * @notice Reads USDC/USD from the delegated source for event enrichment only
-     * @dev try/catch so a failing USDC source never blocks an EUR/USD commit.
-     * @return usdcUsdPrice USDC/USD price (18 decimals); $1.00 on any failure
+     * @dev try/catch so a failing USDC source never blocks an EUR/USD commit. Returns 0 (not a
+     *      fabricated $1.00) when the source reverts or reports an invalid price, so the emitted
+     *      PriceUpdated event signals "USDC unavailable" rather than a misleadingly healthy peg.
+     * @return usdcUsdPrice USDC/USD price (18 decimals); 0 when unavailable/invalid
      * @custom:security Isolates USDC-source failures from the EUR/USD path
-     * @custom:validation Falls back to 1e18 when the source reverts or returns invalid
+     * @custom:validation Returns 0 when the source reverts or returns invalid
      * @custom:state-changes None - view function
      * @custom:events No events emitted
-     * @custom:errors No errors thrown - falls back to 1e18
+     * @custom:errors No errors thrown - returns 0 on failure
      * @custom:reentrancy Not protected - external staticcall only
      * @custom:access Internal
      * @custom:oracle Reads usdcSource.getUsdcUsdPrice()
      */
     function _readUsdcForEvent() internal view returns (uint256 usdcUsdPrice) {
-        usdcUsdPrice = 1e18;
         try usdcSource.getUsdcUsdPrice() returns (uint256 p, bool ok) {
             if (ok && p > 0) usdcUsdPrice = p;
-        } catch {
-            usdcUsdPrice = 1e18;
-        }
+        } catch {}
     }
 
     /**
@@ -428,11 +443,12 @@ contract LighterEurUsdOracle is
     }
 
     /**
-     * @notice Best-effort initial/reset seed of the baseline from SlippageStorage
-     * @dev Never reverts and never trips the breaker: if no fresh, in-bounds mid is published yet,
-     *      the baseline is left as-is and the first successful read seeds it.
-     * @custom:security Avoids bricking init/reset when no data has been published yet
-     * @custom:validation Applies bounds (deviation is skipped while no baseline exists)
+     * @notice Best-effort re-seed of an already-set baseline from SlippageStorage
+     * @dev Used by resetCircuitBreaker. Never reverts and never trips the breaker. Skips when the
+     *      baseline is unset: the first price has no deviation check, so only
+     *      `setBaselineEurUsdPrice` may establish it.
+     * @custom:security Does not adopt a first mid from SlippageStorage
+     * @custom:validation Applies bounds and deviation against the existing baseline
      * @custom:state-changes May set lastValidEurUsdPrice/time/block via _commitEurUsdPrice
      * @custom:events Emits PriceUpdated if a seed price is accepted
      * @custom:errors No errors thrown
@@ -441,6 +457,7 @@ contract LighterEurUsdOracle is
      * @custom:oracle Reads SlippageStorage
      */
     function _seedInitialPrice() internal {
+        if (lastValidEurUsdPrice == 0) return;
         try slippageStorage.getSlippageBySource(sourceId) returns (
             ISlippageStorage.SlippageSnapshot memory snap
         ) {
@@ -451,8 +468,28 @@ contract LighterEurUsdOracle is
                 _commitEurUsdPrice(vPrice);
             }
         } catch {
-            // No data available yet - leave baseline unset.
+            // Source unavailable - leave baseline as-is.
         }
+    }
+
+    /**
+     * @notice Serves the last valid EUR/USD price as an invalid fallback.
+     * @dev Used by getEurUsdPrice on breaker, pause, unseeded baseline, and rejected live mids.
+     *      Does not update lastPriceUpdateTime/Block (that would make a stale price look fresh).
+     * @return price Last valid EUR/USD price (0 if the baseline is unset)
+     * @return isValid Always false
+     * @custom:security Fail-safe return used by the vault's mint/redeem gate
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events Emits EurUsdFallbackServed
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable
+     * @custom:access Internal
+     * @custom:oracle No oracle read
+     */
+    function _serveFallback() internal returns (uint256 price, bool isValid) {
+        emit EurUsdFallbackServed(lastValidEurUsdPrice);
+        return (lastValidEurUsdPrice, false);
     }
 
     // =============================================================================
@@ -461,30 +498,31 @@ contract LighterEurUsdOracle is
 
     /**
      * @notice Retrieves the current EUR/USD price with full validation
-     * @dev Reads the Lighter mid from SlippageStorage; on circuit breaker, pause, staleness,
-     *      out-of-bounds or over-deviation, returns the last valid price with isValid=false so the
-     *      vault fails safe. A valid price advances the baseline.
+     * @dev Reads the Lighter mid from SlippageStorage. On circuit breaker, pause, unseeded
+     *      baseline, staleness, out-of-bounds, over-deviation, or a reverting source read, returns
+     *      the last valid price with isValid=false so the vault fails safe. A valid price advances
+     *      the baseline only when one is already set (the first baseline is governance-only).
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if fresh and within bounds/deviation
      * @custom:security Validates freshness, bounds, deviation and breaker state
      * @custom:validation Returns isValid=false for any invalid condition
      * @custom:state-changes Updates baseline (lastValid*) when a valid price is accepted
-     * @custom:events Emits PriceUpdated when the baseline advances
-     * @custom:errors No errors thrown unless SlippageStorage itself reverts (fail-safe)
+     * @custom:events Emits PriceUpdated when the baseline advances; EurUsdFallbackServed otherwise
+     * @custom:errors No errors thrown - a reverting source read falls back to the last valid price
      * @custom:reentrancy Not protected - external staticcall only
      * @custom:access Public - no access restrictions
      * @custom:oracle Reads SlippageStorage mid; reads usdcSource for the event only
      */
     function getEurUsdPrice() external override returns (uint256 price, bool isValid) {
-        if (circuitBreakerTriggered || paused()) {
-            return (lastValidEurUsdPrice, false);
+        if (circuitBreakerTriggered || paused() || lastValidEurUsdPrice == 0) {
+            return _serveFallback();
         }
 
         // _validateEurUsd covers staleness/zero as well as bounds and deviation.
         (uint256 mid, uint256 ts) = _readMid();
         (price, isValid) = _validateEurUsd(mid, ts);
         if (!isValid) {
-            return (lastValidEurUsdPrice, false);
+            return _serveFallback();
         }
 
         _commitEurUsdPrice(price);
@@ -714,7 +752,10 @@ contract LighterEurUsdOracle is
 
     /**
      * @notice Updates EUR/USD min and max acceptable prices
-     * @dev The bounds gate _validateEurUsd; both must be nonzero with min below max.
+     * @dev The bounds gate _validateEurUsd; both must be nonzero with min below max. New bounds must
+     *      also keep the current baseline (`lastValidEurUsdPrice`, when set) inside [min,max], so a
+     *      bounds change cannot strand the read path on a now-out-of-bounds fallback. To re-bound
+     *      away from the current baseline, move it first via `setBaselineEurUsdPrice`.
      * @param _minPrice Minimum accepted EUR/USD price (18 decimals)
      * @param _maxPrice Maximum accepted EUR/USD price (18 decimals)
      * @custom:security Validates min < max and a sane upper bound
@@ -735,19 +776,50 @@ contract LighterEurUsdOracle is
         CommonValidationLibrary.validateCondition(_maxPrice > _minPrice, "price");
         CommonValidationLibrary.validateMaxAmount(_maxPrice, 10e18);
 
+        // New bounds must not exclude the current baseline, which would make every subsequent read
+        // fail bounds validation and strand the vault on the fallback until the cache is moved.
+        uint256 baseline = lastValidEurUsdPrice;
+        if (baseline != 0) {
+            CommonValidationLibrary.validateCondition(_minPrice <= baseline && baseline <= _maxPrice, "price");
+        }
+
         minEurUsdPrice = _minPrice;
         maxEurUsdPrice = _maxPrice;
         emit PriceBoundsUpdated("bounds", _minPrice, _maxPrice);
     }
 
     /**
+     * @notice Sets the EUR/USD deviation baseline explicitly (trusted seed / recovery).
+     * @dev The only way to establish the first baseline (initialize does not auto-seed, and
+     *      getEurUsdPrice will not adopt a mid while lastValidEurUsdPrice is 0). Also used to
+     *      recover a deviation-locked baseline: once set, a mid more than MAX_PRICE_DEVIATION away
+     *      is rejected, and even resetCircuitBreaker cannot move it. Bounds-checked; deviation
+     *      check is bypassed because this is a trusted governance write.
+     * @param price New baseline EUR/USD price (18 decimals); must be within the configured bounds.
+     * @custom:security Governance-only; bounds-checked; emits an explicit audit event.
+     * @custom:validation Reverts unless minEurUsdPrice <= price <= maxEurUsdPrice.
+     * @custom:state-changes Sets lastValidEurUsdPrice/time/block via _commitEurUsdPrice.
+     * @custom:events Emits BaselinePriceSet and PriceUpdated.
+     * @custom:errors Reverts if price is outside the configured bounds.
+     * @custom:reentrancy Not protected - one external staticcall for event enrichment.
+     * @custom:access Restricted to ORACLE_MANAGER_ROLE.
+     * @custom:oracle Reads usdcSource for the emitted event only.
+     */
+    function setBaselineEurUsdPrice(uint256 price) external onlyRole(ORACLE_MANAGER_ROLE) {
+        CommonValidationLibrary.validateCondition(price >= minEurUsdPrice && price <= maxEurUsdPrice, "price");
+        emit BaselinePriceSet(lastValidEurUsdPrice, price);
+        _commitEurUsdPrice(price);
+    }
+
+    /**
      * @notice Updates the reported USDC tolerance (validation lives in the USDC source)
-     * @dev Reported via getOracleConfig only — USDC validation itself is delegated to the USDC source.
+     * @dev Reported via getOracleConfig only; USDC validation itself is delegated to the USDC source.
+     *      This value is advisory (observability), so the setter emits an event for auditability.
      * @param newToleranceBps New tolerance in basis points (e.g., 200 = 2%)
      * @custom:security Validates tolerance within 10%
      * @custom:validation Validates newToleranceBps <= 1000
      * @custom:state-changes Updates usdcToleranceBps
-     * @custom:events No events emitted
+     * @custom:events Emits UsdcToleranceUpdated
      * @custom:errors Reverts if tolerance is out of bounds
      * @custom:reentrancy Not protected - no external calls
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
@@ -759,7 +831,9 @@ contract LighterEurUsdOracle is
         onlyRole(ORACLE_MANAGER_ROLE)
     {
         CommonValidationLibrary.validatePercentage(newToleranceBps, 1000);
+        uint256 oldToleranceBps = usdcToleranceBps;
         usdcToleranceBps = newToleranceBps;
+        emit UsdcToleranceUpdated(oldToleranceBps, newToleranceBps);
     }
 
     /**

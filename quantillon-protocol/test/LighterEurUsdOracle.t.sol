@@ -65,6 +65,11 @@ contract LighterEurUsdOracleTest is Test {
     uint8 internal constant SOURCE_HYPERLIQUID = 1;
     uint256 internal constant INITIAL_MID = 1.08e18;
 
+    event PriceUpdated(uint256 eurUsdPrice, uint256 usdcUsdPrice, uint256 indexed timestamp);
+    event UsdcToleranceUpdated(uint256 oldToleranceBps, uint256 newToleranceBps);
+    event EurUsdFallbackServed(uint256 lastValidEurUsdPrice);
+    event BaselinePriceSet(uint256 oldPrice, uint256 newPrice);
+
     /// @notice Deploys TimeProvider, mocks and the oracle proxy with an initial fresh mid.
     function setUp() public {
         vm.warp(1_000_000);
@@ -93,6 +98,8 @@ contract LighterEurUsdOracleTest is Test {
             )
         );
         oracle = LighterEurUsdOracle(payable(address(proxy)));
+        vm.prank(admin);
+        oracle.setBaselineEurUsdPrice(INITIAL_MID);
         gate = new LighterGate();
     }
 
@@ -111,9 +118,36 @@ contract LighterEurUsdOracleTest is Test {
         assertEq(oracle.maxEurUsdPrice(), 1.40e18);
     }
 
-    function test_SeedsBaselineOnInit() public view {
-        // initialize() seeds from the fresh mid present at deploy time.
-        assertEq(oracle.lastValidEurUsdPrice(), INITIAL_MID);
+    function test_DoesNotSeedBaselineOnInit() public {
+        MockSourceSlippageStorage published = new MockSourceSlippageStorage();
+        published.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
+        LighterEurUsdOracle unseeded;
+        {
+            ERC1967Proxy proxy = new ERC1967Proxy(
+                address(new LighterEurUsdOracle(timeProvider)),
+                abi.encodeWithSelector(
+                    LighterEurUsdOracle.initialize.selector,
+                    admin,
+                    address(published),
+                    SOURCE_LIGHTER,
+                    address(usdc),
+                    treasury
+                )
+            );
+            unseeded = LighterEurUsdOracle(payable(address(proxy)));
+        }
+        assertEq(unseeded.lastValidEurUsdPrice(), 0, "initialize must not adopt the published mid");
+
+        (uint256 price, bool isValid) = unseeded.getEurUsdPrice();
+        assertFalse(isValid, "unseeded reads are invalid even with a fresh in-bounds mid");
+        assertEq(price, 0);
+        assertEq(unseeded.lastValidEurUsdPrice(), 0, "a public read must not seed the baseline");
+
+        vm.prank(admin);
+        unseeded.setBaselineEurUsdPrice(INITIAL_MID);
+        (uint256 seededPrice, bool nowValid) = unseeded.getEurUsdPrice();
+        assertTrue(nowValid);
+        assertEq(seededPrice, INITIAL_MID);
     }
 
     // ---- Happy path ----
@@ -149,7 +183,8 @@ contract LighterEurUsdOracleTest is Test {
     }
 
     /// @notice With no SOURCE_LIGHTER snapshot at all, a Hyperliquid-only publish leaves the
-    ///         Lighter adapter unseeded and invalid; the first SOURCE_LIGHTER publish then seeds it.
+    ///         Lighter adapter unseeded and invalid; a later SOURCE_LIGHTER publish still does not
+    ///         seed it (only setBaselineEurUsdPrice does).
     function test_SourceSeparation_HyperliquidOnlyStorage_NoSeed() public {
         MockSourceSlippageStorage hlOnly = new MockSourceSlippageStorage();
         hlOnly.setMid(SOURCE_HYPERLIQUID, uint128(1.12e18), uint48(block.timestamp));
@@ -174,10 +209,15 @@ contract LighterEurUsdOracleTest is Test {
         (, bool isValid) = fresh.getEurUsdPrice();
         assertFalse(isValid, "no SOURCE_LIGHTER snapshot -> invalid read");
 
-        // First SOURCE_LIGHTER publish is read and seeds the baseline.
+        // First SOURCE_LIGHTER publish is still not trusted as a seed; governance must set it.
         hlOnly.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
+        (, bool stillInvalid) = fresh.getEurUsdPrice();
+        assertFalse(stillInvalid, "a public read must not seed from the first publish");
+
+        vm.prank(admin);
+        fresh.setBaselineEurUsdPrice(INITIAL_MID);
         (uint256 price, bool nowValid) = fresh.getEurUsdPrice();
-        assertTrue(nowValid, "SOURCE_LIGHTER publish accepted");
+        assertTrue(nowValid, "governance seed then live mid accepted");
         assertEq(price, INITIAL_MID);
         assertEq(fresh.lastValidEurUsdPrice(), INITIAL_MID);
     }
@@ -331,10 +371,21 @@ contract LighterEurUsdOracleTest is Test {
         assertEq(cur, INITIAL_MID);
     }
 
-    function test_SlippageRevert_GetEurUsdPriceBubbles() public {
+    /// @notice A reverting SlippageStorage read must fail safe on the main price path (return the
+    ///         last valid price with isValid=false), matching getOracleHealth/getEurUsdDetails,
+    ///         instead of bubbling the low-level revert.
+    function test_SlippageRevert_GetEurUsdPriceFailsSafe() public {
         slippage.setShouldRevert(true);
-        vm.expectRevert();
-        oracle.getEurUsdPrice();
+
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertEq(price, INITIAL_MID, "falls back to the last valid price");
+        assertFalse(isValid, "reports invalid when the source read reverts");
+        assertEq(oracle.lastValidEurUsdPrice(), INITIAL_MID, "baseline is not advanced on failure");
+
+        // A vault-style consumer still refuses to price, but via a clean InvalidOraclePrice revert
+        // rather than a bubbled low-level source revert.
+        vm.expectRevert(LighterGate.InvalidOraclePrice.selector);
+        gate.requireLivePrice(oracle);
     }
 
     // ---- Configuration setters ----
@@ -442,7 +493,7 @@ contract LighterEurUsdOracleTest is Test {
     }
 
     /// @notice Initializing against an empty SlippageStorage (mid == 0) must not seed a baseline;
-    ///         reads stay invalid until the first valid publish, which then seeds it.
+    ///         the first valid publish also must not seed it — only setBaselineEurUsdPrice does.
     function test_InitAgainstEmptyStorage_NoSeedThenRecovers() public {
         MockSourceSlippageStorage emptySlippage = new MockSourceSlippageStorage();
         LighterEurUsdOracle fresh;
@@ -465,12 +516,17 @@ contract LighterEurUsdOracleTest is Test {
         (, bool isValid) = fresh.getEurUsdPrice();
         assertFalse(isValid, "empty storage reads invalid");
 
-        // First publish: no baseline yet, so no deviation gate — price becomes valid and seeds it.
         emptySlippage.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
+        (, bool stillInvalid) = fresh.getEurUsdPrice();
+        assertFalse(stillInvalid, "first publish must not seed the baseline");
+        assertEq(fresh.lastValidEurUsdPrice(), 0);
+
+        vm.prank(admin);
+        fresh.setBaselineEurUsdPrice(INITIAL_MID);
         (uint256 price, bool nowValid) = fresh.getEurUsdPrice();
-        assertTrue(nowValid, "first valid publish accepted");
+        assertTrue(nowValid, "governance seed then live mid accepted");
         assertEq(price, INITIAL_MID);
-        assertEq(fresh.lastValidEurUsdPrice(), INITIAL_MID, "baseline seeded by first valid read");
+        assertEq(fresh.lastValidEurUsdPrice(), INITIAL_MID);
     }
 
     /// @notice Re-pointing the slippage source keeps the deviation baseline: a wildly different
@@ -544,11 +600,12 @@ contract LighterEurUsdOracleTest is Test {
         }
     }
 
-    /// @notice updatePriceBounds accepts any strictly ordered pair under the 10e18 cap and
-    ///         applies it to validation immediately.
+    /// @notice updatePriceBounds accepts any strictly ordered pair under the 10e18 cap that still
+    ///         contains the current baseline, and applies it to validation immediately.
     function testFuzz_UpdatePriceBounds_Applied(uint256 minP, uint256 maxP) public {
-        minP = bound(minP, 1, 5e18);
-        maxP = bound(maxP, minP + 1, 10e18);
+        uint256 baseline = oracle.lastValidEurUsdPrice(); // INITIAL_MID, must stay within [minP,maxP]
+        minP = bound(minP, 1, baseline);
+        maxP = bound(maxP, baseline + 1, 10e18);
 
         vm.prank(admin);
         oracle.updatePriceBounds(minP, maxP);
@@ -557,11 +614,128 @@ contract LighterEurUsdOracleTest is Test {
         assertEq(oracle.maxEurUsdPrice(), maxP);
     }
 
+    /// @notice New bounds that exclude the current baseline are rejected, so a bounds change cannot
+    ///         strand the read path on an out-of-bounds fallback.
+    function test_UpdatePriceBounds_RevertsWhenExcludingBaseline() public {
+        // baseline is INITIAL_MID (1.08e18); [1.20, 1.30] excludes it.
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.updatePriceBounds(1.20e18, 1.30e18);
+
+        // Moving the baseline first (governance) unblocks the re-bound.
+        vm.prank(admin);
+        oracle.setBaselineEurUsdPrice(1.25e18);
+        vm.prank(admin);
+        oracle.updatePriceBounds(1.20e18, 1.30e18);
+        assertEq(oracle.minEurUsdPrice(), 1.20e18);
+        assertEq(oracle.maxEurUsdPrice(), 1.30e18);
+    }
+
     // -- setters + recover (coverage) --
     function test_updateUsdcTolerance_success() public {
+        vm.expectEmit(false, false, false, true, address(oracle));
+        emit UsdcToleranceUpdated(200, 150);
         vm.prank(admin);
         oracle.updateUsdcTolerance(150);
         assertEq(oracle.usdcToleranceBps(), 150);
+    }
+
+    /// @notice When the USDC source is unavailable, a committed EUR/USD update reports USDC = 0 in
+    ///         the PriceUpdated event (not a fabricated $1.00 that would look healthy).
+    function test_PriceUpdated_ReportsZeroUsdcWhenSourceUnavailable() public {
+        usdc.setShouldRevert(true);
+        uint128 newMid = 1.10e18;
+        slippage.setMid(SOURCE_LIGHTER, newMid, uint48(block.timestamp));
+
+        vm.expectEmit(true, false, false, true, address(oracle));
+        emit PriceUpdated(uint256(newMid), 0, block.timestamp);
+        oracle.getEurUsdPrice();
+    }
+
+    // ---- Baseline seed / recovery (governance) ----
+
+    function test_SetBaselineEurUsdPrice_OnlyManager() public {
+        vm.prank(stranger);
+        vm.expectRevert();
+        oracle.setBaselineEurUsdPrice(1.1e18);
+    }
+
+    function test_SetBaselineEurUsdPrice_BoundsEnforced() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.setBaselineEurUsdPrice(0.5e18); // below minEurUsdPrice
+
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.setBaselineEurUsdPrice(2e18); // above maxEurUsdPrice
+    }
+
+    function test_SetBaselineEurUsdPrice_SetsBaselineAndEmits() public {
+        vm.expectEmit(false, false, false, true, address(oracle));
+        emit BaselinePriceSet(INITIAL_MID, 1.30e18);
+        vm.prank(admin);
+        oracle.setBaselineEurUsdPrice(1.30e18);
+        assertEq(oracle.lastValidEurUsdPrice(), 1.30e18);
+    }
+
+    /// @notice A baseline poisoned far from the live mid deviation-locks the read path, and
+    ///         resetCircuitBreaker cannot recover it; setBaselineEurUsdPrice restores service.
+    function test_SetBaselineEurUsdPrice_RecoversDeviationLock() public {
+        // Poison the baseline high (simulating a bad first seed).
+        vm.prank(admin);
+        oracle.setBaselineEurUsdPrice(1.30e18);
+
+        // The real mid is now rejected by the deviation guard, and reset cannot move the baseline.
+        slippage.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
+        (uint256 p1, bool v1) = oracle.getEurUsdPrice();
+        assertFalse(v1, "real mid rejected vs poisoned baseline");
+        assertEq(p1, 1.30e18, "serves poisoned fallback");
+
+        vm.prank(admin);
+        oracle.resetCircuitBreaker();
+        assertEq(oracle.lastValidEurUsdPrice(), 1.30e18, "reset cannot recover a deviation-locked baseline");
+
+        // Governance re-seeds to the real value; reads resume.
+        vm.prank(admin);
+        oracle.setBaselineEurUsdPrice(INITIAL_MID);
+        (uint256 p2, bool v2) = oracle.getEurUsdPrice();
+        assertTrue(v2, "recovered: live mid accepted");
+        assertEq(p2, INITIAL_MID);
+    }
+
+    /// @notice A rejected live read (here: stale) emits EurUsdFallbackServed and serves last valid
+    ///         without refreshing lastPriceUpdateTime.
+    function test_GetEurUsdPrice_EmitsFallbackWhenRejected() public {
+        uint256 cachedAt = oracle.lastPriceUpdateTime();
+        vm.warp(block.timestamp + 901); // exceed the 900s staleness window
+        vm.expectEmit(false, false, false, true, address(oracle));
+        emit EurUsdFallbackServed(INITIAL_MID);
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertEq(price, INITIAL_MID);
+        assertFalse(isValid);
+        assertEq(oracle.lastPriceUpdateTime(), cachedAt, "fallback must not refresh the cache timestamp");
+    }
+
+    /// @notice Pause fallback also emits EurUsdFallbackServed.
+    function test_GetEurUsdPrice_EmitsFallbackWhenPaused() public {
+        vm.prank(admin);
+        oracle.pause();
+        vm.expectEmit(false, false, false, true, address(oracle));
+        emit EurUsdFallbackServed(INITIAL_MID);
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertEq(price, INITIAL_MID);
+        assertFalse(isValid);
+    }
+
+    /// @notice Circuit-breaker fallback also emits EurUsdFallbackServed.
+    function test_GetEurUsdPrice_EmitsFallbackWhenBreaker() public {
+        vm.prank(admin);
+        oracle.triggerCircuitBreaker();
+        vm.expectEmit(false, false, false, true, address(oracle));
+        emit EurUsdFallbackServed(INITIAL_MID);
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertEq(price, INITIAL_MID);
+        assertFalse(isValid);
     }
 
     function test_updateTreasury_successAndZero() public {
@@ -583,11 +757,11 @@ contract LighterEurUsdOracleTest is Test {
     // -- additional branch coverage --
 
     function test_version_returnsSemver() public view {
-        assertEq(oracle.version(), "1.0.0");
+        assertEq(oracle.version(), "1.0.1");
     }
 
     /// @notice A reverting USDC source does not block the EUR/USD commit: the event read
-    ///         falls back to $1.00 and the price is still valid.
+    ///         falls back to 0 (unavailable) and the price is still valid.
     function test_getEurUsdPrice_usdcEventFallbackOnRevert() public {
         slippage.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
         usdc.setShouldRevert(true);
@@ -632,6 +806,33 @@ contract LighterEurUsdOracleTest is Test {
         assertEq(oracle.lastValidEurUsdPrice(), INITIAL_MID);
     }
 
+    /// @notice resetCircuitBreaker on an unseeded oracle must not adopt a published mid.
+    function test_resetCircuitBreaker_doesNotSeedWhenUnseeded() public {
+        MockSourceSlippageStorage published = new MockSourceSlippageStorage();
+        published.setMid(SOURCE_LIGHTER, uint128(INITIAL_MID), uint48(block.timestamp));
+        LighterEurUsdOracle unseeded;
+        {
+            ERC1967Proxy proxy = new ERC1967Proxy(
+                address(new LighterEurUsdOracle(timeProvider)),
+                abi.encodeWithSelector(
+                    LighterEurUsdOracle.initialize.selector,
+                    admin,
+                    address(published),
+                    SOURCE_LIGHTER,
+                    address(usdc),
+                    treasury
+                )
+            );
+            unseeded = LighterEurUsdOracle(payable(address(proxy)));
+        }
+
+        vm.prank(admin);
+        unseeded.resetCircuitBreaker();
+        assertEq(unseeded.lastValidEurUsdPrice(), 0, "reset must not seed an unset baseline");
+        (, bool isValid) = unseeded.getEurUsdPrice();
+        assertFalse(isValid);
+    }
+
     function test_pauseThenUnpause() public {
         vm.prank(admin);
         oracle.pause();
@@ -661,7 +862,7 @@ contract LighterEurUsdOracleTest is Test {
         LighterEurUsdOracle newImpl = new LighterEurUsdOracle(timeProvider);
         vm.prank(admin);
         oracle.upgradeToAndCall(address(newImpl), "");
-        assertEq(oracle.version(), "1.0.0");
+        assertEq(oracle.version(), "1.0.1");
     }
 
 }

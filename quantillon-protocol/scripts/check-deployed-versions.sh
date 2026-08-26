@@ -44,6 +44,7 @@ TARGETS=(
   "OracleRouter:src/oracle/OracleRouter.sol"
   "SlippageStorage:src/oracle/SlippageStorage.sol"
   "HyperliquidEurUsdOracle:src/oracle/HyperliquidEurUsdOracle.sol"
+  "LighterEurUsdOracle:src/oracle/LighterEurUsdOracle.sol"
   "TimeProvider:src/libraries/TimeProviderLibrary.sol"
   "TimelockUpgradeable:src/core/TimelockUpgradeable.sol"
 )

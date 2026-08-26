@@ -7,6 +7,7 @@
 - [Oracle Architecture](Oracle-Architecture.md)
 - [Security Guide](Security.md)
 - [Deployment Guide](Deployment.md)
+- [2026-08-26 Bundle Release Runbook](Bundle-Release-2026-08-26.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
 - [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)
 - [Staking Yield Distribution](Staking-Yield-Distribution.md)

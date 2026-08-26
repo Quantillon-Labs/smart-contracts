@@ -18,7 +18,7 @@ Every core contract implements `IVersioned.version()` — a `pure` semver getter
 
 This is enforced in CI by `make check-version-bump`: it hashes each contract's metadata-free runtime bytecode and **fails** if the bytecode changed without a `version()` bump. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
 
-**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` upgrade scripts on every deploy (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
+**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
 
 **Answering "what is deployed / what needs upgrading?"**
 
@@ -54,6 +54,21 @@ scripts/deployment/build-verifiable-impl.sh QuantillonVault \
   --lib src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary=<addr> \
   --deploy
 ```
+
+### LighterEurUsdOracle upgrade
+
+`LighterEurUsdOracle` is a plain UUPS proxy controlled by `UPGRADER_ROLE`, with no timelock. Use
+`scripts/deployment/UpgradeLighterOracle.s.sol` to deploy or validate an implementation. On Base
+mainnet, use `UPGRADE_ACTION=deploy-only`, verify the inert implementation, and have the governance
+Safe call `upgradeToAndCall(newImplementation, "")` on the existing proxy. Then run the script with
+`UPGRADE_ACTION=record NEW_IMPLEMENTATION=<impl> GIT_COMMIT=<sha>` (without a private key or
+`--broadcast`) to validate the completed swap and update the deployment record and live-version
+manifest.
+
+The EUR/USD baseline is stored in the proxy and survives an implementation upgrade. Before wiring
+or activating Lighter in `OracleRouter`, verify the implementation slot, proxy `version()`,
+`lastValidEurUsdPrice()`, `getOracleHealth()`, and `getEurUsdPrice()`. If the baseline is zero or must
+be moved, the Safe must call `setBaselineEurUsdPrice(price)` with an in-bounds trusted price first.
 
 ---
 

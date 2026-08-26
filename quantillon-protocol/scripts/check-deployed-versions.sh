@@ -39,6 +39,7 @@ TARGETS=(
   "stQEUROFactory:src/core/stQEUROFactory.sol"
   "FeeCollector:src/core/FeeCollector.sol"
   "YieldShift:src/core/yieldmanagement/YieldShift.sol"
+  "YieldShiftCalculationLibrary:src/libraries/YieldShiftCalculationLibrary.sol"
   "ChainlinkOracle:src/oracle/ChainlinkOracle.sol"
   "StorkOracle:src/oracle/StorkOracle.sol"
   "OracleRouter:src/oracle/OracleRouter.sol"
@@ -57,21 +58,21 @@ extract_version() {
 }
 
 outdated=0
-printf '%-22s %-14s %-14s %s\n' "CONTRACT" "DEPLOYED" "SOURCE" "STATUS"
+printf '%-30s %-14s %-14s %s\n' "CONTRACT" "DEPLOYED" "SOURCE" "STATUS"
 for t in "${TARGETS[@]}"; do
   name="${t%%:*}"; path="${t##*:}"
   src_ver="$(extract_version "$path")"
   dep_ver="$(jq -r --arg n "$name" '.[$n].version // empty' "$MANIFEST")"
   if [[ -z "$dep_ver" ]]; then
-    printf '%-22s %-14s %-14s %s\n' "$name" "-" "$src_ver" "no deployment record"
+    printf '%-30s %-14s %-14s %s\n' "$name" "-" "$src_ver" "no deployment record"
   elif [[ "$dep_ver" == "$src_ver" ]]; then
-    printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "up to date"
+    printf '%-30s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "up to date"
   elif [[ "$dep_ver" == "0.0.0-unversioned" ]]; then
     # Deployed impl predates on-chain versioning (version() reverts). Not an actionable
     # upgrade by itself — version() ships with the contract's next real upgrade.
-    printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "pre-versioning deploy (upgrade optional)"
+    printf '%-30s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "pre-versioning deploy (upgrade optional)"
   else
-    printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "OUT OF DATE -> needs upgrade"
+    printf '%-30s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "OUT OF DATE -> needs upgrade"
     outdated=1
   fi
 done

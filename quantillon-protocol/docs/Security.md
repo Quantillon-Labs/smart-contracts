@@ -455,7 +455,7 @@ async function healthCheck() {
 
 **Alerting**:
 - Price deviation > 5%
-- Protocol collateralization ratio < 105% (minting floor; liquidation mode at <= 101%)
+- Protocol collateralization ratio below the governance-set minting floor (`minCollateralizationRatioForMinting`: 105% at launch, 102.5% under the September 2026 margin policy; liquidation mode at <= 101%)
 - Emergency role activation
 - Large transaction volumes
 - Failed transaction spikes

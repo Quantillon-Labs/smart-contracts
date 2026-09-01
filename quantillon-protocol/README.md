@@ -46,7 +46,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 |----------|---------|--------------|
 | **QEUROToken** | Euro-pegged stablecoin | Mint/burn controls, rate limiting, compliance features, 18 decimals |
 | **QTIToken** | Governance token | Vote-escrow mechanics, 100M supply cap, lock periods, 4× voting power. **Governance dormant: no mint path is wired yet, so supply is 0 and lock/vote/propose are inactive until a future activation upgrade mints the cap.** |
-| **QuantillonVault** | Main vault | Overcollateralized minting (≥105%), liquidation at 101%, fee management |
+| **QuantillonVault** | Main vault | Overcollateralized minting (governance-set floor: 105% at launch, 102.5% under the September 2026 margin policy), liquidation mode at 101%, fee management |
 | **FeeCollector** | Fee distribution | 60/25/15 split to treasury/dev/community, per-token accounting |
 | **UserPool** | User deposits | USDC deposits, QEURO staking, unstaking cooldown; user yield accrues via stQEURO (no staking-reward claim) |
 | **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |

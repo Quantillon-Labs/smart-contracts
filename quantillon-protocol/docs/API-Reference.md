@@ -1195,13 +1195,13 @@ Verified against deployed contracts on Base mainnet (2026-07-04). Values marked 
 ### QuantillonVault
 - `mintFee`: 0 (*settable*, max 5% = `5e16`)
 - `redemptionFee`: 0 (*settable*, max 5%; also applied to liquidation-mode redemptions)
-- `MIN_COLLATERALIZATION_RATIO_FOR_MINTING`: 105% (`105e18`)
+- `MIN_COLLATERALIZATION_RATIO_FOR_MINTING`: 105% (`105e18`) — initializer default for the governance-settable `minCollateralizationRatioForMinting` (hard floor 101%; 102.5% under the September 2026 margin policy)
 - `criticalCollateralizationRatio`: 101% (`101e18`) — liquidation mode at or below this protocol CR
 - `MAX_PRICE_DEVIATION`: 200 bps (2%) between cached and live oracle price
 - `MAX_FUNDING_RATE_ANNUAL_BPS`: 5000 (50%) cap on the hedger funding rate
 
 ### QEUROToken
-- Supply model: **no fixed tokenomic supply cap** — supply is economically bounded by hedging capacity (minting requires ≥105% protocol CR)
+- Supply model: **no fixed tokenomic supply cap** — supply is economically bounded by hedging capacity (minting requires the protocol CR to stay above the governance-set minting floor)
 - `maxSupply`: administrative safety ceiling, currently 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY`; governance-raisable at any time via `updateMaxSupply`, only constrained to ≥ current supply)
 - Decimals: 18
 - **Mint** rate limiting (supply-abuse guardrail, global): max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`). Burns are **not** rate-limited: they are vault-driven redemptions/liquidations of the holder's own QEURO and must not be throttled during a run.
@@ -1220,7 +1220,7 @@ Verified against deployed contracts on Base mainnet (2026-07-04). Values marked 
 - `performanceFee`: 0 (*settable*)
 
 ### HedgerPool
-- `maxLeverage`: 20× — minimum margin ratio 5% (`DEFAULT_MIN_MARGIN_RATIO_BPS` = 500)
+- `maxLeverage`: 20×; `minMarginRatio` is governance-set via `configureRiskAndFees` — 500 bps (5%) at launch, hard floor `DEFAULT_MIN_MARGIN_RATIO_BPS` = 250 bps (2.5%) since v1.0.8; the September 2026 margin policy runs at the floor
 - `MAX_MARGIN_RATIO`: 5000 bps (50%, i.e. 2× minimum leverage)
 - `minMarginAmount`: 100 USDC
 - `entryFee` / `exitFee` / `marginFee`: 0 (*settable*)

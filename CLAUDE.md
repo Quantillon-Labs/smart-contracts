@@ -13,7 +13,7 @@ Core smart contracts implementing:
 - **stQEURO**: Yield-bearing auto-compounding wrapper
 - **stQEUROFactory**: Deploys one stQEURO proxy per external vault, registry by `vaultId`
 - **QTI**: Governance token with vote-escrow mechanics (dormant — no mint path wired, supply currently 0)
-- **QuantillonVault**: Main USDC ↔ QEURO vault (overcollateralized ≥105%, liquidation at 101%)
+- **QuantillonVault**: Main USDC ↔ QEURO vault (overcollateralized above the governance-set minting floor — 105% at launch, 102.5% under the September 2026 margin policy; liquidation mode at 101%)
 - **UserPool / HedgerPool**: Dual-pool architecture for deposits and hedging
 - **FeeCollector**: Fee distribution with 60/25/15 split (treasury/dev/community)
 - **YieldShift**: Dynamic yield distribution between pools (eligible-pool sizing + gradual adjustment, 7-day holding period)
@@ -123,7 +123,7 @@ FeeCollector (60/25/15 treasury/dev/community)
 | **QuantillonVault** | Main USDC→QEURO swap, oracle-priced, fee management |
 | **FeeCollector** | Fee distribution with per-token accounting |
 | **UserPool** | USDC deposits, QEURO staking, unstaking cooldown; user yield accrues via stQEURO (the staking-reward claim path was removed) |
-| **HedgerPool** | EUR/USD short positions (hedgers are SHORT EUR), margin management, liquidation at 101% CR |
+| **HedgerPool** | EUR/USD short positions (hedgers are SHORT EUR), margin management (`minMarginRatio` governance-set: 500 bps at launch, hard floor 250 bps since v1.0.8), liquidation mode at 101% CR |
 | **stQEUROFactory** | Factory deploying one stQEURO proxy per vault, `vaultId` registry |
 | **stQEUROToken** | Yield-bearing wrapper, exchange rate increases as yield accrues (similar to stETH) |
 | **YieldShift** | Dynamic yield split between UserPool/HedgerPool, 7-day holding period; binding allocation uses holding-period-filtered eligible-pool sizes + gradual adjustment (TWAP helpers feed historical metrics only) |

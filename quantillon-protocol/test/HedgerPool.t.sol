@@ -2291,6 +2291,110 @@ contract HedgerPoolTestSuite is Test {
         assertEq(hedgerPool.rewardFeeSplit(), cfg.rewardFeeSplit);
     }
 
+    /**
+     * @notice Governance can lower the minimum margin ratio to the 250 bps floor, not below
+     * @dev Pins the DEFAULT_MIN_MARGIN_RATIO_BPS floor: 250 succeeds, 249 reverts, and the
+     *      launch default written by initialize stays 500 until governance acts
+     * @custom:security Bounds the lowest margin ratio governance can configure
+     * @custom:validation ConfigValueTooLow boundary at the constant floor
+     * @custom:state-changes Updates coreParams.minMarginRatio
+     * @custom:events None
+     * @custom:errors CommonErrorLibrary.ConfigValueTooLow below the floor
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Governance-only setter exercised with the governance prank
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_Governance_MinMarginRatioFloorIs250Bps() public {
+        assertEq(hedgerPool.DEFAULT_MIN_MARGIN_RATIO_BPS(), 250);
+        CoreParamsSnapshot memory before = _coreParamsSnapshot();
+        assertEq(before.minMarginRatio, 500); // launch default unchanged by the floor
+
+        vm.prank(governance);
+        hedgerPool.configureRiskAndFees(_riskConfigWithMinMarginRatio(250));
+        CoreParamsSnapshot memory lowered = _coreParamsSnapshot();
+        assertEq(lowered.minMarginRatio, 250);
+
+        vm.prank(governance);
+        vm.expectRevert(CommonErrorLibrary.ConfigValueTooLow.selector);
+        hedgerPool.configureRiskAndFees(_riskConfigWithMinMarginRatio(249));
+    }
+
+    /**
+     * @notice A filled position can withdraw down to 2.5% effective margin once governance lowers the ratio
+     * @dev Same withdrawal reverts under the 500 bps launch default and succeeds at the 250 bps floor;
+     *      going one step below the lowered floor still reverts InsufficientMargin
+     * @custom:security Proves the lowered floor only relaxes removeMargin to exactly the configured ratio
+     * @custom:validation Health gate boundary at 250 bps of exposure
+     * @custom:state-changes Opens and fills a position, updates margin
+     * @custom:events MarginUpdated on the successful withdrawal
+     * @custom:errors HedgerPoolErrorLibrary.InsufficientMargin below the configured ratio
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Position owner withdrawals with governance reconfiguration
+     * @custom:oracle Mock oracle at the fill price so effective margin equals cash margin
+     */
+    function test_Margin_RemoveMarginDownToLoweredFloor() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        (, uint96 positionSize,, uint96 margin,,,,,,,,,) = hedgerPool.positions(positionId);
+        _syncVaultFill(positionSize);
+
+        // Exposure at the unchanged fill price equals positionSize; leave exactly 2.5% of it as margin.
+        uint256 targetMargin = (uint256(positionSize) * 250) / 10000;
+        uint256 withdrawal = uint256(margin) - targetMargin;
+
+        // Under the launch default (500 bps) this withdrawal is unhealthy.
+        vm.prank(hedger1);
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
+        hedgerPool.removeMargin(positionId, withdrawal);
+
+        vm.prank(governance);
+        hedgerPool.configureRiskAndFees(_riskConfigWithMinMarginRatio(250));
+
+        vm.prank(hedger1);
+        hedgerPool.removeMargin(positionId, withdrawal);
+        (,,, uint96 marginAfter,,,,,,,,,) = hedgerPool.positions(positionId);
+        assertEq(uint256(marginAfter), targetMargin);
+
+        // One more step below the lowered floor stays blocked.
+        vm.prank(hedger1);
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
+        hedgerPool.removeMargin(positionId, (uint256(positionSize) * 50) / 10000);
+    }
+
+    /**
+     * @notice Builds a risk config equal to the harness defaults with only the min margin ratio overridden
+     * @dev Keeps the atomic configureRiskAndFees struct in one place for the floor tests
+     * @param minMarginRatio Minimum margin ratio (bps) to request
+     * @return cfg Risk config struct ready for configureRiskAndFees
+     * @custom:security Test helper only
+     * @custom:validation None required for test helper
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test helper
+     * @custom:access Internal test helper
+     * @custom:oracle Not applicable
+     */
+    function _riskConfigWithMinMarginRatio(uint256 minMarginRatio)
+        internal
+        view
+        returns (HedgerPool.HedgerRiskConfig memory cfg)
+    {
+        cfg = HedgerPool.HedgerRiskConfig({
+            minMarginRatio: minMarginRatio,
+            maxLeverage: cfgMaxLeverage,
+            minPositionHoldBlocks: cfgMinPositionHoldBlocks,
+            minMarginAmount: cfgMinMarginAmount,
+            eurInterestRate: cfgEurInterestRate,
+            usdInterestRate: cfgUsdInterestRate,
+            entryFee: cfgEntryFee,
+            exitFee: cfgExitFee,
+            marginFee: cfgMarginFee,
+            rewardFeeSplit: cfgRewardFeeSplit
+        });
+    }
+
     function test_Governance_ConfigureDependencies_RejectsZeroAddress() public {
         HedgerPool.HedgerDependencyConfig memory cfg = HedgerPool.HedgerDependencyConfig({
             treasury: address(0),

@@ -25,7 +25,7 @@ contract VersioningRegression is DeploymentSmokeTest {
         _assertVersioned(address(qtiToken), "QTIToken", "1.0.2");
         _assertVersioned(address(vault), "QuantillonVault", "1.1.11");
         _assertVersioned(address(userPool), "UserPool", "1.0.3");
-        _assertVersioned(address(hedgerPool), "HedgerPool", "1.0.7");
+        _assertVersioned(address(hedgerPool), "HedgerPool", "1.0.8");
         _assertVersioned(address(stQEURO), "stQEUROToken", "1.0.3");
         _assertVersioned(address(feeCollector), "FeeCollector", "1.0.2");
         _assertVersioned(address(yieldShift), "YieldShift", "1.0.5");

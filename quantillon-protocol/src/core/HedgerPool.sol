@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.7";
+        return "1.0.8";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -205,7 +205,11 @@ contract HedgerPool is
     uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE;
     uint256 public constant MAX_LEVERAGE = type(uint16).max;
     uint256 public constant MAX_MARGIN_RATIO = 5000; // 50% maximum margin ratio (2x minimum leverage)
-    uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500; // 5% minimum margin ratio (20x max leverage) - basis points
+    /// @notice Governance floor for `coreParams.minMarginRatio`: `configureRiskAndFees` cannot set the
+    ///         minimum margin ratio below 250 bps (2.5% of exposure). The launch default written by
+    ///         `initialize` stays 500 bps (5%); lowering the live value toward this floor is an explicit
+    ///         governance decision (margin-rebalancing target, 2026-09).
+    uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 250; // 2.5% governance floor - basis points
     uint128 public constant MAX_UINT128_VALUE = type(uint128).max;
     uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
     uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
@@ -362,8 +366,7 @@ contract HedgerPool is
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
 
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.minMarginRatio = uint64(DEFAULT_MIN_MARGIN_RATIO_BPS);  // 5% minimum margin ratio (20x max leverage)
+        coreParams.minMarginRatio = 500;  // launch default: 5% (20x); governance may lower to the 250 bps floor
         coreParams.maxLeverage = 20;      // 20x maximum leverage (5% minimum margin)
         coreParams.entryFee = 0;
         coreParams.exitFee = 0;

@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Quantillon-Labs/smart-contracts)
 
 > **Smart Contracts Repository for Quantillon Protocol - Euro-pegged stablecoin ecosystem with dual-pool architecture**
 

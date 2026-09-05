@@ -25,7 +25,7 @@ smart-contracts/
 │   │   └── oracle/             # Oracle integration
 │   ├── test/                   # Comprehensive test suite
 │   ├── scripts/                # Build and deployment scripts
-│   ├── docs/                   # Generated documentation
+│   ├── docs/                   # Hand-written guides + generated NatSpec reference (docs/src/)
 │   ├── lib/                    # External dependencies
 │   ├── foundry.toml           # Foundry configuration
 │   └── README.md              # Detailed project documentation
@@ -40,7 +40,7 @@ smart-contracts/
 ### Key Directories
 - **[📄 Source Code](./quantillon-protocol/src/)** - All smart contracts and libraries
 - **[🧪 Tests](./quantillon-protocol/test/)** - Comprehensive test suite
-- **[📚 Documentation](./quantillon-protocol/docs/)** - Generated documentation
+- **[📚 Documentation](./quantillon-protocol/docs/)** - Hand-written guides plus the generated NatSpec reference (`docs/src/`)
 - **[🔧 Scripts](./quantillon-protocol/scripts/)** - Build and deployment scripts
 
 ## 🎯 What is Quantillon Protocol?
@@ -52,9 +52,14 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 - **QEUROToken**: Euro-pegged stablecoin — no fixed tokenomic supply cap (supply bounded by hedging capacity); governance-raisable safety ceiling and mint/burn rate limiting
 - **QTIToken**: Governance token with vote-escrow mechanics and voting power multipliers (governance dormant — no mint path wired yet, so supply is 0 until a future activation upgrade)
 - **QuantillonVault**: Main vault for overcollateralized QEURO minting
-- **UserPool**: User deposit and staking management with yield distribution
-- **HedgerPool**: EUR/USD hedging operations with margin management
-- **stQEUROToken**: Yield-bearing wrapper token with automatic yield accrual
+- **UserPool**: Batch deposits and QEURO staking with an unstaking cooldown (user yield accrues via stQEURO)
+- **HedgerPool**: EUR/USD hedging operations with margin management (single-hedger model)
+- **stQEUROFactory / stQEUROToken**: One ERC-4626 yield-bearing stQEURO token per external staking vault
+- **FeeCollector**: Protocol fee aggregation and 60/25/15 distribution (treasury / dev / community)
+- **YieldShift**: Dynamic yield allocation between UserPool and HedgerPool
+- **OracleRouter + HyperliquidEurUsdOracle (active) / ChainlinkOracle (fallback)**: EUR/USD pricing aligned with the hedge venue; **SlippageStorage** holds the published venue mid
+- **MetaMorphoStakingVaultAdapter**: Live external yield adapter (MetaMorpho USDC vault on Base, vaultId 2)
+- **TimeProvider**: Centralized `block.timestamp` wrapper
 
 ### Key Features
 - **Dual-pool architecture** separating user deposits from hedging operations
@@ -62,8 +67,9 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 - **Emergency pause mechanisms** for crisis situations
 - **Upgradeable architecture** via UUPS pattern
 - **On-chain versioning** — every core contract exposes `version()`; any change is traced through a semver bump (CI-enforced), with deployed versions tracked in `deployments/{chainId}/versions.json`
-- **Oracle integration** for EUR/USD price feeds
-- **Yield generation** through multiple mechanisms
+- **Hedge-aligned pricing**: EUR/USD is the Hyperliquid EUR perp mid (the hedge venue) read through `OracleRouter`, with Chainlink as the one-transaction fallback
+- **Governance**: a 2-of-3 Gnosis Safe holds every privileged role; upgrades of the core `SecureUpgradeable` proxies pass through a 12 h OpenZeppelin `TimelockController`
+- **Yield generation** through external staking vaults (MetaMorpho live), protocol fees and interest differentials
 
 ## 🏃‍♂️ Getting Started
 
@@ -74,7 +80,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 ### Quick Start
 ```bash
 # Clone the repository
-git clone https://github.com/quantillon/smart-contracts.git
+git clone https://github.com/Quantillon-Labs/smart-contracts.git
 cd smart-contracts
 
 # Navigate to the main project
@@ -114,7 +120,16 @@ forge doc --serve
 | **QuantillonVault** | Main vault | `quantillon-protocol/src/core/QuantillonVault.sol` |
 | **UserPool** | User deposits | `quantillon-protocol/src/core/UserPool.sol` |
 | **HedgerPool** | Hedging operations | `quantillon-protocol/src/core/HedgerPool.sol` |
-| **stQEUROToken** | Yield-bearing wrapper | `quantillon-protocol/src/core/stQEUROToken.sol` |
+| **stQEUROToken** | Yield-bearing wrapper (ERC-4626) | `quantillon-protocol/src/core/stQEUROToken.sol` |
+| **stQEUROFactory** | Per-vault stQEURO factory | `quantillon-protocol/src/core/stQEUROFactory.sol` |
+| **FeeCollector** | Fee distribution | `quantillon-protocol/src/core/FeeCollector.sol` |
+| **YieldShift** | Yield allocation between pools | `quantillon-protocol/src/core/yieldmanagement/YieldShift.sol` |
+| **MetaMorphoStakingVaultAdapter** | Live external vault adapter | `quantillon-protocol/src/core/vaults/MetaMorphoStakingVaultAdapter.sol` |
+| **OracleRouter** | Price entry point (two switchable slots) | `quantillon-protocol/src/oracle/OracleRouter.sol` |
+| **HyperliquidEurUsdOracle** | Active EUR/USD oracle | `quantillon-protocol/src/oracle/HyperliquidEurUsdOracle.sol` |
+| **ChainlinkOracle** | Fallback EUR/USD + USDC/USD | `quantillon-protocol/src/oracle/ChainlinkOracle.sol` |
+| **SlippageStorage** | On-chain venue-mid store | `quantillon-protocol/src/oracle/SlippageStorage.sol` |
+| **TimeProvider** | Timestamp wrapper | `quantillon-protocol/src/libraries/TimeProviderLibrary.sol` |
 
 ## 🧪 Testing
 
@@ -142,8 +157,8 @@ forge fmt
 # Build contracts
 forge build
 
-# Deploy to local network
-forge script script/deploy/DeployProtocol.s.sol --rpc-url http://localhost:8545 --broadcast
+# Deploy to a local Anvil node (scripts/deployment/ is git-crypt encrypted; needs the key)
+./scripts/deployment/deploy.sh localhost --with-mocks   # or: make deploy-localhost
 ```
 
 ### Development Tools

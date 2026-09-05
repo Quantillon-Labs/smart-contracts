@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
-[![Tests](https://img.shields.io/badge/Tests-1300%2B%20passed%20%7C%200%20failed-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
+[![Tests](https://img.shields.io/badge/Tests-Foundry%20suite%20(make%20test)-green.svg)](https://github.com/Quantillon-Labs/smart-contracts/actions)
 [![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
 [![Security](https://img.shields.io/badge/Environment-Secure-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
 
@@ -11,18 +11,20 @@
 
 ## 📖 Overview
 
-Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability. The codebase includes 1,400+ tests, custom errors and centralized validation libraries, and role-based access control.
+Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability. The codebase ships an extensive Foundry test suite (unit, fuzz, integration, invariants), custom errors and centralized validation libraries, and role-based access control.
 
 ## 📚 Documentation
 
 - **[API Reference](https://smartcontracts.quantillon.money/API-Reference.html)** - Complete API reference for all smart contracts
-- **[Technical Reference](https://smartcontracts.quantillon.money/API-Reference.html)** - Detailed technical specifications and implementation details
+- **[Architecture Overview](https://smartcontracts.quantillon.money/Architecture.html)** - Components, flows, roles and the upgrade model
+- **[Oracle Architecture](https://smartcontracts.quantillon.money/Oracle-Architecture.html)** - Hedge-aligned EUR/USD pricing (Hyperliquid active, Chainlink fallback)
 - **[Quick Start Guide](https://smartcontracts.quantillon.money/Quick-Start.html)** - Get started quickly with integration examples
 - **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns
 - **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
 - **[stQEUROFactory Technical Upgrade](https://smartcontracts.quantillon.money/stQEUROFactory.html)** - Multi-vault staking refactor details and runbook
 - **[Multi-Vault Staking Runtime Flow](https://smartcontracts.quantillon.money/Multi-Vault-Staking-Flow.html)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
+- **[Staking Yield Distribution](https://smartcontracts.quantillon.money/Staking-Yield-Distribution.html)** - How yield reaches stQEURO stakers (hedger-first three-way split)
 - **[External Vault Onboarding Runbook](https://smartcontracts.quantillon.money/External-Vault-Onboarding-Runbook.html)** - Operator guide for `setup-external-vaults.sh`
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
@@ -52,13 +54,14 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |
 | **stQEUROFactory** | Multi-vault staking factory | Deploys one stQEURO proxy per vault, registry by `vaultId` |
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
-| **MockAaveVault** | Mock Aave-style adapter | External adapter model validation, yield fee/harvest controls for staging |
+| **MetaMorphoStakingVaultAdapter** | Live external vault adapter | Non-upgradeable `IExternalStakingVault` adapter over the MetaMorpho USDC vault on Base (vaultId 2); `AaveStakingVaultAdapter` / `MorphoStakingVaultAdapter` wrap mock vaults for localhost |
 | **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period; allocation uses holding-period-filtered eligible-pool sizes with gradual adjustment (TWAP helpers exist but inform historical metrics, not the binding shift) |
 | **OracleRouter** | Oracle routing | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (**active**), slot 0 ChainlinkOracle (fallback) |
 | **HyperliquidEurUsdOracle** | Active EUR/USD oracle | Hyperliquid EUR perp mid-price read from SlippageStorage; 15 min staleness (1 h hard cap), circuit breakers |
 | **ChainlinkOracle** | Fallback price feeds | EUR/USD (2 h staleness) and USDC/USD (25 h staleness) via Chainlink, circuit breakers |
 | **StorkOracle** | Stork price feeds (parked) | EUR/USD and USDC/USD via Stork Network; replaced in the router slot by HyperliquidEurUsdOracle |
 | **SlippageStorage** | On-chain price store | Written by the off-chain publisher, read by HyperliquidEurUsdOracle |
+| **LighterEurUsdOracle** | Inert oracle (historical) | Deployed 2026-07-17 for a second hedge venue that was not adopted (2026-09-01); no router slot |
 | **TimeProvider** | Time utilities | Centralized `block.timestamp` wrapper for consistent time management |
 
 ## 🚀 Quick Start
@@ -77,7 +80,7 @@ cd smart-contracts/quantillon-protocol
 npm install
 ```
 
-> **Note**: Some folders (`scripts/`) are encrypted with git-crypt for privacy concerns. If you need access to these files, you'll need the encryption key. Contact the maintainers for access.
+> **Note**: `scripts/deployment/` (deployment and upgrade scripts), the `.env*` templates and `CLAUDE.private.md` are git-crypt encrypted; the rest of `scripts/` is plaintext so CI can run it. Building and testing does not need the key — contact the maintainers only if you need the deployment tooling.
 
 ### 2. Environment Configuration
 
@@ -101,7 +104,7 @@ make test
 make slither
 ```
 
-**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions) runs `make build && make test` on push and pull requests to main. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See the `test/` directory for test structure and coverage.
+**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions, `.github/workflows/quantillon-protocol-tests.yml` at the repository root) runs `make build && make test` on push and pull requests to main, the upgrade-safety gate (`make analyze-contract-sizes check-storage-layout check-abi check-version-bump`) on every PR, and a nightly heavy suite. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See the `test/` directory for test structure and coverage.
 
 ## 🚀 Deployment
 
@@ -136,7 +139,7 @@ Core contracts are deployed in a single `forge script` invocation via `DeployQua
 
 ### 🔧 Deployment Features
 
-- **🔐 Secure Environment Variables**: Manage secrets with standard `.env` files (never commit them)
+- **🔐 Secure Environment Variables**: `.env*` templates are tracked git-crypt encrypted — never commit them in plaintext
 - **🌐 Multi-Network Support**: Localhost (31337), Base Sepolia (84532), Base Mainnet (8453)
 - **🎭 Granular Mock Control**: Choose which contracts to mock (`--with-mocks`, `--with-mock-usdc`, `--with-mock-oracle`)
 - **✅ Contract Verification**: Automatic verification on block explorers via `--verify`
@@ -146,7 +149,7 @@ Core contracts are deployed in a single `forge script` invocation via `DeployQua
 
 ### 🛡️ Security Features
 
-- **Environment Variables**: Use standard `.env` files (never commit them)
+- **Environment Variables**: `.env*` templates are tracked git-crypt encrypted — never commit them in plaintext, never disable the filter
 - **Secret Management**: Prefer a secret manager for production (e.g., AWS Secrets Manager)
 
 ## 🧪 Testing
@@ -217,7 +220,7 @@ Analysis outputs are written under `scripts/results/`:
 - **Flash Loan Protection**: Balance checks to prevent flash loan attacks
 - **Custom Errors**: Gas-efficient error handling with clear error messages
 - **Secret Handling**: Environment variables loaded from `.env` during development
-- **🔐 Encrypted Folders**: Some folders (e.g., `scripts/`) are encrypted with git-crypt for privacy and security. These files require the encryption key to decrypt and access.
+- **🔐 Encrypted Paths**: `scripts/deployment/`, `.env*` and `CLAUDE.private.md` are git-crypt encrypted (see `.gitattributes`); everything else is plaintext
 
 ## 📊 Development
 
@@ -246,7 +249,7 @@ make gas-analysis
 ### Code Quality
 
 - **NatSpec Documentation**: Comprehensive documentation for all functions
-- **Test Coverage**: Extensive test suite with 1,400+ tests (100% passing)
+- **Test Coverage**: Extensive test suite (unit, fuzz, integration, invariants) — `make test`
 - **Security Analysis**: Regular security audits and static analysis
 - **Gas Optimization**: Optimized for deployment size and execution cost
 - **Error Handling**: Custom errors for gas efficiency and better error messages
@@ -267,7 +270,7 @@ make gas-analysis
 - Write comprehensive tests (aim for 100% coverage)
 - Update documentation
 - Ensure security best practices
-- Protect secrets; never commit `.env`
+- Protect secrets: `.env*` files are tracked but git-crypt encrypted — never commit them in plaintext, never disable the filter
 - Use custom errors instead of `require()` strings for gas efficiency
 - Consolidate duplicate code into libraries
 - Follow the centralized error library pattern (`CommonErrorLibrary`)
@@ -280,13 +283,14 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 - **Website**: [https://quantillon.money](https://quantillon.money)
 - **Documentation**: [https://docs.quantillon.money](https://docs.quantillon.money)
-- **Discord**: [https://discord.gg/quantillon](https://discord.gg/quantillon)
-- **Twitter**: [@QuantillonLabs](https://twitter.com/QuantillonLabs)
+- **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
+- **X (Twitter)**: [@QuantillonLabs](https://x.com/QuantillonLabs)
+- **Telegram**: [@QuantillonLabs](https://t.me/QuantillonLabs)
 
 ## 🙏 Acknowledgments
 
 - [OpenZeppelin](https://openzeppelin.com/) for secure contract libraries
 - [Chainlink](https://chain.link/) for reliable price feeds
-- [Aave](https://aave.com/) for yield farming integration
+- [Morpho](https://morpho.org/) (MetaMorpho vaults) for the live external yield venue and [Hyperliquid](https://hyperliquid.xyz/) for the hedge venue and EUR/USD market price
 - [Foundry](https://getfoundry.sh/) for development framework
 - Standard .env files for environment variable management

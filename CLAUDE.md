@@ -17,14 +17,14 @@ Core smart contracts implementing:
 - **UserPool / HedgerPool**: Dual-pool architecture for deposits and hedging
 - **FeeCollector**: Fee distribution with 60/25/15 split (treasury/dev/community)
 - **YieldShift**: Dynamic yield distribution between pools (eligible-pool sizing + gradual adjustment, 7-day holding period)
-- **AaveStakingVaultAdapter / MorphoStakingVaultAdapter**: Lightweight non-upgradeable adapters (symmetric pattern) wrapping mock vaults for localhost development
+- **MetaMorphoStakingVaultAdapter** (live on Base, vaultId 2) **/ AaveStakingVaultAdapter / MorphoStakingVaultAdapter**: lightweight non-upgradeable `IExternalStakingVault` adapters — MetaMorpho is the production adapter, the Aave/Morpho ones wrap mock vaults for localhost development
 
 ## Tech Stack
 
 - **Solidity 0.8.24** (EVM Shanghai)
 - **Foundry** (Forge, Anvil, Cast)
 - **OpenZeppelin Contracts** (upgradeable, access control)
-- **Hyperliquid (active) + Chainlink (fallback) + Stork (parked)** oracle feeds, switchable via OracleRouter
+- **Hyperliquid (active) + Chainlink (fallback) + Stork (parked)** oracle feeds, switchable via OracleRouter; a `LighterEurUsdOracle` was deployed 2026-07-17 for a second hedge venue that was ruled out on 2026-09-01 — it stays inert and no Lighter work is planned
 - **Slither + Mythril** (security analysis)
 
 ## Working Directory
@@ -109,7 +109,7 @@ UserPool  ←→  stQEUROFactory → stQEUROToken (per-vault)
      ↓
 HedgerPool  ←→  YieldShift (distributes yield between pools)
      ↓
-AaveStakingVaultAdapter / MorphoStakingVaultAdapter (external yield)
+MetaMorphoStakingVaultAdapter (external yield, live vaultId 2; Aave/Morpho mock adapters on localhost)
      ↓
 FeeCollector (60/25/15 treasury/dev/community)
 ```
@@ -123,13 +123,14 @@ FeeCollector (60/25/15 treasury/dev/community)
 | **QuantillonVault** | Main USDC→QEURO swap, oracle-priced, fee management |
 | **FeeCollector** | Fee distribution with per-token accounting |
 | **UserPool** | USDC deposits, QEURO staking, unstaking cooldown; user yield accrues via stQEURO (the staking-reward claim path was removed) |
-| **HedgerPool** | EUR/USD short positions (hedgers are SHORT EUR), margin management (`minMarginRatio` governance-set: 500 bps at launch, hard floor 250 bps since v1.0.8), liquidation mode at 101% CR |
+| **HedgerPool** | EUR/USD short positions (hedgers are SHORT EUR), margin management (`minMarginRatio` governance-set: 500 bps at launch, hard floor 250 bps since v1.0.8, **live 250 bps = 2.5% since 2026-09-02**), liquidation mode at 101% CR |
 | **stQEUROFactory** | Factory deploying one stQEURO proxy per vault, `vaultId` registry |
 | **stQEUROToken** | Yield-bearing wrapper, exchange rate increases as yield accrues (similar to stETH) |
 | **YieldShift** | Dynamic yield split between UserPool/HedgerPool, 7-day holding period; binding allocation uses holding-period-filtered eligible-pool sizes + gradual adjustment (TWAP helpers feed historical metrics only) |
 | **OracleRouter** | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (active), slot 0 ChainlinkOracle (fallback) |
 | **HyperliquidEurUsdOracle** | ACTIVE EUR/USD oracle: Hyperliquid EUR perp mid-price read from SlippageStorage (900 s staleness, 1 h hard cap); USDC/USD delegated to ChainlinkOracle |
 | **SlippageStorage** | On-chain price store written by the off-chain publisher (dapp slippage-monitor), read by HyperliquidEurUsdOracle |
+| **LighterEurUsdOracle** | Deployed 2026-07-17 for a second hedge venue that was ruled out on 2026-09-01; inert (no router slot), kept as a historical record — do not propose Lighter work |
 | **TimeProvider** | Centralized `block.timestamp` wrapper used across contracts |
 
 ### HedgerPool P&L Model
@@ -141,7 +142,7 @@ Hedgers are SHORT EUR (they owe QEURO to users):
 
 ### Oracle Architecture
 
-`OracleRouter` implements `IOracle` and routes to one of two slots — `enum OracleType { CHAINLINK, MARKET }` (router v1.1.0; slot 1 was named `STORK` in v1.0.0, and the old `storkOracle()` getter survives as a deprecated ABI-compatible alias of `marketOracle()`). Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the ACTIVE production oracle** (`activeOracle = 1`, live since 2026-06-25); slot 0 is `ChainlinkOracle` (fallback and USDC/USD source); `StorkOracle` is parked. Router v1.1.0 is live on the proxy since 2026-07-05 (impl `0xE8655E0f…7Da8`, Safe tx `0xaba3f418…c691d`). All protocol contracts depend only on `IOracle` (oracle-agnostic). HyperliquidEurUsdOracle reads the Hyperliquid EUR perp mid-price from `SlippageStorage` (published on-chain by the dapp's slippage-monitor; 900 s staleness default, 1 h hard cap); ChainlinkOracle validates EUR/USD and USDC/USD feeds with staleness checks (2h EUR/USD, 25h USDC/USD). Both enforce 0.80-1.40 price bounds and 5% deviation circuit breakers.
+`OracleRouter` implements `IOracle` and routes to one of two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0, and the old `storkOracle()` getter survives as a deprecated ABI-compatible alias of `marketOracle()`). Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the ACTIVE production oracle** (`activeOracle = 1`, live since 2026-06-25); slot 0 is `ChainlinkOracle` (fallback and USDC/USD source); `StorkOracle` is parked. The live router is v1.1.1 (2026-08-26 bundle; v1.1.0 went live 2026-07-05); implementation addresses are tracked in `deployments/8453/versions.json`. All protocol contracts depend only on `IOracle` (oracle-agnostic). HyperliquidEurUsdOracle reads the Hyperliquid EUR perp mid-price from `SlippageStorage` (published on-chain by the dapp's slippage-monitor; 900 s staleness default, 1 h hard cap); ChainlinkOracle validates EUR/USD and USDC/USD feeds with staleness checks (2h EUR/USD, 25h USDC/USD). Both enforce 0.80-1.40 price bounds and 5% deviation circuit breakers.
 
 - **`getEurUsdPrice()` is non-`view` by design**: on a fresh valid read it commits the price into the deviation-baseline cache (`lastValidEurUsdPrice`/`lastPriceUpdateTime`/`lastPriceUpdateBlock`) and emits `PriceUpdated`. So every price read is a state write, and consumers such as `QuantillonVault.shouldTriggerLiquidationLive()` are non-`view` too. Integrators that only need a cheap read should use the cached getters rather than `getEurUsdPrice()`.
 - **Failover is manual**: `OracleRouter` routes to a single `activeOracle` with no automatic fallback or disagreement handling. If the active oracle returns `isValid=false`, callers revert; switching is a deliberate governance action via `switchOracle` (`ORACLE_MANAGER_ROLE`). Operate a monitor/alert on oracle health.
@@ -192,7 +193,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 4. **Error Libraries**: Custom errors in domain-specific libraries (`CommonErrorLibrary`, `VaultErrorLibrary`, `HedgerPoolErrorLibrary`, `TokenErrorLibrary`, etc.) for gas efficiency
 5. **Reentrancy Protection**: `ReentrancyGuardUpgradeable` on all state-changing functions
 6. **Emergency Pause**: `PausableUpgradeable` with `PAUSER_ROLE`
-7. **Symmetric Adapter Pattern**: Non-upgradeable adapters (`AaveStakingVaultAdapter`, `MorphoStakingVaultAdapter`) wrap simple mock vaults with identical `IExternalStakingVault` interface
+7. **Adapter Pattern**: Non-upgradeable `IExternalStakingVault` adapters — `MetaMorphoStakingVaultAdapter` (the live mainnet adapter, vaultId 2, over the MetaMorpho USDC vault) plus `AaveStakingVaultAdapter` / `MorphoStakingVaultAdapter` wrapping mock vaults for localhost
 8. **Versioning (`IVersioned`)**: Every core contract implements `IVersioned.version()` — a `pure` semver getter (no storage slot; read through the proxy it reflects the deployed implementation). Linked libraries expose `version()`; inlined libraries carry a `VERSION` constant. **Rule: ANY change to a deployed contract/library — correction, bug fix, update, or upgrade — MUST be traced through a semver bump of its `version()`** (PATCH = bugfix/internal, MINOR = new function/behavior; storage/ABI breaks are disallowed by the gates). Enforced by `make check-version-bump`. Deployed versions live in `deployments/{chainId}/versions.json` (written by the `UpgradeBase` scripts on every upgrade); `make check-deployed-versions` reports which contracts are out of date.
 
 ## Deployment Strategy
@@ -207,13 +208,13 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 
 **Generated by `forge doc` — DO NOT hand-edit (overwritten on every `make docs`):**
 - `docs/book.toml`
-- `docs/src/README.md` — copied verbatim from the repo-root `README.md` (this is the site homepage)
+- `docs/src/README.md` — copied by `forge doc` from `quantillon-protocol/README.md` (this is the site homepage; the repo-root `README.md` is only the GitHub landing page)
 - `docs/src/SUMMARY.md` — auto TOC (`Home` + contract API only; guide pages are merged in by the publish step, not committed here)
 - `docs/src/src/**` — the entire contract/interface/library reference, generated from NatSpec
 - The stale guide copies under `docs/src/*.md` (e.g. `docs/src/External-Vault-Onboarding-Runbook.md`) are leftover build artifacts — ignore them
 
 **Hand-maintained SOURCE — edit these:**
-- Repo-root `README.md` → becomes the site homepage. Link to guides with absolute `https://smartcontracts.quantillon.money/<Name>.html` URLs; relative `./docs/X.md` links work on GitHub but **404 on the published book**.
+- `quantillon-protocol/README.md` → becomes the site homepage. Link to guides with absolute `https://smartcontracts.quantillon.money/<Name>.html` URLs; relative `./docs/X.md` links work on GitHub but **404 on the published book**.
 - `docs/SUMMARY.md` → site nav for the guide pages (its `# src` contract tree should mirror what `forge doc` emits into `docs/src/src/**`).
 - `docs/README.md` → the "Documentation Hub" page.
 - Top-level guides published as `…/<Name>.html`: `API-Reference.md`, `Quick-Start.md`, `Integration-Examples.md`, `Architecture.md`, `Oracle-Architecture.md`, `Security.md`, `Deployment.md`, `stQEUROFactory.md`, `Multi-Vault-Staking-Flow.md`, `Staking-Yield-Distribution.md`, `External-Vault-Onboarding-Runbook.md`.
@@ -222,16 +223,16 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 
 ## Testing Standards
 
-- **57 test files, 1,415 passing tests** (0 failing, 11 skipped)
+- Test count: run `make test` (`FOUNDRY_PROFILE=test forge test`); do not hard-code counts in docs
 - Fuzz tests: 1000 runs; Invariant tests: 256 runs, depth 15
 - Naming: `test_*`, `testFuzz_*`, `invariant_*`
-- 11 explicit skips with documented rationale; real attack coverage lives in `EconomicAttackVectorsIntegration` + integration tests
+- Explicit skips carry a documented rationale; real attack coverage lives in `EconomicAttackVectorsIntegration` + integration tests
 - Run `FOUNDRY_PROFILE=test forge test` (or `make test`) before pushing
 
 ## Security Notes
 
 - Security contact: team@quantillon.money
-- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS and upgrade via the Safe *directly* (no 12h Timelock) — deliberate, to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate.
+- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). OracleRouter / ChainlinkOracle / HyperliquidEurUsdOracle / StorkOracle / LighterEurUsdOracle (inert) / SlippageStorage / FeeCollector are plain-UUPS and upgrade via the Safe *directly* (no 12h Timelock) — deliberate, to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate.
 - **Public-surface policy:** this repo and the docs site are public — never put internal audit finding IDs, remediation history, or past-vulnerability narratives in NatSpec, struct comments, `docs/*.md`, `README.md`, or this file. Internal security context (git-crypt encrypted, plaintext only in unlocked checkouts): @CLAUDE.private.md
 - Slither: 0 Critical, 0 Medium findings
 - Custom errors required (not `require` strings)
@@ -243,14 +244,5 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 - Compiler: `via_ir=true` enabled on all profiles
 - Optimizer: `optimizer_runs=0` (minimizes runtime bytecode size to satisfy EIP-170); test/coverage profiles use 200 runs
 - Contract size limit: 24576 bytes (EIP-170) — check with `make analyze-contract-sizes`
-- Never commit `.env` files
+- `.env*` files are tracked but git-crypt encrypted (`.gitattributes`); never commit them in plaintext, never disable the filter
 - ABIs exported to dapp via `scripts/deployment/copy-abis.sh`
-
-## graphify
-
-This project has a graphify knowledge graph at graphify-out/.
-
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Quantillon Protocol implements comprehensive security measures to protect user funds and ensure protocol integrity. This document outlines security best practices, audit reports, and risk management guidelines.
+The Quantillon Protocol implements comprehensive security measures to protect user funds and ensure protocol integrity. This document outlines security best practices, the vulnerability disclosure process, and risk management guidelines.
 
 ---
 
@@ -37,8 +37,8 @@ graph TB
     end
     
     subgraph "External Layer"
-        AE[Audit Reports]
-        BB[Bug Bounty]
+        AE[Independent Audit]
+        BB[Responsible Disclosure]
         MC[Monitoring & Alerting]
     end
 ```
@@ -52,29 +52,38 @@ graph TB
 **Role-Based Access Control (RBAC)**:
 - Hierarchical permission system
 - Principle of least privilege
-- Time-locked administrative functions
-- Multi-signature requirements for critical operations
+- Time-locked upgrades: the eight `SecureUpgradeable` core proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, stQEUROToken) can only be upgraded through the 12 h OpenZeppelin `TimelockController`
+- Multi-signature control: every privileged role is held by the 2-of-3 governance Safe. Parameter changes, and upgrades of the plain-UUPS FeeCollector / oracle / SlippageStorage proxies, execute as direct Safe transactions with no delay (see the governance-flow column of the [2026-08-26 bundle runbook](./Bundle-Release-2026-08-26.md))
 
 **Key Roles per contract**:
 ```solidity
 // QEUROToken
 MINTER_ROLE       = keccak256("MINTER_ROLE");      // Vault: mint QEURO
 BURNER_ROLE       = keccak256("BURNER_ROLE");      // Vault: burn QEURO
-PAUSER_ROLE       = keccak256("PAUSER_ROLE");      // Emergency: pause token
+PAUSER_ROLE       = keccak256("PAUSER_ROLE");      // Emergency: pause token, minting killswitch
 COMPLIANCE_ROLE   = keccak256("COMPLIANCE_ROLE");  // Blacklist/whitelist management
 
-// QuantillonVault / UserPool / HedgerPool / YieldShift
+// QuantillonVault / QTIToken / UserPool / HedgerPool / YieldShift / stQEUROFactory / stQEUROToken
 GOVERNANCE_ROLE         = keccak256("GOVERNANCE_ROLE");         // Parameter updates, wiring
 EMERGENCY_ROLE          = keccak256("EMERGENCY_ROLE");          // Emergency pause/withdraw
 VAULT_OPERATOR_ROLE     = keccak256("VAULT_OPERATOR_ROLE");     // Vault: external-vault USDC deployment
-// HedgerPool uses a single-hedger allowlist (setSingleHedger), not a HEDGER_ROLE
+YIELD_DISTRIBUTOR_ROLE  = keccak256("YIELD_DISTRIBUTOR_ROLE");  // Vault: harvestAndDistributeVaultYield / creditVaultYield
+VAULT_FACTORY_ROLE      = keccak256("VAULT_FACTORY_ROLE");      // stQEUROFactory: vault self-registration
+// HedgerPool has no hedger role: it uses a single-hedger allowlist (setSingleHedger)
 
 // FeeCollector
-TREASURY_ROLE     = keccak256("TREASURY_ROLE");    // Fee withdrawal
+GOVERNANCE_ROLE   = keccak256("GOVERNANCE_ROLE");  // Ratios, fund addresses, fee sources, upgrades (plain UUPS)
+TREASURY_ROLE     = keccak256("TREASURY_ROLE");    // distributeFees
+FEE_SOURCE_ROLE   = keccak256("FEE_SOURCE_ROLE");  // Contracts allowed to push fees
 
-// OracleRouter / ChainlinkOracle / StorkOracle
-ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE"); // Feed address updates, oracle switching
-UPGRADER_ROLE       = keccak256("UPGRADER_ROLE");       // UUPS upgrades
+// OracleRouter / ChainlinkOracle / HyperliquidEurUsdOracle / StorkOracle / LighterEurUsdOracle (inert)
+ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE"); // Feed/source updates, bounds, staleness, oracle switching
+EMERGENCY_ROLE      = keccak256("EMERGENCY_ROLE");      // Circuit breakers, pause
+UPGRADER_ROLE       = keccak256("UPGRADER_ROLE");       // Plain-UUPS upgrades (Safe direct, no timelock)
+
+// SlippageStorage
+MANAGER_ROLE        = keccak256("MANAGER_ROLE");        // Store configuration (sources, thresholds, intervals)
+WRITER_ROLE         = keccak256("WRITER_ROLE");         // Publishing the venue mid on-chain
 ```
 
 ### 2. Reentrancy Protection
@@ -87,11 +96,9 @@ UPGRADER_ROLE       = keccak256("UPGRADER_ROLE");       // UUPS upgrades
 
 **Example**:
 ```solidity
-modifier nonReentrant() {
-    require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-    _status = _ENTERED;
-    _;
-    _status = _NOT_ENTERED;
+// OpenZeppelin ReentrancyGuardUpgradeable: a re-entrant call reverts with ReentrancyGuardReentrantCall()
+function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused {
+    // ... function logic
 }
 ```
 
@@ -105,15 +112,12 @@ modifier nonReentrant() {
 
 **Implementation**:
 ```solidity
-function validateOraclePrice(bool isValid) internal pure {
-    if (!isValid) revert ErrorLibrary.StalePrice();
-}
+// QuantillonVault: an invalid oracle read is a hard stop for mint / redeem
+(uint256 price, bool isValid) = oracle.getEurUsdPrice();
+if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
-function validatePriceBounds(uint256 price) internal view {
-    if (price < minPrice || price > maxPrice) {
-        revert ErrorLibrary.InvalidPrice();
-    }
-}
+// Oracles: staleness, bounds and deviation checks return isValid = false instead of
+// reverting; governance setters validate inputs with CommonErrorLibrary.InvalidPrice()
 ```
 
 ### 4. Emergency Mechanisms
@@ -126,51 +130,30 @@ function validatePriceBounds(uint256 price) internal view {
 
 **Implementation**:
 ```solidity
-modifier whenNotPaused() {
-    require(!paused(), "Pausable: paused");
-    _;
-}
-
-function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
-    _pause();
-    emit EmergencyPause(msg.sender, block.timestamp);
+// OpenZeppelin PausableUpgradeable: `whenNotPaused` reverts with EnforcedPause()
+function pause() external onlyRole(EMERGENCY_ROLE) {   // PAUSER_ROLE on QEUROToken
+    _pause();                                          // emits Paused(msg.sender)
 }
 ```
 
 ---
 
-## Bug Bounty Program
+## Responsible Disclosure
 
-### Program Details
+### Reporting a vulnerability
 
-**Reward Structure**:
-- **Critical**: $100,000
-- **High**: $50,000
-- **Medium**: $10,000
-- **Low**: $1,000
-- **Informational**: $500
+Report suspected vulnerabilities privately to **team@quantillon.money** before any public disclosure. Include the affected contract(s) and addresses, a reproduction (transaction trace or Foundry test) and your assessment of impact. The team acknowledges reports, works with the reporter on validation and remediation, and coordinates publication once a fix is live.
 
-**Scope**:
-- All smart contracts in the protocol
-- Integration contracts
-- Governance mechanisms
-- Oracle systems
+**In scope**: all contracts under `src/` as deployed on Base mainnet (see the [API Reference](./API-Reference.md#contract-addresses)), including the oracle stack and the external vault adapters.
+**Out of scope**: issues in third-party dependencies, social engineering, and scenarios that require already-privileged roles.
 
-**Exclusions**:
-- Issues in third-party dependencies
-- Social engineering attacks
-- Physical attacks
-- Issues requiring admin privileges
+### Bug bounty
 
-### Submission Process
+A bug bounty program is **planned**; reward tiers and scope will be published on this page when it opens. Until then, reports are handled through the disclosure process above.
 
-1. **Report**: Submit detailed vulnerability report
-2. **Review**: Security team reviews submission
-3. **Validation**: Reproduce and validate issue
-4. **Fix**: Develop and deploy fix
-5. **Reward**: Process bounty payment
+### Audits
 
-**Contact**: security@quantillon.money
+The protocol underwent an independent security audit; the resulting on-chain remediation went live in July 2026.
 
 ---
 
@@ -242,17 +225,18 @@ function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
 **Input Validation**:
 ```solidity
 function deposit(uint256 amount) external {
-    require(amount > 0, "Amount must be positive");
-    require(amount <= MAX_DEPOSIT, "Amount exceeds limit");
+    if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+    if (amount > MAX_DEPOSIT) revert CommonErrorLibrary.AboveLimit();
     // ... function logic
 }
 ```
 
 **Access Control**:
 ```solidity
-modifier onlyAuthorized() {
-    require(hasRole(AUTHORIZED_ROLE, msg.sender), "Unauthorized");
-    _;
+// Role checks use OpenZeppelin AccessControl (`onlyRole`) or the shared library helpers,
+// which revert with custom errors (e.g. CommonErrorLibrary.NotGovernance / NotAuthorized)
+function setParameter(uint256 value) external onlyRole(GOVERNANCE_ROLE) {
+    // ... function logic
 }
 ```
 
@@ -327,10 +311,13 @@ const gasLimit = gasEstimate.mul(120).div(100); // 20% buffer
 try {
     await contract.function();
 } catch (error) {
-    if (error.message.includes('InsufficientBalance')) {
+    const msg = error.reason || error.message;
+    if (msg.includes('InsufficientBalance') || msg.includes('ERC20InsufficientBalance')) {
         // Handle insufficient balance
-    } else if (error.message.includes('StalePrice')) {
-        // Handle stale price
+    } else if (msg.includes('InvalidOraclePrice')) {
+        // Handle stale / invalid oracle price
+    } else if (msg.includes('EnforcedPause')) {
+        // Handle paused contract
     } else {
         // Handle other errors
     }
@@ -341,39 +328,42 @@ try {
 
 **Event Monitoring**:
 ```javascript
-// Monitor important events
-contract.on('QEUROMinted', (user, usdcAmount, qeuroAmount) => {
+// Monitor important events (QEUROminted: lowercase m, 3 arguments)
+vault.on('QEUROminted', (user, usdcAmount, qeuroAmount) => {
     console.log(`User ${user} minted ${qeuroAmount} QEURO`);
 });
 
-contract.on('EmergencyPause', (admin, timestamp) => {
-    console.log(`Contract paused by ${admin} at ${timestamp}`);
+// Pause is the OpenZeppelin Pausable event
+vault.on('Paused', (account) => {
+    console.log(`Contract paused by ${account}`);
 });
 ```
 
 **Health Checks**:
 ```javascript
 async function healthCheck() {
-    const [
-        isPaused,
-        oraclePrice,
-        vaultMetrics
-    ] = await Promise.all([
+    const [isPaused, [price, isValid], collateralizationRatio, mintFloor, criticalRatio] = await Promise.all([
         vault.paused(),
-        oracle.getEurUsdPrice(),
-        vault.getVaultMetrics()
+        oracleRouter.callStatic.getEurUsdPrice(),   // non-view: simulate instead of sending a tx
+        vault.getProtocolCollateralizationRatio(),   // 18-decimal percent, 1e20 == 100% (0 while nothing is minted)
+        vault.minCollateralizationRatioForMinting(), // 1.025e20 live (102.5%)
+        vault.criticalCollateralizationRatio()       // 1.01e20 (101%)
     ]);
-    
+
     if (isPaused) {
         console.warn("Vault is paused");
     }
-    
-    if (!oraclePrice.isValid) {
-        console.warn("Oracle price is stale");
+
+    if (!isValid) {
+        console.warn("Oracle price is stale or invalid");
     }
-    
-    if (vaultMetrics.collateralizationRatio < 11000) {
-        console.warn("Low collateralization ratio");
+
+    if (collateralizationRatio.lt(mintFloor)) {
+        console.warn("Protocol CR below the minting floor: mints are refused");
+    }
+
+    if (collateralizationRatio.lte(criticalRatio)) {
+        console.error("Protocol CR at or below the critical ratio: liquidation-mode redemptions");
     }
 }
 ```
@@ -480,7 +470,7 @@ async function healthCheck() {
 
 ### Primary Contacts
 
-**Security Team**: security@quantillon.money
+**Security contact**: team@quantillon.money — vulnerability reports and responsible disclosure (see [Responsible Disclosure](#responsible-disclosure))
 
 ---
 
@@ -507,12 +497,6 @@ Use generated artifacts from each run instead of hardcoded snapshots:
 - `scripts/results/mythril-reports/`
 - `scripts/results/natspec-validation-report.txt`
 - `scripts/results/contract-sizes/contract-sizes-summary.txt`
-
-As of **March 10, 2026**, the latest local validation included:
-
-- NatSpec coverage: **1218/1218 functions documented (100.00%)**
-- Targeted Slither `missing-zero-check` pass: **0 findings**
-- Mock oracle initialization hardening with explicit zero-address validation for admin-derived state
 
 **Running Mythril Analysis**:
 ```bash

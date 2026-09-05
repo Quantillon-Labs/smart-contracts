@@ -19,6 +19,7 @@ Chainlink spot is kept as a safety reference and fallback, not as the primary va
 | `HyperliquidEurUsdOracle` | `src/oracle/HyperliquidEurUsdOracle.sol` | **Active** EUR/USD source (router slot 1) |
 | `ChainlinkOracle` | `src/oracle/ChainlinkOracle.sol` | Fallback EUR/USD (slot 0) + USDC/USD validation |
 | `StorkOracle` | `src/oracle/StorkOracle.sol` | Legacy/parked (slot 1 now holds the Hyperliquid oracle) |
+| `LighterEurUsdOracle` | `src/oracle/LighterEurUsdOracle.sol` | Deployed 2026-07-17 (`0xcd53182a430d48Be0f414CCA022ABA5d05903536`), inert: no router slot; the Lighter venue was not adopted (2026-09-01) |
 | `SlippageStorage` | `src/oracle/SlippageStorage.sol` | On-chain store the off-chain publisher writes the mid into |
 | `IOracle` / `IHyperliquidOracle` | `src/interfaces/` | Oracle-agnostic interface + adapter extensions |
 
@@ -26,7 +27,7 @@ Chainlink spot is kept as a safety reference and fallback, not as the primary va
 
 ```
 OracleRouter             0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0
-HyperliquidEurUsdOracle  0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43  (impl 0xc86e06F293Cc25dFBb4D252b044C7ca0af80B3CC)
+HyperliquidEurUsdOracle  0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43
 ChainlinkOracle          0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7
 SlippageStorage          0x0fde0ff2566be3c24af6d654012dddb4f1da099b
 TimeProvider             0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7
@@ -34,7 +35,7 @@ QuantillonVault          0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07
 Safe (Multisig)          0x1d7fF432a93d0085Fb69474c7E567f859829e6cd
 ```
 
-All contracts are verified on Basescan.
+All contracts are verified on Basescan. Proxy addresses are the stable reference; implementation addresses and live `version()` values are tracked in `deployments/8453/versions.json`.
 
 ## Data flow
 
@@ -73,7 +74,7 @@ QuantillonVault (mint/redeem)   +   off-server watchdog (freezes on stale / brea
   oracle (`updatePriceBounds`, `updateUsdcTolerance`, `resetCircuitBreaker`, `triggerCircuitBreaker`), so
   it slots into the (formerly Stork) slot 1 with **no `OracleRouter` change**.
 - **Source swap-ready**: `updateSlippageSource(addr, sourceId)` (ORACLE_MANAGER) repoints the EUR/USD
-  source — e.g. to a SEDA-backed store later — without touching the vault or router.
+  source without touching the vault or router.
 
 ## OracleRouter
 
@@ -84,18 +85,24 @@ Two slots: `OracleType.CHAINLINK = 0`, `OracleType.MARKET = 1` (slot 1 = the swa
 
 ## Role model
 
-The Safe holds **every** role on each oracle; the router and the deployer hold **none**. Admin
-operations (bounds, staleness, circuit breaker, upgrades) are done by the Safe **directly on the
-oracle**, not through the router's delegation functions.
+The Safe holds every governance role on each oracle (`DEFAULT_ADMIN`, `ORACLE_MANAGER`, `EMERGENCY`,
+`UPGRADER`); the deployer holds none. By design of the deployment scripts, `OracleRouter` additionally
+holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the **market oracle** — the active
+`HyperliquidEurUsdOracle` (and the inert `LighterEurUsdOracle`, granted 2026-07-20) — which is what lets
+the router's management passthroughs (`updatePriceBounds`, `updateUsdcTolerance`,
+`triggerCircuitBreaker`, `resetCircuitBreaker`) work; it holds no role on `ChainlinkOracle`. Admin
+operations are nevertheless normally done by the Safe **directly on the oracle**, not through the
+router. Verified with `hasRole` reads on 2026-09-05.
 
 | Holder | DEFAULT_ADMIN | ORACLE_MANAGER | EMERGENCY | UPGRADER |
 |---|---|---|---|---|
 | Safe `0x1d7f…` | ✓ | ✓ | ✓ | ✓ |
-| OracleRouter | — | — | — | — |
+| OracleRouter | — | ✓ (market oracle only) | ✓ (market oracle only) | — |
 | Deployer `0x8DAD…` | — | — | — | — |
 
-`SlippageStorage`: Safe holds `DEFAULT_ADMIN_ROLE`/`MANAGER_ROLE`; the publisher wallet holds
-`WRITER_ROLE`. Treasury on all oracles + vault is `0x8DAD…098d1` (used only by emergency recovery).
+`SlippageStorage`: Safe holds `DEFAULT_ADMIN_ROLE` / `MANAGER_ROLE`; `WRITER_ROLE` is held by the
+off-chain publisher wallet and, currently, also by the deployer EOA. Treasury on all oracles + vault is
+`0x8DAD…098d1` (used only by emergency recovery).
 
 ## Deployment & wiring
 

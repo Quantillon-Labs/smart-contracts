@@ -43,9 +43,10 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
                        ┌─────────────────┐             │
                        │External Systems │             │
                        ├─────────────────┤             │
-                       │ • Aave Protocol │◀────────────┘
+                       │ • Morpho        │◀────────────┘
+                       │   (MetaMorpho)  │
+                       │ • Hyperliquid   │
                        │ • Chainlink     │
-                       │ • Stork Network │
                        │ • Base Network  │
                        └─────────────────┘
 ```
@@ -62,7 +63,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 - Overcollateralized QEURO minting
 - USDC collateral management
 - Oracle price validation
-- Liquidation system
+- Liquidation-mode redemption when protocol CR is at or below the critical ratio (101%)
 - Fee collection and distribution
 
 **Architecture Patterns**:
@@ -107,18 +108,18 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 ### 4. UserPool
 
-**Purpose**: Manages user deposits, staking, and yield distribution.
+**Purpose**: Optional batch front-end for deposits (USDC → QEURO through the vault) and QEURO staking with an unstaking cooldown.
 
 **Key Features**:
-- USDC deposit/withdrawal
-- QEURO staking for rewards
-- Yield distribution system
-- User position tracking
-- Reward calculation and claiming
+- Batched USDC deposit / QEURO withdrawal routed through `QuantillonVault`
+- QEURO staking with `requestUnstake` → 7-day cooldown → `unstake`
+- Pending-withdrawal escrow when a USDC transfer to the user fails
+- User position tracking (`getUserInfo`)
+- No reward claim: user yield accrues through stQEURO (ERC-4626 share price)
 
 **Architecture Patterns**:
-- **Pool Pattern**: Centralized liquidity management
-- **Reward Distribution**: Proportional yield allocation
+- **Pool Pattern**: Centralized escrow of staked QEURO
+- **Cooldown Gate**: Time-locked unstaking
 - **State Tracking**: User position management
 
 ### 5. HedgerPool
@@ -144,7 +145,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Key Features**:
 - Automatic yield distribution via exchange rate
-- Exchange rate = (totalUnderlying + totalYieldEarned) / totalSupply
+- Exchange rate = `totalAssets() / totalSupply()` (standard ERC-4626 share price; it rises when `QuantillonVault.creditVaultYield` mints QEURO into the token without minting shares)
 - No lock-up period — unstake at any time
 - Virtual protection against donation attacks
 
@@ -192,7 +193,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Key Features**:
 - Holds two EUR/USD oracle slots and routes all `IOracle` reads to the **active** one
-- Slot 0 = `ChainlinkOracle` (fallback); slot 1 = `HyperliquidEurUsdOracle` (**active by default**)
+- Slot 0 = `ChainlinkOracle` (fallback); slot 1 = `HyperliquidEurUsdOracle` (**active since the governance switch of 2026-06-25**)
 - Governance switches sources at runtime via `switchOracle` — no protocol-contract changes
 - `updateOracleAddresses` repoints a slot; `OracleSwitched` event on switch
 
@@ -224,7 +225,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 **Purpose**: Intelligent yield distribution between user and hedger pools.
 
 **Components**:
-- **Yield Sources**: Aave, protocol fees, interest differentials
+- **Yield Sources**: external staking vaults (MetaMorpho live via `MetaMorphoStakingVaultAdapter`; Morpho/Aave adapters for localhost), protocol fees, interest differentials
 - **Distribution Engine**: Dynamic allocation between pools
 - **Performance Metrics**: Yield tracking and optimization
 - **Rebalancing Logic**: Automatic pool rebalancing
@@ -248,7 +249,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 - **Adapter Pattern**: thin `IExternalStakingVault` adapters wrap each external vault
 - **Factory Registry**: `stQEUROFactory` maps `vaultId` to adapter + stQEURO series
 - **Yield Optimization**: Dynamic allocation strategies
-- **Vault-Aware Routing**: Harvested yield is pushed to `YieldShift.addYield(yieldVaultId, ...)`
+- **Vault-Aware Routing**: harvested external-vault yield is split by `QuantillonVault.harvestAndDistributeVaultYield` (hedger funding / stQEURO stakers / treasury); `YieldShift.addYield(vaultId, ...)` stays available for other authorized sources
 
 ---
 
@@ -258,15 +259,18 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Role-Based Access Control (RBAC)**:
 - `MINTER_ROLE` / `BURNER_ROLE`: QEUROToken — vault-only mint/burn
-- `PAUSER_ROLE`: QEUROToken emergency pause
+- `PAUSER_ROLE`: QEUROToken emergency pause and minting killswitch
 - `COMPLIANCE_ROLE`: QEUROToken blacklist/whitelist management
-- `GOVERNANCE_ROLE`: Parameter updates and contract wiring across all core contracts
-- `EMERGENCY_ROLE`: Emergency pause and withdrawal across all core contracts
-- `VAULT_OPERATOR_ROLE`: QuantillonVault — authorize Aave deployment
-- `HEDGER_ROLE`: HedgerPool — open and manage hedging positions
-- `TREASURY_ROLE`: FeeCollector — fee withdrawal
-- `ORACLE_MANAGER_ROLE`: OracleRouter/ChainlinkOracle/StorkOracle — feed updates, oracle switching
-- `UPGRADER_ROLE`: Oracle contracts — UUPS upgrades
+- `GOVERNANCE_ROLE`: Parameter updates and contract wiring across all core contracts (on FeeCollector it also gates upgrades)
+- `EMERGENCY_ROLE`: Emergency pause and withdrawal across all core contracts; oracle circuit breakers
+- `VAULT_OPERATOR_ROLE`: QuantillonVault — `deployUsdcToVault` (USDC deployment into any registered external vault adapter)
+- `YIELD_DISTRIBUTOR_ROLE`: QuantillonVault — `harvestAndDistributeVaultYield` / `creditVaultYield`
+- Hedging: no dedicated role — HedgerPool uses a single-hedger allowlist (`setSingleHedger`)
+- `VAULT_FACTORY_ROLE`: stQEUROFactory — vault self-registration
+- `TREASURY_ROLE` / `FEE_SOURCE_ROLE`: FeeCollector — fee distribution / authorized fee sources
+- `ORACLE_MANAGER_ROLE`: OracleRouter / ChainlinkOracle / HyperliquidEurUsdOracle / StorkOracle / LighterEurUsdOracle (inert) — feed updates, oracle switching
+- `MANAGER_ROLE` / `WRITER_ROLE`: SlippageStorage — store configuration / on-chain mid publishing
+- `UPGRADER_ROLE`: the plain-UUPS proxies (oracles, SlippageStorage) — direct Safe upgrades; the `SecureUpgradeable` core proxies are gated by the 12 h TimelockController instead
 
 ### Security Patterns
 
@@ -296,7 +300,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 ```
 QEURO Minting Flow:
 ┌─────────┐    ┌──────────────┐    ┌─────────────────┐    ┌─────────────┐
-│  User   │    │QuantillonVault│    │ChainlinkOracle │    │QEUROToken   │
+│  User   │    │QuantillonVault│    │ OracleRouter    │    │QEUROToken   │
 └────┬────┘    └──────┬───────┘    └────────┬────────┘    └──────┬──────┘
      │                │                      │                    │
      │ approve()      │                      │                    │
@@ -304,69 +308,67 @@ QEURO Minting Flow:
      │ mintQEURO()    │                      │                    │
      ├───────────────▶│                      │                    │
      │                │ getEurUsdPrice()     │                    │
-     │                ├─────────────────────▶│                    │
-     │                │ price, isValid       │                    │
+     │                ├─────────────────────▶│ → active slot      │
+     │                │ price, isValid       │ (HyperliquidEurUsdOracle)
      │                │◀─────────────────────┤                    │
      │                │ validatePrice()      │                    │
      │                │ calculateMintAmount()│                    │
      │                │ transferFrom()       │                    │
      │                │ mint()               │                    │
      │                ├─────────────────────────────────────────▶│
-     │                │ emit QEUROMinted()   │                    │
+     │                │ emit QEUROminted()   │                    │
      │ success        │                      │                    │
      │◀───────────────┤                      │                    │
 ```
 
+`OracleRouter` forwards `getEurUsdPrice()` to its active slot (HyperliquidEurUsdOracle since 2026-06-25; ChainlinkOracle as fallback). The read is non-`view` — a fresh valid price refreshes the deviation baseline — and `isValid = false` reverts the mint with `InvalidOraclePrice`.
+
 ### Yield Distribution Flow
 
 ```
-Yield Distribution Flow:
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ YieldShift  │    │ Ext. Vault  │    │  UserPool   │    │ HedgerPool  │
-└──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
-       │                  │                  │                  │
-       │ harvestYieldToVault()               │                  │
-       ├─────────────────▶│                  │                  │
-       │                  │ claimRewards()   │                  │
-       │                  ├─────────────────▶│                  │
-       │                  │ yieldAmount      │                  │
-       │                  │◀─────────────────┤                  │
-       │ addYield()       │                  │                  │
-       │◀─────────────────┤                  │                  │
-       │ calculateOptimalDistribution()      │                  │
-       │ distributeUserYield()               │                  │
-       ├─────────────────────────────────────▶│                  │
-       │ distributeHedgerYield()             │                  │
-       ├───────────────────────────────────────────────────────▶│
-       │ emit YieldDistributed()             │                  │
+Yield Distribution Flow (QuantillonVault.harvestAndDistributeVaultYield):
+┌──────────┐  ┌───────────────┐  ┌──────────────┐  ┌───────────┐  ┌───────────────┐
+│  Keeper  │  │QuantillonVault│  │ Ext. adapter │  │  stQEURO  │  │ hedger recip. │
+│ (YIELD_  │  │               │  │ (MetaMorpho) │  │(per vault)│  │  / treasury   │
+│DISTRIB.) │  │               │  │              │  │           │  │               │
+└────┬─────┘  └───────┬───────┘  └──────┬───────┘  └─────┬─────┘  └───────┬───────┘
+     │ harvestAndDistributeVaultYield(vaultId)      │              │
+     ├─────────────▶│                  │            │              │
+     │              │ harvestYieldToVault()         │              │
+     │              ├─────────────────▶│            │              │
+     │              │ realizedYield (USDC above tracked principal) │
+     │              │◀─────────────────┤            │              │
+     │              │ hedgerShare = fundingRateAnnualBps × principal × Δt (paid first)
+     │              ├──────────────────────────────────────────────▶│
+     │              │ userShare → _creditVaultYield(): mint QEURO into stQEURO (share price ↑)
+     │              ├───────────────────────────────▶│              │
+     │              │ treasuryShare (USDC remainder) │              │
+     │              ├──────────────────────────────────────────────▶│
+     │              │ emit VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)
 ```
+
+See the [Staking Yield Distribution](./Staking-Yield-Distribution.md) guide for the split formula and parameters. `YieldShift.addYield(vaultId, ...)` remains the entrypoint for other authorized yield sources; external-vault yield no longer routes through it.
 
 ### Governance Flow
 
+Live governance on Base mainnet is the 2-of-3 Safe plus an OpenZeppelin `TimelockController` (12 h `minDelay`, Safe = sole proposer/executor). The QTI on-chain governance path (`lock` → `createProposal` → `vote` → self-execution after `PROPOSAL_EXECUTION_DELAY`) is coded but **dormant**: QTI supply is 0 and the token holds no `GOVERNANCE_ROLE`.
+
 ```
-Governance Flow:
-┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  User   │    │  QTIToken   │    │  Timelock   │    │   Target    │
-│         │    │             │    │             │    │  Contract   │
-└────┬────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
-     │                │                  │                  │
-     │ lock()         │                  │                  │
-     ├───────────────▶│                  │                  │
-     │                │ calculateVotingPower()              │
-     │                │ emit TokensLocked()                 │
-     │ createProposal()│                  │                  │
-     ├───────────────▶│                  │                  │
-     │                │ validateVotingPower()               │
-     │                │ emit ProposalCreated()              │
-     │ vote()         │                  │                  │
-     ├───────────────▶│                  │                  │
-     │                │ emit VoteCast()  │                  │
-     │ executeProposal()│                │                  │
-     ├───────────────▶│                  │                  │
-     │                │ schedule()       │                  │
-     │                ├─────────────────▶│                  │
-     │                │                  │ execute()        │
-     │                │                  ├─────────────────▶│
+Governance Flow (live):
+┌────────────┐    ┌───────────────────┐    ┌───────────────────────────┐
+│ Safe (2/3) │    │ TimelockController│    │ SecureUpgradeable proxy   │
+└─────┬──────┘    └─────────┬─────────┘    └─────────────┬─────────────┘
+      │ schedule(upgradeToAndCall)           │
+      ├────────────────────▶│                │
+      │      ... 12 h minDelay ...           │
+      │ execute()           │                │
+      ├────────────────────▶│ upgradeToAndCall(newImpl)
+      │                     ├───────────────▶│  _authorizeUpgrade: msg.sender == timelock
+      │
+      │ Parameter changes on every contract, and upgrades of the plain-UUPS proxies
+      │ (FeeCollector, oracles, SlippageStorage): one direct Safe transaction on the
+      │ target (GOVERNANCE_ROLE / ORACLE_MANAGER_ROLE / UPGRADER_ROLE), no delay
+      ├──────────────────────────────────────────────────▶ target contract
 ```
 
 ---
@@ -390,17 +392,16 @@ Governance Flow:
 ### Upgradeability
 
 **Proxy Pattern Implementation**:
-- Transparent proxy for admin functions
-- UUPS proxy for gas efficiency
-- Storage layout compatibility
-- Initialization pattern for upgrades
+- ERC1967 + UUPS proxies for every upgradeable contract (no transparent proxies)
+- Core contracts inherit `SecureUpgradeable`: `_authorizeUpgrade` requires the call to come from the configured `timelock` — on Base mainnet the 12 h OpenZeppelin `TimelockController`
+- Oracles, SlippageStorage and FeeCollector are plain UUPS proxies upgraded directly by the governance Safe (no timelock)
+- Storage-layout compatibility and ABI additivity are enforced by `make check-upgrade-safety`
 
 **Upgrade Process**:
-1. Deploy new implementation
-2. Validate compatibility
-3. Schedule upgrade via governance
-4. Execute upgrade after timelock
-5. Verify functionality
+1. Deploy and verify the new implementation (run `make check-verifiable-bytecode CONTRACT=<Name>` first)
+2. Validate compatibility (`make check-upgrade-safety`: size, storage layout, ABI, version bump)
+3. `SecureUpgradeable` proxies: the Safe schedules `upgradeToAndCall` on the TimelockController, waits 12 h, then executes; plain-UUPS proxies: the Safe calls `upgradeToAndCall` directly
+4. Verify `version()` on the proxy and record it in `deployments/{chainId}/versions.json`
 
 ---
 
@@ -408,11 +409,12 @@ Governance Flow:
 
 ### External Integrations
 
-**Oracle System (OracleRouter + ChainlinkOracle + StorkOracle)**:
+**Oracle System (OracleRouter + HyperliquidEurUsdOracle + ChainlinkOracle)**:
 - OracleRouter implements `IOracle` — all protocol contracts use this interface
-- Active oracle is switchable by governance (Chainlink ↔ Stork) without contract changes
-- ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 2 hr EUR/USD staleness check (25 hr USDC/USD); 5% deviation circuit breaker
-- StorkOracle: EUR/USD + USDC/USD via Stork Network; same staleness/deviation validation
+- Active oracle is switchable by governance (`switchOracle`: Hyperliquid ↔ Chainlink) without contract changes; HyperliquidEurUsdOracle has been the active slot since 2026-06-25
+- HyperliquidEurUsdOracle: Hyperliquid `xyz:EUR` perp mid read from SlippageStorage (published on-chain by the off-chain Slippage Monitor); 900 s staleness (1 h hard cap); 5% deviation circuit breaker; USDC/USD delegated to ChainlinkOracle
+- ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 2 h EUR/USD staleness check (25 h USDC/USD); 5% deviation circuit breaker; Base L2 sequencer-uptime feed check
+- StorkOracle: parked (former slot-1 oracle, still deployed). LighterEurUsdOracle: deployed 2026-07-17 and inert — the Lighter venue was not adopted (2026-09-01)
 - MockChainlinkOracle + MockStorkOracle available for local/testnet development
 
 **External Yield Vaults (Morpho / Aave)**:
@@ -425,7 +427,6 @@ Governance Flow:
 - Full ERC-20 compliance
 - Extended functionality
 - Metadata support
-- Permit functionality
 
 ### API Architecture
 
@@ -473,33 +474,6 @@ Governance Flow:
 - Performance reporting
 - Risk assessment
 - Compliance monitoring
-
----
-
-## Future Architecture Considerations
-
-### Layer 2 Integration
-
-**Planned Support**:
-- Polygon deployment
-- Arbitrum integration
-- Optimism support
-- Base network expansion
-
-**Cross-Chain Architecture**:
-- Bridge integration
-- Cross-chain governance
-- Unified yield management
-- Shared security model
-
-### Advanced Features
-
-**Planned Enhancements**:
-- Advanced yield strategies
-- Institutional features
-- MEV protection
-- Enhanced governance
-- Automated market making
 
 ---
 

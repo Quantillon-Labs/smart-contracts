@@ -61,6 +61,8 @@ Then it sets:
 
 ## Ready-To-Run Examples
 
+> The `AAVE1` entries below are localhost / testnet examples over mock adapters. On Base mainnet only `vaultId = 2` (`MORPHO1`, `MetaMorphoStakingVaultAdapter`) is registered; there is no Aave vault in production.
+
 ### Localhost (`31337`)
 
 ```bash
@@ -114,7 +116,7 @@ Check routing events:
 
 ```bash
 cast logs --rpc-url "$RPC_URL" --address "$QUANTILLON_VAULT" "StakingVaultConfigured(uint256,address,bool)"
-cast logs --rpc-url "$RPC_URL" --address "$QUANTILLON_VAULT" "DefaultStakingVaultUpdated(uint256)"
+cast logs --rpc-url "$RPC_URL" --address "$QUANTILLON_VAULT" "DefaultStakingVaultUpdated(uint256,uint256)"
 cast logs --rpc-url "$RPC_URL" --address "$QUANTILLON_VAULT" "RedemptionPriorityUpdated(uint256[])"
 ```
 

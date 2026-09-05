@@ -13,7 +13,6 @@
 - [Staking Yield Distribution](Staking-Yield-Distribution.md)
 - [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 # src
-# src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)
       - [IMockAaveVault](src/core/vaults/AaveStakingVaultAdapter.sol/interface.IMockAaveVault.md)

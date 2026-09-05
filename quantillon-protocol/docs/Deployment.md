@@ -16,7 +16,7 @@ Every core contract implements `IVersioned.version()` — a `pure` semver getter
 - **MINOR** (`1.0.0 → 1.1.0`): new function or externally-observable behavior (ABI-additive).
 - **MAJOR**: reserved — storage-layout / ABI breaks are disallowed by the upgrade-safety gates.
 
-This is enforced in CI by `make check-version-bump`: it hashes each contract's metadata-free runtime bytecode and **fails** if the bytecode changed without a `version()` bump. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
+This is enforced in CI by `make check-version-bump`: it hashes each versioned unit's **source file** (deterministic, build-independent) and **fails** if the source changed without a `version()` bump — comment and NatSpec edits count as changes. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
 
 **Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
 
@@ -55,20 +55,9 @@ scripts/deployment/build-verifiable-impl.sh QuantillonVault \
   --deploy
 ```
 
-### LighterEurUsdOracle upgrade
+### LighterEurUsdOracle (historical — venue not adopted)
 
-`LighterEurUsdOracle` is a plain UUPS proxy controlled by `UPGRADER_ROLE`, with no timelock. Use
-`scripts/deployment/UpgradeLighterOracle.s.sol` to deploy or validate an implementation. On Base
-mainnet, use `UPGRADE_ACTION=deploy-only`, verify the inert implementation, and have the governance
-Safe call `upgradeToAndCall(newImplementation, "")` on the existing proxy. Then run the script with
-`UPGRADE_ACTION=record NEW_IMPLEMENTATION=<impl> GIT_COMMIT=<sha>` (without a private key or
-`--broadcast`) to validate the completed swap and update the deployment record and live-version
-manifest.
-
-The EUR/USD baseline is stored in the proxy and survives an implementation upgrade. Before wiring
-or activating Lighter in `OracleRouter`, verify the implementation slot, proxy `version()`,
-`lastValidEurUsdPrice()`, `getOracleHealth()`, and `getEurUsdPrice()`. If the baseline is zero or must
-be moved, the Safe must call `setBaselineEurUsdPrice(price)` with an in-bounds trusted price first.
+`LighterEurUsdOracle` was deployed on 2026-07-17 as the candidate market oracle for a second hedge venue and upgraded to 1.0.1 in the 2026-08-26 bundle; on 2026-09-01 the Lighter venue was ruled out for good, so the proxy stays deployed and **inert** (no router slot, no consumer) as a historical record and no activation is planned. Like the other oracle proxies it is plain UUPS controlled by `UPGRADER_ROLE` (Safe direct, no timelock), and its upgrade script (`scripts/deployment/UpgradeLighterOracle.s.sol`, `UPGRADE_ACTION=deploy-only` then `record`) follows the pattern described above — kept only so the inert deployment can be maintained if ever required.
 
 ---
 
@@ -154,11 +143,13 @@ Use `scripts/deployment/setup-external-vaults.sh` for post-core onboarding.
 
 ### Network Configuration
 
-| Network | Chain ID | USDC | Stork | Chainlink EUR/USD |
+| Network | Chain ID | USDC | Stork (deploy-script input; parked on mainnet) | Chainlink EUR/USD |
 |---------|----------|------|-------|-------------------|
 | Localhost (Anvil) | 31337 | Base mainnet USDC or MockUSDC | Mock | Mock (or real on fork) |
 | Base Sepolia | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Mock | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
 | Base Mainnet | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `0x647DFd812BC1e116c6992CB2bC353b2112176fD6` | `0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F` |
+
+> **Production oracle stack.** `DeployQuantillon.s.sol` deploys `ChainlinkOracle`, `StorkOracle` and `OracleRouter`. The live market oracle on Base — `SlippageStorage` + `HyperliquidEurUsdOracle` (router slot 1, active since 2026-06-25) — is deployed by its dedicated scripts under `scripts/deployment/` (`DeployHyperliquidOracle.s.sol` for the oracle) and wired into the router by the Safe (`updateOracleAddresses`, then `switchOracle(1)`). `StorkOracle` is parked on mainnet. See [Oracle Architecture](./Oracle-Architecture.md).
 
 ---
 
@@ -234,11 +225,11 @@ Before deploying to Base mainnet:
 ### Deploy
 
 ```bash
-# Production deployment with verification and 1M optimizer runs
+# Production deployment with verification and the size-minimising production profile
 ./scripts/deployment/deploy.sh base --verify --production
 ```
 
-The `--production` flag sets `FOUNDRY_PROFILE=production` which uses 1,000,000 optimizer runs (defined in `foundry.toml`).
+The `--production` flag sets `FOUNDRY_PROFILE=production`, which compiles with `optimizer_runs = 0` (defined in `foundry.toml`): runtime bytecode is minimised to stay under the EIP-170 limit (`via_ir` is on in every profile; the test/coverage profiles use 200 runs).
 
 ### Output
 
@@ -323,40 +314,55 @@ make check-deployed-versions          # lists contracts whose deployed version !
 cast call <proxy> "version()(string)" --rpc-url "$BASE_RPC_URL"   # once a version()-bearing impl is live
 ```
 
-Until the pending implementation upgrades are deployed, the manifest will show every contract as `0.0.0-unversioned` (deployed) vs `1.0.0` (source) — i.e. "needs upgrade" — which is correct: no live implementation carries `version()` yet. Each subsequent `UpgradeBase` run overwrites that contract's entry with the real deployed version + commit.
+Before the July 2026 implementation upgrades the manifest showed every contract as `0.0.0-unversioned` (deployed) vs `1.0.0` (source) — i.e. "needs upgrade" — because no live implementation carried `version()` yet. Today every proxy except `StorkOracle` (parked) and `TimeProvider` (not a proxy) reports a live `version()`; each `UpgradeBase` run overwrites that contract's entry with the real deployed version + commit.
 
 ---
 
 ## Accessing Deployed Addresses
 
+`deployments/{chainId}/addresses.json` is a flat map keyed by **PascalCase contract name** (plus the external dependencies). On Base mainnet the key set is:
+
+```
+QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, FeeCollector, YieldShift,
+stQEUROFactory, stQEUROToken (zero address: resolved per vault via stQEUROFactory),
+OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle,
+SlippageStorage, TimeProvider, Timelock, Multisig, USDC, EURUSD, USDCUSD
+```
+
+The file is a local deployment artifact (gitignored — only `versions.json` is tracked); the [API Reference](./API-Reference.md#contract-addresses) mirrors the mainnet values.
+
 ### Programmatically (shell)
 
 ```bash
-jq '.qeuroToken' deployments/31337/addresses.json
-# "0x..."
+jq -r '.QEUROToken' deployments/8453/addresses.json
+# "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA"
 ```
 
-### Frontend format (`addresses.json`)
+### Frontend format
+
+`update-frontend-addresses.sh` writes the frontend `addresses.json` (`FRONTEND_ADDRESSES_FILE`) with the same PascalCase keys, nested per chain id:
 
 ```json
 {
-  "31337": {
-    "name": "Anvil Localhost",
-    "isTestnet": true,
+  "8453": {
+    "name": "Base",
+    "isTestnet": false,
     "contracts": {
-      "timeProvider": "0x...",
-      "chainlinkOracle": "0x...",
-      "storkOracle": "0x...",
-      "oracleRouter": "0x...",
-      "feeCollector": "0x...",
-      "qeuroToken": "0x...",
-      "quantillonVault": "0x...",
-      "qtiToken": "0x...",
+      "QuantillonVault": "0x...",
+      "QEUROToken": "0x...",
+      "QTIToken": "0x...",
+      "UserPool": "0x...",
+      "HedgerPool": "0x...",
+      "FeeCollector": "0x...",
+      "YieldShift": "0x...",
       "stQEUROFactory": "0x...",
-      "stQeuroToken": "0x...",
-      "userPool": "0x...",
-      "hedgerPool": "0x...",
-      "yieldShift": "0x..."
+      "stQEUROToken": "0x0000000000000000000000000000000000000000",
+      "OracleRouter": "0x...",
+      "ChainlinkOracle": "0x...",
+      "HyperliquidEurUsdOracle": "0x...",
+      "StorkOracle": "0x...",
+      "TimeProvider": "0x...",
+      "USDC": "0x..."
     }
   }
 }
@@ -417,7 +423,7 @@ Set `USDC=<mock_address>` in `.env.localhost` after deploying MockUSDC, or let d
 - After deployment, transfer admin roles to the governance multisig
 
 ### Never Commit Secrets
-- All `.env*` files are in `.gitignore`
+- `.env`, `.env.base`, `.env.base-sepolia` and `.env.localhost` are **tracked but git-crypt encrypted** (`.gitattributes`): never commit them in plaintext and never disable the git-crypt filter
 - Use a secret manager (AWS Secrets Manager, HashiCorp Vault) for production CI/CD
 
 ---

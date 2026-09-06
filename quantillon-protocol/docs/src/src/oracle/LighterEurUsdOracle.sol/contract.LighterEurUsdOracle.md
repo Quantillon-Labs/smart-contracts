@@ -1,21 +1,21 @@
-# HyperliquidEurUsdOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/HyperliquidEurUsdOracle.sol)
+# LighterEurUsdOracle
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/LighterEurUsdOracle.sol)
 
 **Inherits:**
 [IHyperliquidOracle](/src/interfaces/IHyperliquidOracle.sol/interface.IHyperliquidOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
-HyperliquidEurUsdOracle
+LighterEurUsdOracle
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
-EUR/USD oracle for Quantillon that mirrors the Hyperliquid xyz:EUR perp mid used to
+EUR/USD oracle for Quantillon that mirrors the Lighter EURUSD (market_id 96) mid used to
 execute the protocol hedge, so QEURO mint/redeem prices align with the hedge venue.
 
 Design:
-- EUR/USD source: the Hyperliquid xyz:EUR mid published on-chain by the off-chain Slippage
-Monitor into SlippageStorage (getSlippageBySource(SOURCE_HYPERLIQUID).midPrice, 18 decimals).
+- EUR/USD source: the Lighter EURUSD mid published on-chain by the off-chain Slippage
+Monitor into SlippageStorage (getSlippageBySource(SOURCE_LIGHTER).midPrice, 18 decimals).
 The snapshot timestamp is the on-chain write time, used for staleness.
 - USDC/USD source: delegated to the existing ChainlinkOracle (the hedge does not change USDC
 valuation), kept decoupled so a USDC feed issue cannot block EUR/USD reads.
@@ -105,7 +105,7 @@ TimeProvider public immutable TIME_PROVIDER
 
 ## State Variables
 ### slippageStorage
-SlippageStorage contract holding the published Hyperliquid mid
+SlippageStorage contract holding the published Lighter mid
 
 
 ```solidity
@@ -123,7 +123,7 @@ IOracle public usdcSource
 
 
 ### sourceId
-Slippage source id to read (SOURCE_HYPERLIQUID = 1)
+Slippage source id to read (SOURCE_LIGHTER = 0)
 
 
 ```solidity
@@ -287,17 +287,20 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 
 Initializes the adapter with its price sources and treasury
 
-Grants admin/manager/emergency/upgrader roles to admin, sets default bounds, tolerance
-and staleness, then attempts a best-effort initial seed from SlippageStorage.
+Grants admin/manager/emergency/upgrader roles to admin and sets default bounds, tolerance
+and staleness. Does not auto-seed the EUR/USD baseline from SlippageStorage: the first
+published mid has no deviation check, so a trusted actor must call
+`setBaselineEurUsdPrice` after initialize (or after an upgrade that leaves the baseline
+unset). Until then, `getEurUsdPrice` returns (0, false).
 
 **Notes:**
 - security: Validates all addresses non-zero, grants roles to admin
 
 - validation: Validates admin/_slippageStorage/_usdcSource/_treasury != address(0)
 
-- state-changes: Initializes sources, roles, default bounds/staleness/tolerance, seeds price
+- state-changes: Initializes sources, roles, default bounds/staleness/tolerance
 
-- events: Emits PriceUpdated if an initial mid is available
+- events: No events emitted
 
 - errors: Reverts if any address is zero
 
@@ -305,7 +308,7 @@ and staleness, then attempts a best-effort initial seed from SlippageStorage.
 
 - access: Public - only callable once during proxy deployment
 
-- oracle: Reads the initial mid from SlippageStorage if present
+- oracle: No oracle read at initialize; baseline is set via setBaselineEurUsdPrice
 
 
 ```solidity
@@ -322,8 +325,8 @@ function initialize(
 |Name|Type|Description|
 |----|----|-----------|
 |`admin`|`address`|Address with administrator privileges|
-|`_slippageStorage`|`address`|SlippageStorage contract holding the published Hyperliquid mid|
-|`_sourceId`|`uint8`|Slippage source id to read (SOURCE_HYPERLIQUID = 1)|
+|`_slippageStorage`|`address`|SlippageStorage contract holding the published Lighter mid|
+|`_sourceId`|`uint8`|Slippage source id to read (SOURCE_LIGHTER = 0)|
 |`_usdcSource`|`address`|Oracle providing USDC/USD (the existing ChainlinkOracle)|
 |`_treasury`|`address`|Treasury address for ETH/token recovery|
 
@@ -412,9 +415,11 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 
 ### _readMid
 
-Reads the latest Hyperliquid mid and its timestamp from SlippageStorage
+Reads the latest Lighter mid and its timestamp from SlippageStorage
 
-try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage reverts.
+try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage reverts, so
+the read path fails safe (falls back to the last valid price) instead of bubbling the
+revert. Mirrors the try/catch used by getOracleHealth/getEurUsdDetails on the same call.
 
 **Notes:**
 - security: Single external view read of the trusted SlippageStorage
@@ -425,7 +430,7 @@ try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage r
 
 - events: No events emitted
 
-- errors: Reverts only if SlippageStorage reverts (fail-safe for callers that bubble it)
+- errors: No errors thrown - a reverting source read returns (0, 0)
 
 - reentrancy: Not protected - external staticcall only
 
@@ -442,19 +447,21 @@ function _readMid() internal view returns (uint256 price, uint256 timestamp);
 |Name|Type|Description|
 |----|----|-----------|
 |`price`|`uint256`|EUR/USD mid in 18 decimals (0 if unavailable)|
-|`timestamp`|`uint256`|On-chain write timestamp of the snapshot|
+|`timestamp`|`uint256`|On-chain write timestamp of the snapshot (0 if unavailable)|
 
 
 ### _validateEurUsd
 
 Validates a candidate EUR/USD price against freshness, bounds and deviation
 
-Single validation path combining staleness/zero, min/max bounds, and deviation-vs-baseline checks.
+Single validation path combining staleness/zero, min/max bounds, and deviation-vs-baseline
+checks. An unset baseline (`lastValidEurUsdPrice == 0`) is never valid here: the first
+price is governance-only via `setBaselineEurUsdPrice`.
 
 **Notes:**
 - security: Enforces staleness, bounds and per-update deviation limits
 
-- validation: Returns isValid=false on stale, zero, out-of-bounds or over-deviation input
+- validation: Returns isValid=false on stale, zero, unseeded, out-of-bounds or over-deviation input
 
 - state-changes: None - view function
 
@@ -491,18 +498,20 @@ function _validateEurUsd(uint256 price, uint256 timestamp) internal view returns
 
 Reads USDC/USD from the delegated source for event enrichment only
 
-try/catch so a failing USDC source never blocks an EUR/USD commit.
+try/catch so a failing USDC source never blocks an EUR/USD commit. Returns 0 (not a
+fabricated $1.00) when the source reverts or reports an invalid price, so the emitted
+PriceUpdated event signals "USDC unavailable" rather than a misleadingly healthy peg.
 
 **Notes:**
 - security: Isolates USDC-source failures from the EUR/USD path
 
-- validation: Falls back to 1e18 when the source reverts or returns invalid
+- validation: Returns 0 when the source reverts or returns invalid
 
 - state-changes: None - view function
 
 - events: No events emitted
 
-- errors: No errors thrown - falls back to 1e18
+- errors: No errors thrown - returns 0 on failure
 
 - reentrancy: Not protected - external staticcall only
 
@@ -518,7 +527,7 @@ function _readUsdcForEvent() internal view returns (uint256 usdcUsdPrice);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcUsdPrice`|`uint256`|USDC/USD price (18 decimals); $1.00 on any failure|
+|`usdcUsdPrice`|`uint256`|USDC/USD price (18 decimals); 0 when unavailable/invalid|
 
 
 ### _commitEurUsdPrice
@@ -557,15 +566,16 @@ function _commitEurUsdPrice(uint256 eurUsdPrice) internal;
 
 ### _seedInitialPrice
 
-Best-effort initial/reset seed of the baseline from SlippageStorage
+Best-effort re-seed of an already-set baseline from SlippageStorage
 
-Never reverts and never trips the breaker: if no fresh, in-bounds mid is published yet,
-the baseline is left as-is and the first successful read seeds it.
+Used by resetCircuitBreaker. Never reverts and never trips the breaker. Skips when the
+baseline is unset: the first price has no deviation check, so only
+`setBaselineEurUsdPrice` may establish it.
 
 **Notes:**
-- security: Avoids bricking init/reset when no data has been published yet
+- security: Does not adopt a first mid from SlippageStorage
 
-- validation: Applies bounds (deviation is skipped while no baseline exists)
+- validation: Applies bounds and deviation against the existing baseline
 
 - state-changes: May set lastValidEurUsdPrice/time/block via _commitEurUsdPrice
 
@@ -584,13 +594,50 @@ the baseline is left as-is and the first successful read seeds it.
 function _seedInitialPrice() internal;
 ```
 
+### _serveFallback
+
+Serves the last valid EUR/USD price as an invalid fallback.
+
+Used by getEurUsdPrice on breaker, pause, unseeded baseline, and rejected live mids.
+Does not update lastPriceUpdateTime/Block (that would make a stale price look fresh).
+
+**Notes:**
+- security: Fail-safe return used by the vault's mint/redeem gate
+
+- validation: None
+
+- state-changes: None
+
+- events: Emits EurUsdFallbackServed
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable
+
+- access: Internal
+
+- oracle: No oracle read
+
+
+```solidity
+function _serveFallback() internal returns (uint256 price, bool isValid);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|Last valid EUR/USD price (0 if the baseline is unset)|
+|`isValid`|`bool`|Always false|
+
+
 ### getEurUsdPrice
 
 Retrieves the current EUR/USD price with full validation
 
-Reads the Hyperliquid mid from SlippageStorage; on circuit breaker, pause, staleness,
-out-of-bounds or over-deviation, returns the last valid price with isValid=false so the
-vault fails safe. A valid price advances the baseline.
+Reads the Lighter mid from SlippageStorage. On circuit breaker, pause, unseeded
+baseline, staleness, out-of-bounds, over-deviation, or a reverting source read, returns
+the last valid price with isValid=false so the vault fails safe. A valid price advances
+the baseline only when one is already set (the first baseline is governance-only).
 
 **Notes:**
 - security: Validates freshness, bounds, deviation and breaker state
@@ -599,9 +646,9 @@ vault fails safe. A valid price advances the baseline.
 
 - state-changes: Updates baseline (lastValid*) when a valid price is accepted
 
-- events: Emits PriceUpdated when the baseline advances
+- events: Emits PriceUpdated when the baseline advances; EurUsdFallbackServed otherwise
 
-- errors: No errors thrown unless SlippageStorage itself reverts (fail-safe)
+- errors: No errors thrown - a reverting source read falls back to the last valid price
 
 - reentrancy: Not protected - external staticcall only
 
@@ -688,7 +735,7 @@ function getOracleHealth() external view override returns (bool isHealthy, bool 
 |Name|Type|Description|
 |----|----|-----------|
 |`isHealthy`|`bool`|True if both feeds are fresh, breaker is off and not paused|
-|`eurUsdFresh`|`bool`|True if the Hyperliquid mid is fresh and positive|
+|`eurUsdFresh`|`bool`|True if the Lighter mid is fresh and positive|
 |`usdcUsdFresh`|`bool`|True if the USDC source reports a valid price|
 
 
@@ -868,7 +915,10 @@ function checkPriceFeedConnectivity()
 
 Updates EUR/USD min and max acceptable prices
 
-The bounds gate _validateEurUsd; both must be nonzero with min below max.
+The bounds gate _validateEurUsd; both must be nonzero with min below max. New bounds must
+also keep the current baseline (`lastValidEurUsdPrice`, when set) inside [min,max], so a
+bounds change cannot strand the read path on a now-out-of-bounds fallback. To re-bound
+away from the current baseline, move it first via `setBaselineEurUsdPrice`.
 
 **Notes:**
 - security: Validates min < max and a sane upper bound
@@ -899,11 +949,50 @@ function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external overri
 |`_maxPrice`|`uint256`|Maximum accepted EUR/USD price (18 decimals)|
 
 
+### setBaselineEurUsdPrice
+
+Sets the EUR/USD deviation baseline explicitly (trusted seed / recovery).
+
+The only way to establish the first baseline (initialize does not auto-seed, and
+getEurUsdPrice will not adopt a mid while lastValidEurUsdPrice is 0). Also used to
+recover a deviation-locked baseline: once set, a mid more than MAX_PRICE_DEVIATION away
+is rejected, and even resetCircuitBreaker cannot move it. Bounds-checked; deviation
+check is bypassed because this is a trusted governance write.
+
+**Notes:**
+- security: Governance-only; bounds-checked; emits an explicit audit event.
+
+- validation: Reverts unless minEurUsdPrice <= price <= maxEurUsdPrice.
+
+- state-changes: Sets lastValidEurUsdPrice/time/block via _commitEurUsdPrice.
+
+- events: Emits BaselinePriceSet and PriceUpdated.
+
+- errors: Reverts if price is outside the configured bounds.
+
+- reentrancy: Not protected - one external staticcall for event enrichment.
+
+- access: Restricted to ORACLE_MANAGER_ROLE.
+
+- oracle: Reads usdcSource for the emitted event only.
+
+
+```solidity
+function setBaselineEurUsdPrice(uint256 price) external onlyRole(ORACLE_MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|New baseline EUR/USD price (18 decimals); must be within the configured bounds.|
+
+
 ### updateUsdcTolerance
 
 Updates the reported USDC tolerance (validation lives in the USDC source)
 
-Reported via getOracleConfig only — USDC validation itself is delegated to the USDC source.
+Reported via getOracleConfig only; USDC validation itself is delegated to the USDC source.
+This value is advisory (observability), so the setter emits an event for auditability.
 
 **Notes:**
 - security: Validates tolerance within 10%
@@ -912,7 +1001,7 @@ Reported via getOracleConfig only — USDC validation itself is delegated to the
 
 - state-changes: Updates usdcToleranceBps
 
-- events: No events emitted
+- events: Emits UsdcToleranceUpdated
 
 - errors: Reverts if tolerance is out of bounds
 
@@ -1058,7 +1147,7 @@ function updateSlippageSource(address _slippageStorage, uint8 _sourceId)
 |Name|Type|Description|
 |----|----|-----------|
 |`_slippageStorage`|`address`|New SlippageStorage contract address|
-|`_sourceId`|`uint8`|New slippage source id (SOURCE_HYPERLIQUID = 1)|
+|`_sourceId`|`uint8`|New slippage source id (SOURCE_LIGHTER = 0)|
 
 
 ### updateUsdcSource
@@ -1335,6 +1424,30 @@ Emitted when the maximum staleness window is updated
 
 ```solidity
 event MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness);
+```
+
+### UsdcToleranceUpdated
+Emitted when the reported USDC tolerance is updated
+
+
+```solidity
+event UsdcToleranceUpdated(uint256 oldToleranceBps, uint256 newToleranceBps);
+```
+
+### EurUsdFallbackServed
+Emitted when a live read is rejected and the last valid price is served (isValid=false)
+
+
+```solidity
+event EurUsdFallbackServed(uint256 lastValidEurUsdPrice);
+```
+
+### BaselinePriceSet
+Emitted when governance explicitly sets the EUR/USD baseline (trusted seed / recovery)
+
+
+```solidity
+event BaselinePriceSet(uint256 oldPrice, uint256 newPrice);
 ```
 
 ### TreasuryUpdated

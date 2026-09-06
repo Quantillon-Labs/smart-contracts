@@ -1,6 +1,6 @@
 # Technical Upgrade: stQEURO Multi-Vault with `stQEUROFactory`
 
-> **Historical technical record.** This document describes the multi-vault refactor as designed at the time. The `AaveVault` contract referenced below has since been removed from the codebase — external yield now flows through `IExternalStakingVault` adapters (see Architecture.md); the factory/vaultId model described here is the one live in production.
+> **Historical technical record.** This document describes the multi-vault refactor as designed at the time; the factory / `vaultId` model it introduces is the one live in production, but three things have changed since: the `AaveVault` contract referenced in sections 5-7 was retired — external yield flows through `IExternalStakingVault` adapters (see [Architecture](./Architecture.md)); `stQEUROToken` was rewritten as a standard ERC-4626 vault in v1.0.3, so the `YIELD_MANAGER_ROLE` grants and the `distributeYield` call described in sections 2, 4 and 11 no longer exist (yield reaches stakers through `QuantillonVault.creditVaultYield`, see [Staking Yield Distribution](./Staking-Yield-Distribution.md)); and on Base mainnet only `vaultId = 2` (MORPHO1, `MetaMorphoStakingVaultAdapter`) is registered. Sections 2, 4, 5, 6 and 11 are kept as the historical design record.
 
 ## Context
 
@@ -343,4 +343,4 @@ This upgrade introduces a robust factory layer that enables QEURO staking to sca
 - One vault = one dedicated stQEURO token.
 - Yield routing becomes explicitly keyed by `vaultId`.
 - Self-registration guarantees strict and auditable registration semantics.
-- Deployment/wiring is automated for the first instance (`vaultId = 1`) and ready for the next vaults.
+- Core deployment registers no vault; each vault is onboarded post-core with `setup-external-vaults.sh` (see the [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md)). On Base mainnet only `vaultId = 2` (MORPHO1) is registered.

@@ -1,7 +1,7 @@
 # Staking Yield Distribution
 
 How yield reaches stQEURO stakers: accrual model, the three-way split, the on-chain functions,
-parameters, roles, events, and the operator runbook. Implemented in `QuantillonVault` **v1.1.0**.
+parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**; the live vault is **v1.1.11** (which added loss-aware valuation of external-vault collateral).
 
 > Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
 > [stQEUROFactory](./stQEUROFactory.md) ·
@@ -39,7 +39,7 @@ Redeem  1,000 stQEURO                -> 1,040 QEURO
 ## 2. The three-way distribution model
 
 All protocol USDC (hedger collateral + the USDC backing user mints) is pooled in a single external
-yield vault (currently Morpho on Base). The gross yield `Y` realized from that vault is split, **in
+yield vault (currently the MetaMorpho USDC vault on Base, through `MetaMorphoStakingVaultAdapter`, vaultId 2). The gross yield `Y` realized from that vault is split, **in
 this strict order**:
 
 ```
@@ -112,7 +112,7 @@ the per-field getters (the config vars are `internal`) to keep the contract unde
 
 | Parameter | Type | Setter (role) | Notes |
 |---|---|---|---|
-| `fundingRateAnnualBps` | `uint256` | `setFundingRateAnnualBps` (`GOVERNANCE_ROLE`) | Annualized hedger funding, bps of notional. **0 at commercial launch**, `50` (0.5%) for staging/tests. Hard cap `MAX_FUNDING_RATE_ANNUAL_BPS = 5000` (50%). |
+| `fundingRateAnnualBps` | `uint256` | `setFundingRateAnnualBps` (`GOVERNANCE_ROLE`) | Annualized hedger funding, bps of notional. **0 live** (`harvestConfig(2)` read 2026-09-05: `fundingRateBps = 0`, `hedgerRecipient` unset, so the hedger share falls back to treasury; last harvest 2026-09-03), `50` (0.5%) for staging/tests. Hard cap `MAX_FUNDING_RATE_ANNUAL_BPS = 5000` (50%). |
 | `hedgerYieldRecipient` | `address` | `setHedgerYieldRecipient` (`GOVERNANCE_ROLE`) | Recipient of the hedger funding share. Falls back to `treasury` when unset (`address(0)`). |
 | `lastYieldHarvestByVaultId[vaultId]` | `mapping` | (internal) | Funding accrual clock; anchored on first distribute call per vault. |
 
@@ -156,7 +156,7 @@ Deferred (documented, **not** built):
 ## 7. Operator runbook
 
 One-time, per environment:
-1. Deploy the v1.1.0 implementation (upgrade via Safe/Timelock).
+1. Deploy the current `QuantillonVault` implementation (v1.1.11 live; upgrade via Safe + TimelockController).
 2. `setFundingRateAnnualBps(0)` for commercial launch, or `50` for staging.
 3. `setHedgerYieldRecipient(<hedger pool / treasury>)` (optional; defaults to treasury).
 4. Grant `YIELD_DISTRIBUTOR_ROLE` to the operator (Safe or keeper EOA).

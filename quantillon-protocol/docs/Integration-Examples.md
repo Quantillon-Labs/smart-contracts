@@ -34,8 +34,8 @@ async function mintQEURO(usdcAmount, slippage = 0.05) {
             throw new Error('Vault is paused');
         }
         
-        // 2. Calculate expected output
-        const expectedQeuro = await vault.calculateMintAmount(usdcAmount);
+        // 2. Calculate expected output (calculateMintAmount returns (qeuroAmount, fee); 18 decimals)
+        const [expectedQeuro] = await vault.calculateMintAmount(usdcAmount);
         const minQeuroOut = expectedQeuro.mul(100 - slippage * 100).div(100);
         
         // 3. Approve USDC spending
@@ -47,7 +47,7 @@ async function mintQEURO(usdcAmount, slippage = 0.05) {
         const receipt = await mintTx.wait();
         
         // 5. Parse events
-        const mintEvent = receipt.events.find(e => e.event === 'QEUROMinted');
+        const mintEvent = receipt.events.find(e => e.event === 'QEUROminted'); // note the lowercase m
         console.log(`Minted ${mintEvent.args.qeuroAmount} QEURO for ${mintEvent.args.usdcAmount} USDC`);
         
         return receipt;
@@ -70,8 +70,8 @@ async function redeemQEURO(qeuroAmount, slippage = 0.05) {
     const qeuro = new ethers.Contract(QEURO_ADDRESS, QEURO_ABI, signer);
     
     try {
-        // 1. Calculate expected output
-        const expectedUsdc = await vault.calculateRedeemAmount(qeuroAmount);
+        // 1. Calculate expected output (calculateRedeemAmount returns (usdcAmount, fee))
+        const [expectedUsdc] = await vault.calculateRedeemAmount(qeuroAmount);
         const minUsdcOut = expectedUsdc.mul(100 - slippage * 100).div(100);
         
         // 2. Approve QEURO spending
@@ -106,8 +106,8 @@ async function stakeQEURO(qeuroAmount) {
     const qeuro = new ethers.Contract(QEURO_ADDRESS, QEURO_ABI, signer);
     
     try {
-        // 1. Check minimum stake amount
-        const minStakeAmount = await userPool.MIN_STAKE_AMOUNT();
+        // 1. Check minimum stake amount (settable via updateStakingParameters; 100 QEURO live)
+        const minStakeAmount = await userPool.minStakeAmount();
         if (qeuroAmount.lt(minStakeAmount)) {
             throw new Error(`Amount below minimum stake: ${minStakeAmount}`);
         }
@@ -122,8 +122,8 @@ async function stakeQEURO(qeuroAmount) {
         const approveTx = await qeuro.approve(USER_POOL_ADDRESS, qeuroAmount);
         await approveTx.wait();
         
-        // 4. Stake QEURO
-        const stakeTx = await userPool.stake(qeuroAmount);
+        // 4. Stake QEURO (UserPool functions take arrays; one element for a single stake)
+        const stakeTx = await userPool.stake([qeuroAmount]);
         const receipt = await stakeTx.wait();
         
         console.log(`Staked ${qeuroAmount} QEURO successfully`);
@@ -141,36 +141,55 @@ There is no `claimStakingRewards` call. The UserPool staking-reward path has bee
 
 ### Staking in stQEURO Token
 
+`stQEUROToken` is a standard ERC-4626 vault over QEURO, deployed once per staking vault by `stQEUROFactory` (live: `stQEUROMORPHO1`, `vaultId = 2`). Stake with `deposit(assets, receiver)`, unstake with `redeem(shares, receiver, owner)`; there is no `stake` / `getExchangeRate` API.
+
 ```javascript
-async function stakeInStQEURO(qeuroAmount) {
-    const stQeuro = new ethers.Contract(ST_QEURO_ADDRESS, ST_QEURO_ABI, signer);
+async function stakeInStQEURO(qeuroAmount, vaultId = 2) {
+    const factory = new ethers.Contract(ST_QEURO_FACTORY_ADDRESS, ST_QEURO_FACTORY_ABI, signer);
     const qeuro = new ethers.Contract(QEURO_ADDRESS, QEURO_ABI, signer);
-    
+
     try {
-        // 1. Get current exchange rate
-        const exchangeRate = await stQeuro.getExchangeRate();
-        const expectedStQeuro = qeuroAmount.mul(ethers.utils.parseEther('1')).div(exchangeRate);
-        
-        // 2. Approve QEURO spending
-        const approveTx = await qeuro.approve(ST_QEURO_ADDRESS, qeuroAmount);
+        // 1. Resolve the per-vault stQEURO token
+        const stQeuroAddress = await factory.getStQEUROByVaultId(vaultId);
+        if (stQeuroAddress === ethers.constants.AddressZero) {
+            throw new Error(`No stQEURO registered for vaultId ${vaultId}`);
+        }
+        const stQeuro = new ethers.Contract(stQeuroAddress, ST_QEURO_ABI, signer);
+
+        // 2. Quote shares (share price = totalAssets / totalSupply, rises as yield is credited)
+        const expectedShares = await stQeuro.previewDeposit(qeuroAmount);
+        const sharePrice = await stQeuro.convertToAssets(ethers.utils.parseEther('1'));
+
+        // 3. Approve QEURO spending by the stQEURO proxy
+        const approveTx = await qeuro.approve(stQeuroAddress, qeuroAmount);
         await approveTx.wait();
-        
-        // 3. Stake QEURO
-        const stakeTx = await stQeuro.stake(qeuroAmount);
-        const receipt = await stakeTx.wait();
-        
-        console.log(`Staked ${qeuroAmount} QEURO, received ${expectedStQeuro} stQEURO`);
+
+        // 4. Deposit (ERC-4626)
+        const depositTx = await stQeuro.deposit(qeuroAmount, signer.address);
+        const receipt = await depositTx.wait();
+
+        console.log(`Deposited ${ethers.utils.formatEther(qeuroAmount)} QEURO for ~${ethers.utils.formatEther(expectedShares)} stQEURO (share price ${ethers.utils.formatEther(sharePrice)})`);
         return receipt;
     } catch (error) {
-        console.error('stQEURO staking failed:', error.message);
+        console.error('stQEURO deposit failed:', error.message);
         throw error;
     }
+}
+
+// Unstake: redeem shares back to QEURO (no cooldown)
+async function unstakeFromStQEURO(stQeuro, shares) {
+    const expectedQeuro = await stQeuro.previewRedeem(shares);
+    const tx = await stQeuro.redeem(shares, signer.address, signer.address);
+    await tx.wait();
+    console.log(`Redeemed ${ethers.utils.formatEther(shares)} stQEURO for ~${ethers.utils.formatEther(expectedQeuro)} QEURO`);
 }
 ```
 
 ---
 
 ## Governance Participation
+
+> **QTI is dormant.** No mint path is wired in the deployed `QTIToken`, so the total supply is 0 and `lock` / `createProposal` / `vote` cannot be exercised on Base mainnet today. The examples below describe the as-coded governance surface and become functional only after an activation upgrade mints the token.
 
 ### Locking QTI for Voting Power
 
@@ -287,14 +306,16 @@ async function voteOnProposal(proposalId, support) {
 
 ### Opening a Hedge Position
 
+> **Single-hedger model.** `enterHedgePosition` reverts with `NotAuthorized` unless `signer` is the address configured via `setSingleHedger` (the protocol's hedging engine). The example is shown for completeness / for the operator; arbitrary wallets cannot open positions.
+
 ```javascript
 async function openHedgePosition(marginAmount, leverage) {
     const hedgerPool = new ethers.Contract(HEDGER_POOL_ADDRESS, HEDGER_POOL_ABI, signer);
     const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
     
     try {
-        // 1. Validate leverage
-        const maxLeverage = await hedgerPool.maxLeverage();
+        // 1. Validate leverage (there is no maxLeverage() getter: read coreParams())
+        const maxLeverage = (await hedgerPool.coreParams()).maxLeverage; // 20 live
         if (leverage.lt(1) || leverage.gt(maxLeverage)) {
             throw new Error(`Leverage must be between 1 and ${maxLeverage}`);
         }
@@ -337,7 +358,7 @@ async function monitorPosition(positionId) {
         
         // 2. Calculate margin ratio in basis points
         const marginRatio = positionInfo.margin.mul(10000).div(positionInfo.positionSize);
-        const minMarginRatioBps = (await hedgerPool.coreParams()).minMarginRatio; // 500 = 5%
+        const minMarginRatioBps = (await hedgerPool.coreParams()).minMarginRatio; // bps, governance-set: 250 = 2.5% live (since 2026-09-02); 500 at launch
         
         // 3. Check if position is healthy
         // Note: protocol-level liquidation mode triggers at vault CR <= 101%
@@ -419,35 +440,40 @@ class QuantillonPortfolio {
     
     async getPortfolioOverview() {
         const address = this.signer.address;
-        
+
         try {
             const [
                 qeuroBalance,
                 userInfo,
-                vaultMetrics,
-                positions
+                positions,
+                totalUsdcHeld,
+                totalUsdcInExternalVaults,
+                totalMinted,
+                collateralizationRatio
             ] = await Promise.all([
                 this.qeuro.balanceOf(address),
                 this.userPool.getUserInfo(address),
-                this.vault.getVaultMetrics(),
-                this.getUserPositions()
+                this.getUserPositions(),
+                this.vault.totalUsdcHeld(),
+                this.vault.totalUsdcInExternalVaults(),
+                this.vault.totalMinted(),
+                this.vault.getProtocolCollateralizationRatio() // 18-decimal percent: 1e20 == 100%
             ]);
-            
+
             return {
                 balances: {
                     qeuro: ethers.utils.formatEther(qeuroBalance),
-                    staked: ethers.utils.formatEther(userInfo.stakedQeuro),
-                    deposited: ethers.utils.formatUnits(userInfo.depositedUsdc, 6)
+                    staked: ethers.utils.formatEther(userInfo.stakedAmount),
+                    pendingUnstake: ethers.utils.formatEther(userInfo.unstakeAmount),
+                    depositedHistory: ethers.utils.formatUnits(userInfo.depositHistory, 6)
                 },
-                rewards: {
-                    pending: ethers.utils.formatEther(userInfo.pendingRewards),
-                    claimed: ethers.utils.formatEther(userInfo.totalRewardsClaimed)
-                },
+                // No claimable staking rewards exist: user yield accrues in the stQEURO share price
                 positions: positions,
                 vault: {
-                    totalReserves: ethers.utils.formatUnits(vaultMetrics.totalUsdcReserves, 6),
-                    totalSupply: ethers.utils.formatEther(vaultMetrics.totalQeuroSupply),
-                    collateralizationRatio: vaultMetrics.collateralizationRatio.toNumber() / 100
+                    usdcHeld: ethers.utils.formatUnits(totalUsdcHeld, 6),
+                    usdcInExternalVaults: ethers.utils.formatUnits(totalUsdcInExternalVaults, 6),
+                    qeuroMinted: ethers.utils.formatEther(totalMinted),
+                    collateralizationRatioPct: Number(ethers.utils.formatEther(collateralizationRatio)) // 1e20 -> 100
                 }
             };
         } catch (error) {
@@ -491,66 +517,51 @@ console.log('Portfolio Overview:', overview);
 await portfolio.optimizeYield();
 ```
 
-### Automated Yield Management
+### Automated Yield Management (keeper)
+
+External-vault yield is realized and split by one vault call, `QuantillonVault.harvestAndDistributeVaultYield(vaultId)` (hedger funding first, residual to stQEURO stakers via `creditVaultYield`, remainder to treasury — see the Staking Yield Distribution guide). The caller must hold `YIELD_DISTRIBUTOR_ROLE` on the vault. The former Aave-based vault contract no longer exists in the protocol and YieldShift has no `distributeYield` / `rebalanceThreshold` entrypoints.
 
 ```javascript
-class YieldManager {
-    constructor(provider, signer) {
-        this.provider = provider;
-        this.signer = signer;
-        this.yieldShift = new ethers.Contract(YIELD_SHIFT_ADDRESS, YIELD_SHIFT_ABI, signer);
-        this.aaveVault = new ethers.Contract(AAVE_VAULT_ADDRESS, AAVE_VAULT_ABI, signer);
+class VaultYieldKeeper {
+    constructor(signer) {
+        // signer must hold YIELD_DISTRIBUTOR_ROLE on QuantillonVault
+        this.vault = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, signer);
     }
-    
-    async checkAndDistributeYield() {
+
+    async inspect(vaultId) {
+        const [adapter, active, principalTracked, currentUnderlying] = await this.vault.getVaultExposure(vaultId);
+        const [fundingRateBps, hedgerRecipient, lastHarvest] = await this.vault.harvestConfig(vaultId);
+        return { adapter, active, principalTracked, currentUnderlying, fundingRateBps, hedgerRecipient, lastHarvest };
+    }
+
+    async harvest(vaultId) {
         try {
-            // 1. Check if yield distribution is needed
-            const poolMetrics = await this.yieldShift.getPoolMetrics();
-            const targetRatio = await this.yieldShift.targetPoolRatio();
-            
-            const currentRatio = poolMetrics.userPoolSize.mul(10000).div(poolMetrics.hedgerPoolSize);
-            const deviation = currentRatio.sub(targetRatio).abs();
-            const threshold = await this.yieldShift.rebalanceThreshold();
-            
-            if (deviation.gt(threshold)) {
-                console.log('Pool ratio deviation detected, distributing yield...');
-                await this.yieldShift.distributeYield();
+            const exposure = await this.inspect(vaultId);
+            if (!exposure.active) throw new Error(`vault ${vaultId} is not active`);
+
+            // Nothing to realize when the adapter holds no more than the tracked principal.
+            // Note: the very first call for a vault id only anchors the hedger funding clock.
+            if (exposure.currentUnderlying.lte(exposure.principalTracked)) {
+                console.log(`vault ${vaultId}: no yield above principal`);
+                return null;
             }
+
+            const tx = await this.vault.harvestAndDistributeVaultYield(vaultId);
+            const receipt = await tx.wait();
+            const ev = receipt.events.find(e => e.event === 'VaultYieldDistributed');
+            const f = (x) => ethers.utils.formatUnits(x, 6);
+            console.log(`vault ${vaultId}: realized ${f(ev.args.realizedYield)} USDC -> hedger ${f(ev.args.hedgerShare)}, stakers ${f(ev.args.userShare)}, treasury ${f(ev.args.treasuryShare)}`);
+            return ev.args;
         } catch (error) {
-            console.error('Yield distribution failed:', error.message);
-            throw error;
-        }
-    }
-    
-    async harvestAaveYield() {
-        try {
-            const yieldAmount = await this.aaveVault.harvestAaveYield();
-            console.log(`Harvested ${ethers.utils.formatEther(yieldAmount)} QEURO from Aave`);
-            return yieldAmount;
-        } catch (error) {
-            console.error('Aave yield harvest failed:', error.message);
-            throw error;
-        }
-    }
-    
-    async autoRebalance() {
-        try {
-            const [rebalanced, newAllocation, expectedYield] = await this.aaveVault.autoRebalance();
-            
-            if (rebalanced) {
-                console.log(`Rebalanced to ${newAllocation.toNumber() / 100}% allocation`);
-                console.log(`Expected yield: ${ethers.utils.formatEther(expectedYield)} QEURO`);
-            } else {
-                console.log('No rebalancing needed');
-            }
-            
-            return { rebalanced, newAllocation, expectedYield };
-        } catch (error) {
-            console.error('Auto rebalancing failed:', error.message);
+            console.error('Yield harvest failed:', error.message);
             throw error;
         }
     }
 }
+
+// Usage: run on a schedule for every registered vault id (live: vaultId 2 = MORPHO1)
+const keeper = new VaultYieldKeeper(signer);
+await keeper.harvest(2);
 ```
 
 ---
@@ -561,38 +572,46 @@ class YieldManager {
 
 ```javascript
 class QuantillonErrorHandler {
+    // Reverts surface as custom errors (see API-Reference "Error Handling"); ethers puts the
+    // decoded name in error.message / error.reason when the ABI is loaded.
     static handleError(error) {
-        const errorMessage = error.message.toLowerCase();
-        
-        if (errorMessage.includes('insufficient balance')) {
+        const errorMessage = (error.reason || error.message || '').toLowerCase();
+
+        if (errorMessage.includes('erc20insufficientbalance') || errorMessage.includes('insufficientbalance')) {
             return {
                 type: 'INSUFFICIENT_BALANCE',
                 message: 'Insufficient token balance for this operation',
                 action: 'Check your token balance and try again'
             };
-        } else if (errorMessage.includes('insufficient allowance')) {
+        } else if (errorMessage.includes('erc20insufficientallowance')) {
             return {
                 type: 'INSUFFICIENT_ALLOWANCE',
                 message: 'Token allowance is insufficient',
                 action: 'Approve token spending before calling this function'
             };
-        } else if (errorMessage.includes('stale price')) {
+        } else if (errorMessage.includes('invalidoracleprice') || errorMessage.includes('invalidprice')) {
             return {
-                type: 'STALE_PRICE',
-                message: 'Oracle price is stale',
-                action: 'Wait for oracle to update or contact support'
+                type: 'INVALID_ORACLE_PRICE',
+                message: 'Oracle price is stale or invalid (InvalidOraclePrice / InvalidPrice)',
+                action: 'Wait for the oracle to update or check OracleRouter.getOracleHealth()'
             };
-        } else if (errorMessage.includes('contract paused')) {
+        } else if (errorMessage.includes('enforcedpause')) {
             return {
                 type: 'CONTRACT_PAUSED',
-                message: 'Contract is currently paused',
+                message: 'Contract is currently paused (EnforcedPause)',
                 action: 'Wait for contract to be unpaused'
             };
-        } else if (errorMessage.includes('unauthorized')) {
+        } else if (errorMessage.includes('notauthorized') || errorMessage.includes('accesscontrolunauthorizedaccount')) {
             return {
                 type: 'UNAUTHORIZED',
-                message: 'Unauthorized access',
+                message: 'Caller lacks the required role or is not the configured hedger',
                 action: 'Check your permissions and try again'
+            };
+        } else if (errorMessage.includes('excessiveslippage')) {
+            return {
+                type: 'EXCESSIVE_SLIPPAGE',
+                message: 'Output fell below the minimum you passed (ExcessiveSlippage)',
+                action: 'Re-quote with calculateMintAmount / calculateRedeemAmount and retry'
             };
         } else {
             return {
@@ -659,7 +678,8 @@ class TransactionMonitor {
     
     static async estimateGasWithBuffer(contract, method, params, buffer = 1.2) {
         try {
-            const gasEstimate = await contract.estimateGas[method](...params);
+            const estimator = contract.estimateGas[method];
+            const gasEstimate = await estimator(...params);
             return gasEstimate.mul(Math.floor(buffer * 100)).div(100);
         } catch (error) {
             console.error('Gas estimation failed:', error.message);

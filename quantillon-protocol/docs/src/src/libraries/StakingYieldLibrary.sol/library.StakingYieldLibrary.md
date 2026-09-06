@@ -1,5 +1,5 @@
 # StakingYieldLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/libraries/StakingYieldLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/StakingYieldLibrary.sol)
 
 **Title:**
 StakingYieldLibrary

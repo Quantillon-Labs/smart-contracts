@@ -1,17 +1,17 @@
 {
   "ChainlinkOracle": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x6a944b0cf9a9ea2da0bf078026f8b6b67b125caa",
     "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
-    "version": "1.0.2"
+    "implementation": "0x43F510165482221Ac892FDdb0B8AD42f5C81D618",
+    "version": "1.0.4",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "FeeCollector": {
-    "deployedAt": 1781721479,
-    "gitCommit": "84c4db1",
-    "implementation": "0xc54e4121Cf38766A768f7BBC3d1076cceE341d20",
     "proxy": "0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD",
-    "version": "1.0.0"
+    "implementation": "0xC8e0E9992da5D8c7e1C5F525d92e12F092c99826",
+    "version": "1.0.2",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "HedgerPool": {
     "deployedAt": 1788331419,
@@ -28,25 +28,25 @@
     "version": "1.0.2"
   },
   "LighterEurUsdOracle": {
-    "deployedAt": 1784272933,
-    "gitCommit": "f45d5da",
-    "implementation": "0xa6e2d059136B21fBFD7d787Fb099Dc2444De9353",
     "proxy": "0xcd53182a430d48Be0f414CCA022ABA5d05903536",
-    "version": "1.0.0"
+    "implementation": "0xa3bECb5C4Ab9AED03C1789f31e86c22B9BEfF6b5",
+    "version": "1.0.1",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "OracleRouter": {
-    "deployedAt": 1783239201,
-    "gitCommit": "1bf5597",
-    "implementation": "0xE8655E0fae165980b1aaDCBbe41Bd6Bb0a0D7Da8",
     "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
-    "version": "1.1.0"
+    "implementation": "0x7a73A7275C5F34d21bE4a67E83E110dEB536051B",
+    "version": "1.1.1",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "QEUROToken": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x8b2d1e6c30cc19de920135004e7e698ec39d1dc9",
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
-    "version": "1.0.5"
+    "implementation": "0xAF7a1da8567E938cDD4f5c9832D437C666956eDe",
+    "version": "1.0.6",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "QTIToken": {
     "deployedAt": 1783321653,
@@ -63,11 +63,11 @@
     "version": "1.1.11"
   },
   "SlippageStorage": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x7659a63c6fd500a1323b3acf8220c960234977b1",
     "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
-    "version": "1.0.1"
+    "implementation": "0x88013203762A48E35189880e1F1A850D3B9E64D7",
+    "version": "1.0.2",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "StorkOracle": {
     "deployedAt": 1781716808,
@@ -86,18 +86,18 @@
     "version": "0.0.0-unversioned"
   },
   "UserPool": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0xc9d59709d8ccd436fe9ce1aec116c8ba905f8df6",
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "version": "1.0.2"
+    "implementation": "0xcE77eF777FF46F3Aa28F52108A9572c82A0c7E18",
+    "version": "1.0.3",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "YieldShift": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x9e0f97459cb49af041a270f39c8aa78f776b11c7",
     "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
-    "version": "1.0.3"
+    "implementation": "0xe6130703818C1B47F796E60F831f739343d100c8",
+    "version": "1.0.5",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   },
   "stQEUROFactory": {
     "deployedAt": 1783321653,
@@ -112,5 +112,11 @@
     "implementation": "0x315F62A1f7aAF80D3a79824fdae2FB01E7a89c07",
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
     "version": "1.0.3"
+  },
+  "YieldShiftCalculationLibrary": {
+    "implementation": "0xbC559A4ADe6f5AA0Ec8bcf281BbbEd9D9B7f2847",
+    "version": "1.0.2",
+    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
+    "deployedAt": 1788624961
   }
 }

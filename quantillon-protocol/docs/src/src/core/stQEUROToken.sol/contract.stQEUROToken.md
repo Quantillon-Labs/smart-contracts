@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC4626Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -603,6 +603,51 @@ function redeem(uint256 shares, address receiver, address owner)
 |`assets`|`uint256`|Amount of QEURO assets transferred to `receiver`.|
 
 
+### _sweepResidualOnEmpty
+
+Sweeps the vault's remaining QEURO to the final exiter once no shares are left.
+
+ERC-4626 round-down (after yield mints raise the share price) strands a few wei of
+QEURO on the last exit. With `totalSupply() == 0` no share can ever claim them, and
+the stranded wei keep `QuantillonVault.totalMinted()` above zero — which dead-locked
+the sole hedger's exit on 2026-07-15 (see `HedgerPool.QEURO_DUST_THRESHOLD` for the
+tolerance layer). Sweeping returns the vault to an exact-zero state after every full
+exit; the receiver can then redeem the full amount through the protocol.
+
+**Notes:**
+- security: Only reachable from `nonReentrant` exit paths; QEURO has no transfer hooks.
+
+- validation: No-op unless the share supply is exactly zero.
+
+- state-changes: Transfers the vault's full remaining QEURO balance to `receiver`.
+
+- events: Emits `ResidualSwept` when a nonzero residue is transferred.
+
+- errors: Reverts only if the underlying QEURO transfer fails.
+
+- reentrancy: Callers hold the `nonReentrant` guard.
+
+- access: Internal helper only.
+
+- oracle: Not applicable.
+
+
+```solidity
+function _sweepResidualOnEmpty(address receiver) private returns (uint256 residual);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`receiver`|`address`|Address that receives the swept residue (same receiver as the exit).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`residual`|`uint256`|Amount of QEURO swept (0 when shares remain or nothing is left).|
+
+
 ### transfer
 
 Transfers stQEURO shares while the vault is active.
@@ -932,5 +977,13 @@ event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury, 
 
 ```solidity
 event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+### ResidualSwept
+Emitted when the rounding residue left by the final exit is swept to its receiver
+
+
+```solidity
+event ResidualSwept(address indexed receiver, uint256 amount);
 ```
 

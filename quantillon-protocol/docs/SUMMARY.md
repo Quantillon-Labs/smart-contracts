@@ -13,7 +13,6 @@
 - [Staking Yield Distribution](Staking-Yield-Distribution.md)
 - [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 # src
-# src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)
       - [IMockAaveVault](src/core/vaults/AaveStakingVaultAdapter.sol/interface.IMockAaveVault.md)
@@ -86,6 +85,8 @@
     - [ChainlinkOracle](src/oracle/ChainlinkOracle.sol/contract.ChainlinkOracle.md)
     - [ISlippageMidSource](src/oracle/HyperliquidEurUsdOracle.sol/interface.ISlippageMidSource.md)
     - [HyperliquidEurUsdOracle](src/oracle/HyperliquidEurUsdOracle.sol/contract.HyperliquidEurUsdOracle.md)
+    - [LighterEurUsdOracle](src/oracle/LighterEurUsdOracle.sol/contract.LighterEurUsdOracle.md)
+    - [ISlippageMidSource (Lighter)](src/oracle/LighterEurUsdOracle.sol/interface.ISlippageMidSource.md)
     - [OracleRouter](src/oracle/OracleRouter.sol/contract.OracleRouter.md)
     - [SlippageStorage](src/oracle/SlippageStorage.sol/contract.SlippageStorage.md)
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)

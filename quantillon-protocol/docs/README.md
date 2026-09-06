@@ -5,7 +5,7 @@ Welcome to the comprehensive documentation for the Quantillon Protocol - a next-
 ## 📚 Documentation Overview
 
 ### [Technical API Reference](./API-Reference.md)
-Detailed technical specifications, error codes, gas estimates, and implementation details for developers.
+Detailed technical specifications, addresses, roles, constants and the error catalogue for developers.
 
 ### [Quick Start Guide](./Quick-Start.md)
 Get up and running quickly with the Quantillon Protocol. Includes installation, basic integration examples, and common patterns.
@@ -17,7 +17,7 @@ Comprehensive integration examples for common use cases, including portfolio man
 High-level overview of the protocol architecture, components, and their interactions.
 
 ### [Security Guide](./Security.md)
-Security best practices, audit reports, and risk management guidelines.
+Security best practices, responsible disclosure, and risk management guidelines.
 
 ### [Deployment Guide](./Deployment.md)
 Step-by-step instructions for deploying and configuring the protocol.
@@ -62,26 +62,28 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 ## 🏗️ Protocol Components
 
 ### Core Contracts
-- **QuantillonVault** - Main vault: USDC ↔ QEURO swaps, ≥105% collateralization, liquidation at 101%
+- **QuantillonVault** - Main vault: USDC ↔ QEURO swaps, governance-set minting floor (102.5% live since 2026-09-02; 105% at launch), liquidation mode at 101%
 - **QEUROToken** - Euro-pegged stablecoin: mint/burn via vault, rate limiting, compliance (blacklist/whitelist)
 - **QTIToken** - Governance token: vote-escrow, 100M supply cap, up to 4× voting power multiplier (dormant — no mint path wired, supply currently 0)
 - **FeeCollector** - Protocol fee aggregation and distribution (60% treasury / 25% dev / 15% community)
-- **UserPool** - User deposits (USDC), QEURO staking, yield distribution with 7-day holding period
+- **UserPool** - USDC deposits, QEURO staking with a 7-day unstaking cooldown; user yield accrues via stQEURO (no reward claim)
 - **HedgerPool** - EUR/USD short positions for hedgers, margin management, liquidation at 101% CR
 - **stQEUROFactory** - Multi-vault staking token factory: one stQEURO token proxy per staking vault
 - **stQEUROToken** - Vault-level yield-bearing QEURO wrapper implementation deployed by the factory
 
 ### Yield Management
-- **MockAaveVault** - Mock Aave-style adapter model for external vault onboarding/testing
-- **YieldShift** - Dynamic yield allocation between UserPool and HedgerPool; TWAP-based balancing
+- **MetaMorphoStakingVaultAdapter** - Live external vault adapter (vaultId 2, MetaMorpho USDC vault on Base); `AaveStakingVaultAdapter` / `MorphoStakingVaultAdapter` wrap the mock vaults in `src/mocks/` for localhost and testnets
+- **YieldShift** - Dynamic yield allocation between UserPool and HedgerPool: eligible-pool sizing (7-day holding period) with gradual adjustment; TWAP helpers feed historical metrics only
 
-External adapters are onboarded post-core deployment via [`setup-external-vaults.sh`](../scripts/deployment/setup-external-vaults.sh). See the [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
+External adapters are onboarded post-core deployment with `setup-external-vaults.sh` (in the git-crypt-encrypted `scripts/deployment/`). See the [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
 
 ### Oracle System
 - **OracleRouter** - Oracle-agnostic router implementing `IOracle`; two switchable slots — slot 1 currently hosts **HyperliquidEurUsdOracle (the active oracle)**, slot 0 ChainlinkOracle (fallback)
 - **HyperliquidEurUsdOracle** - **ACTIVE** EUR/USD source: Hyperliquid EUR perp mid-price published into SlippageStorage; 900 s staleness (1 h hard cap); 5% deviation circuit breaker
 - **ChainlinkOracle** - Fallback EUR/USD (2-hour staleness) + USDC/USD (25-hour staleness) via Chainlink AggregatorV3; 5% deviation circuit breaker
 - **StorkOracle** - EUR/USD + USDC/USD via Stork Network; parked (replaced in the router slot by HyperliquidEurUsdOracle)
+- **SlippageStorage** - On-chain price store written by the off-chain publisher (`WRITER_ROLE`), read by HyperliquidEurUsdOracle
+- **LighterEurUsdOracle** - Deployed 2026-07-17, inert (no router slot); the Lighter venue was not adopted (2026-09-01)
 
 ### Utilities
 - **TimeProvider** - Centralized `block.timestamp` wrapper used by all time-sensitive contracts
@@ -137,7 +139,7 @@ make validate-natspec
 ## 📊 Protocol Metrics
 
 ### Current Status
-- **Test Suite**: 1,400+ tests passing (unit, fuzz, integration, invariants)
+- **Test Suite**: unit, fuzz, integration and invariant tests — run `make test` for the current count
 - **Security**: Slither/Mythril runs are tracked in versioned artifacts under `scripts/results/`
 - **Build**: Compile, warning analysis, gas analysis, and contract-size checks are part of the Makefile workflow
 - **Documentation**: NatSpec coverage is validated with `make validate-natspec`
@@ -167,13 +169,12 @@ make validate-natspec
 ## 🔐 Security
 
 ### Audits
-- **Quantillon Protocol v1.0**: Coming soon
+- Independent security audit completed; the resulting on-chain remediation went live in July 2026
 
 ### Bug Bounty
-- **Program**: Coming soon
-- **Rewards**: Up to $100,000
-- **Scope**: All smart contracts
-- **Contact**: team@quantillon.money
+- **Program**: planned (not yet open)
+- **Scope**: all smart contracts
+- **Contact**: team@quantillon.money — see [Responsible Disclosure](./Security.md#responsible-disclosure)
 
 ### Security Best Practices
 1. Always validate inputs
@@ -194,9 +195,9 @@ make validate-natspec
 - **Telegram**: [@QuantillonLabs](https://t.me/QuantillonLabs)
 
 ### Community
-- **Twitter**: [@QuantillonLabs](https://twitter.com/QuantillonLabs)
+- **X (Twitter)**: [@QuantillonLabs](https://x.com/QuantillonLabs)
 - **Medium**: [medium.com/@quantillonlabs](https://medium.com/@quantillonlabs)
-- **GitHub**: [github.com/QuantillonLabs](https://github.com/Quantillon-Labs)
+- **GitHub**: [github.com/Quantillon-Labs](https://github.com/Quantillon-Labs)
 
 ### Documentation Issues
 - **GitHub Issues**: [Report documentation issues](https://github.com/Quantillon-Labs/smart-contracts/issues)
@@ -230,19 +231,9 @@ This documentation is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🔄 Version History
+## 🔄 Deployed Versions
 
-### v1.0.0 (Current)
-- Initial release
-- Core protocol functionality
-- Complete API documentation
-- Continuous security analysis (Slither + Mythril); external audit pending (see [Security](#-security))
-
-### v1.1.0 (Planned)
-- Enhanced yield management
-- Additional vault strategies
-- Cross-chain support
-- Improved gas optimization
+Live contract versions are recorded in [`deployments/8453/versions.json`](../deployments/8453/versions.json) (proxy, implementation, `version()`, commit) and can be read on-chain with `cast call <proxy> "version()(string)"`. Release procedures live in the [Deployment Guide](./Deployment.md) and the [2026-08-26 Bundle Release Runbook](./Bundle-Release-2026-08-26.md).
 
 ---
 

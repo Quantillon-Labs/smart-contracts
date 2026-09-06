@@ -15,7 +15,7 @@ library with their current source versions:
 | ChainlinkOracle | 1.0.2 | 1.0.4 | Safe direct UUPS | Version/NatSpec only |
 | OracleRouter | 1.1.0 | 1.1.1 | Safe direct UUPS | Version/NatSpec only |
 | SlippageStorage | 1.0.1 | 1.0.2 | Safe direct UUPS | Version/NatSpec only |
-| LighterEurUsdOracle | 1.0.0 | 1.0.1 | Safe direct UUPS | Governance baseline and fail-safe read hardening |
+| LighterEurUsdOracle | 1.0.0 | 1.0.1 | Safe direct UUPS | Governance baseline and fail-safe read hardening (oracle inert; the Lighter venue was not adopted, 2026-09-01) |
 
 The five direct upgrades and the secure-upgrade schedule are atomic in Safe phase 1. The three
 secure upgrades execute atomically through `TimelockController.executeBatch` in phase 2.
@@ -33,7 +33,7 @@ make check-upgrade-safety
 FOUNDRY_PROFILE=test forge test
 make slither
 
-for contract in QEUROToken UserPool FeeCollector YieldShift ChainlinkOracle OracleRouter SlippageStorage LighterEurUsdOracle; do
+for contract in QEUROToken UserPool FeeCollector YieldShift ChainlinkOracle OracleRouter SlippageStorage LighterEurUsdOracle; do  # LighterEurUsdOracle: inert since 2026-09-01, still part of this executed bundle
   make check-verifiable-bytecode CONTRACT="$contract"
 done
 make check-verifiable-bytecode CONTRACT=YieldShiftCalculationLibrary
@@ -59,12 +59,15 @@ cast call "$YieldShiftCalculationLibrary" "version()(string)" --rpc-url "$BASE_R
 
 ## 3. Rehearse candidate deployment on a Base fork
 
-Load the reviewed, already-deployed library set:
+Export the reviewed, already-deployed linked-library addresses (the libraries the live
+implementations are linked against — verify each on Basescan) as environment variables named after
+the libraries:
 
 ```bash
-set -a
-source deployments/8453/audit-remediation/deployed-libraries.env
-set +a
+export TreasuryRecoveryLibrary=<deployed-address>
+export AdminFunctionsLibrary=<deployed-address>
+export UserPoolStakingLibrary=<deployed-address>
+export YieldShiftOptimizationLibrary=<deployed-address>
 
 # Override the July 1.0.1 address with the freshly verified 1.0.2 deployment.
 export YieldShiftCalculationLibrary=<new-1.0.2-library-address>
@@ -143,7 +146,7 @@ six calls executed atomically by MultiSend:
 2. ChainlinkOracle `upgradeToAndCall`;
 3. OracleRouter `upgradeToAndCall`;
 4. SlippageStorage `upgradeToAndCall`;
-5. LighterEurUsdOracle `upgradeToAndCall`;
+5. LighterEurUsdOracle (inert) `upgradeToAndCall`;
 6. TimelockController `scheduleBatch` for QEUROToken, UserPool, and YieldShift.
 
 After the 2-of-3 Safe transaction is mined, verify the five direct proxy slots and versions. Confirm
@@ -186,7 +189,7 @@ The read-only pass validates the release without touching local records. The rec
 both successful on-chain transactions to target the governance Safe. It also verifies the timelock
 operation is complete and validates all eight live implementation slots, versions, and five linked
 libraries before atomically updating `versions.json`. The new YieldShift calculation library is also
-recorded for future drift checks. Both modes require a nonzero, healthy, valid Lighter baseline/read.
+recorded for future drift checks. Both modes require a nonzero, healthy, valid read from the (inert) Lighter oracle.
 Commit the final release manifest and `versions.json`.
 
 ## Rollback

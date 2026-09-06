@@ -1,8 +1,17 @@
 # 2026-08-26 Bundle Release Runbook
 
+> **Status: executed on Base mainnet.** Phase 1 (five Safe-direct UUPS upgrades: FeeCollector, ChainlinkOracle,
+> OracleRouter, SlippageStorage, LighterEurUsdOracle) executed on 26 August 2026 at 13:49 UTC in block 50481423,
+> Safe transaction `0x22474a483d6d97b8be9bdc6831dbf812261a4ad97d1b1bba1fe402c66d535138`. Phase 2 (timelocked upgrades of
+> QEUROToken, UserPool and YieldShift via `TimelockController.executeBatch`) executed on 1 September 2026 at 06:51 UTC in
+> block 50728066, Safe transaction `0xf705425f0d04d5cda2a8834945b2863a8af69cd560d2fca065c64c4b5c4f05b9`. All eight proxies
+> report the target versions on-chain; the release was validated and recorded with `record-bundle-release.sh` on
+> 5 September 2026 and `deployments/8453/versions.json` reflects it. The runbook below is kept as the reference procedure
+> for future bundle releases.
+
 ## Scope
 
-This Base-mainnet release synchronizes eight deployed proxies and the linked YieldShift calculation
+This Base-mainnet release synchronized eight deployed proxies and the linked YieldShift calculation
 library with their current source versions:
 
 | Contract | Live | Target | Governance flow | Logic impact |

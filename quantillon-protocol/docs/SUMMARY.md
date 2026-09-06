@@ -85,6 +85,8 @@
     - [ChainlinkOracle](src/oracle/ChainlinkOracle.sol/contract.ChainlinkOracle.md)
     - [ISlippageMidSource](src/oracle/HyperliquidEurUsdOracle.sol/interface.ISlippageMidSource.md)
     - [HyperliquidEurUsdOracle](src/oracle/HyperliquidEurUsdOracle.sol/contract.HyperliquidEurUsdOracle.md)
+    - [LighterEurUsdOracle](src/oracle/LighterEurUsdOracle.sol/contract.LighterEurUsdOracle.md)
+    - [ISlippageMidSource (Lighter)](src/oracle/LighterEurUsdOracle.sol/interface.ISlippageMidSource.md)
     - [OracleRouter](src/oracle/OracleRouter.sol/contract.OracleRouter.md)
     - [SlippageStorage](src/oracle/SlippageStorage.sol/contract.SlippageStorage.md)
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)

@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -168,6 +168,18 @@ uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18
 
 ```solidity
 uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18
+```
+
+
+### QEURO_DUST_THRESHOLD
+QEURO supply at or below 1e-6 QEURO is unredeemable rounding dust and is treated as
+empty only by pre-operation status checks. Projected mint collateralization still uses
+the full raw supply, so this tolerance cannot bypass the post-mint 105% floor. Keep this
+boundary aligned with HedgerPool.QEURO_DUST_THRESHOLD.
+
+
+```solidity
+uint256 private constant QEURO_DUST_THRESHOLD = 1e12
 ```
 
 
@@ -1065,14 +1077,15 @@ function _enforceMintEligibility(uint256 eurUsdPrice) internal view;
 |`eurUsdPrice`|`uint256`|Live, validated EUR/USD price used to value QEURO debt for the CR gate (18 decimals).|
 
 
-### _enforceMintPriceDeviation
+### _enforcePriceDeviation
 
-Enforces mint-time EUR/USD deviation guard unless dev mode is enabled.
+Enforces the EUR/USD deviation guard unless dev mode is enabled.
 
-Compares live price vs cached baseline and reverts when deviation exceeds configured threshold.
+Compares live price vs cached baseline and reverts when deviation exceeds the configured
+threshold. Shared by the mint and redeem flows so the guard exists once.
 
 **Notes:**
-- security: Blocks minting during abnormal price moves outside policy limits.
+- security: Blocks mint/redeem during abnormal price moves outside policy limits.
 
 - validation: Reverts with `ExcessiveSlippage` when deviation rule is violated.
 
@@ -1090,7 +1103,7 @@ Compares live price vs cached baseline and reverts when deviation exceeds config
 
 
 ```solidity
-function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal;
+function _enforcePriceDeviation(uint256 eurUsdPrice) internal;
 ```
 **Parameters**
 
@@ -2397,7 +2410,7 @@ function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)
 
 Returns current exposure snapshot for a vault id.
 
-Provides adapter address, active flag, tracked principal, and best-effort underlying read.
+Provides adapter address, active flag, tracked principal, and the adapter underlying read.
 
 **Notes:**
 - security: Read-only helper.
@@ -2408,7 +2421,7 @@ Provides adapter address, active flag, tracked principal, and best-effort underl
 
 - events: No events emitted.
 
-- errors: No explicit errors; adapter read failure is handled via fallback.
+- errors: Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
 
 - reentrancy: Not applicable for view function.
 
@@ -2436,7 +2449,7 @@ function getVaultExposure(uint256 vaultId)
 |`adapter`|`address`|Adapter address mapped to vault id.|
 |`active`|`bool`|Whether vault id is active.|
 |`principalTracked`|`uint256`|Principal tracked locally for vault id.|
-|`currentUnderlying`|`uint256`|Current underlying balance from adapter (fallbacks to principal on read failure).|
+|`currentUnderlying`|`uint256`|Current underlying balance from the adapter (0 when no adapter set).|
 
 
 ### _withdrawUsdcFromExternalVaults
@@ -2806,20 +2819,21 @@ function _commitPriceCache(uint256 eurUsdPrice, bool isValidPrice) internal;
 
 ### _getExternalVaultCollateralBalance
 
-Computes aggregate external-vault collateral balance including accrued yield.
+Computes aggregate external-vault collateral, valued loss-aware per position.
 
-Reads adapter `totalUnderlying` values with principal fallback on read failure.
+Sums `min(principalUsdcByVaultId[id], adapter.totalUnderlying())` over the redemption
+set (see `_externalVaultCollateral`). Fails closed on an adapter read failure.
 
 **Notes:**
-- security: Internal read helper.
+- security: Internal read helper; performs staticcalls to configured adapters.
 
-- validation: Uses fallback to tracked principal when adapter reads fail.
+- validation: Per-position value is capped at the live adapter underlying.
 
 - state-changes: No state changes.
 
 - events: No events emitted.
 
-- errors: No explicit errors; read failures are handled via fallback.
+- errors: Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
 
 - reentrancy: Not applicable for view helper.
 
@@ -2836,6 +2850,91 @@ function _getExternalVaultCollateralBalance() internal view returns (uint256 ext
 |Name|Type|Description|
 |----|----|-----------|
 |`externalCollateral`|`uint256`|Total external collateral balance in USDC units.|
+
+
+### _externalVaultCollateral
+
+Loss-aware USDC value of one external vault position: min(principal, adapterUnderlying).
+
+The principal cap keeps unharvested yield out of redemption backing; the underlying cap
+reflects an ERC-4626 share-price loss immediately. Shares the adapter read with
+`getVaultExposure` via `_adapterUnderlying`.
+
+**Notes:**
+- security: Read-only helper; performs a staticcall to the adapter.
+
+- validation: Returns 0 for a zero-principal vault.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function _externalVaultCollateral(uint256 vaultId) internal view returns (uint256 value);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|External staking vault id.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`value`|`uint256`|Loss-aware collateral contribution for the vault id, in USDC (6 decimals).|
+
+
+### _adapterUnderlying
+
+Reads an adapter's live `totalUnderlying()`, or 0 when no adapter is configured.
+
+Shared by `_externalVaultCollateral` (collateral accounting) and `getVaultExposure`
+(reporting) so the adapter read exists once. Intentionally NOT wrapped in try/catch: a
+failed read fails closed rather than masking a loss as intact principal. Standard
+ERC-4626 adapters do not revert on this view.
+
+**Notes:**
+- security: Read-only helper; performs a staticcall to the adapter.
+
+- validation: Returns 0 when the adapter is unset.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Propagates a reverting adapter `totalUnderlying()` read (fail-closed).
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function _adapterUnderlying(IExternalStakingVault adapter) internal view returns (uint256 underlying);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`adapter`|`IExternalStakingVault`|External staking vault adapter (may be the zero adapter).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`underlying`|`uint256`|Adapter underlying USDC value, or 0 when the adapter is unset.|
 
 
 ### _isInRedemptionSet
@@ -3121,7 +3220,7 @@ of which price values the collateralization ratio.
 **Notes:**
 - security: Internal helper using caller-supplied price.
 
-- validation: Requires bootstrapped cache, active hedger, and CR >= mint threshold.
+- validation: Requires bootstrapped cache, active hedger, and either dust-only supply or CR >= mint threshold.
 
 - state-changes: None.
 

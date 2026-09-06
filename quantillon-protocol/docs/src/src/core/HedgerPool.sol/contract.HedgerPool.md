@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/02318f592f770a9d926016c8576b44854e674b9a/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -108,9 +108,14 @@ uint256 public constant MAX_MARGIN_RATIO = 5000
 
 
 ### DEFAULT_MIN_MARGIN_RATIO_BPS
+Governance floor for `coreParams.minMarginRatio`: `configureRiskAndFees` cannot set the
+minimum margin ratio below 250 bps (2.5% of exposure). The launch default written by
+`initialize` stays 500 bps (5%); lowering the live value toward this floor is an explicit
+governance decision (margin-rebalancing target, 2026-09).
+
 
 ```solidity
-uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500
+uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 250
 ```
 
 
@@ -139,6 +144,21 @@ uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE
 
 ```solidity
 uint256 public constant MAX_REWARD_PERIOD = 365 days
+```
+
+
+### QEURO_DUST_THRESHOLD
+QEURO amounts (18 decimals) at or below this are treated as unredeemable rounding dust
+
+Proportional round-down on redemptions/unstakes can strand a few wei of QEURO supply or
+per-position backing that nobody can redeem (e.g. inside a stQEURO vault whose share
+supply is zero). Exact-zero guards on those values dead-lock hedger exits and full margin
+withdrawal forever. 1e12 wei = 1e-6 QEURO, worth at most ~one USDC unit (6 decimals) —
+economically indistinguishable from zero while 30 orders of magnitude below real supply.
+
+
+```solidity
+uint256 public constant QEURO_DUST_THRESHOLD = 1e12
 ```
 
 
@@ -2047,7 +2067,7 @@ Checks if protocol remains collateralized after removing this position's margin
 **Notes:**
 - security: Internal function - prevents protocol undercollateralization from position closures
 
-- validation: Checks vault is set, QEURO supply > 0, protocol is collateralized, and remaining margin > positionMargin
+- validation: Checks vault is set, QEURO supply is above dust, protocol is collateralized, and remaining margin > positionMargin
 
 - state-changes: None - view function
 

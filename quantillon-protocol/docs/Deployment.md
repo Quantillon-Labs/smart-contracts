@@ -428,4 +428,4 @@ Set `USDC=<mock_address>` in `.env.localhost` after deploying MockUSDC, or let d
 
 ---
 
-*Maintained by Quantillon Labs. See [scripts/README.md](../scripts/README.md) for the complete deployment script reference.*
+*Maintained by Quantillon Labs.*

@@ -195,3 +195,6 @@ build-output.log
 # =============================================================================
 
 # Environment files are tracked but encrypted via git-crypt (see .gitattributes)
+
+# The scripts/ folder stays undocumented in the public repository
+scripts/README.md

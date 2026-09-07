@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.8";
+        return "1.0.9";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -210,6 +210,13 @@ contract HedgerPool is
     ///         `initialize` stays 500 bps (5%); lowering the live value toward this floor is an explicit
     ///         governance decision (margin-rebalancing target, 2026-09).
     uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 250; // 2.5% governance floor - basis points
+    /// @notice Ceiling for `coreParams.maxLeverage` accepted by `configureRiskAndFees`.
+    ///         A position's margin ratio is `10000 / leverage` bps, so the leverage implied by the
+    ///         `DEFAULT_MIN_MARGIN_RATIO_BPS` floor is `10000 / 250` = 40x. The setter previously
+    ///         capped leverage at 20x, which contradicted that floor: a 2.5% margin ratio was
+    ///         permitted by `validateMarginRatio` and by the collateral-based fill capacity, but
+    ///         could not be configured or opened. This constant realigns the two bounds.
+    uint256 public constant MAX_CONFIGURABLE_LEVERAGE = 40;
     uint128 public constant MAX_UINT128_VALUE = type(uint128).max;
     uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
     uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
@@ -1299,7 +1306,7 @@ contract HedgerPool is
 
         if (cfg.minMarginRatio < DEFAULT_MIN_MARGIN_RATIO_BPS) revert CommonErrorLibrary.ConfigValueTooLow();
         if (cfg.minMarginRatio > type(uint64).max) revert CommonErrorLibrary.ConfigValueTooHigh();
-        if (cfg.maxLeverage > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
+        if (cfg.maxLeverage > MAX_CONFIGURABLE_LEVERAGE) revert CommonErrorLibrary.ConfigValueTooHigh();
         if (cfg.eurInterestRate > 2000 || cfg.usdInterestRate > 2000) revert CommonErrorLibrary.ConfigValueTooHigh();
         HedgerPoolValidationLibrary.validateFee(cfg.entryFee, 100);
         HedgerPoolValidationLibrary.validateFee(cfg.exitFee, 100);

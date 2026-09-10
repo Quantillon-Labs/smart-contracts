@@ -90,27 +90,24 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     }
 
     /**
-     * @notice Returns canonical protocol time from timelock's shared TimeProvider
-     * @dev Falls back to block timestamp only before timelock is configured.
-     * @custom:security Uses timelock-backed canonical time when available; fallback preserves liveness during bootstrap
-     * @custom:validation Validates timelock address and code presence before external call
+     * @notice Returns canonical protocol time
+     * @dev Base implementation returns `block.timestamp`. Contracts that hold their own
+     *      `TIME_PROVIDER` override this and read it directly. Deliberately makes no
+     *      external call: the timelock is an upgrade authority, not a time source, and it
+     *      is not guaranteed to expose `currentTime()` (a stock OpenZeppelin
+     *      TimelockController does not).
+     * @return Canonical protocol time in seconds
+     * @custom:security No external call; cannot revert or be griefed by the timelock
+     * @custom:validation None required
      * @custom:state-changes None
      * @custom:events None
-     * @custom:errors None - failures fall back to `block.timestamp`
+     * @custom:errors None
      * @custom:reentrancy Read-only helper; no state mutation
      * @custom:access Internal helper
      * @custom:oracle No oracle dependencies
      */
-    function _protocolTime() internal view returns (uint256) {
-        address timelockAddress = address(timelock);
-        if (timelockAddress == address(0) || timelockAddress.code.length == 0) {
-            return block.timestamp;
-        }
-        try timelock.currentTime() returns (uint256 nowTs) {
-            return nowTs;
-        } catch {
-            return block.timestamp;
-        }
+    function _protocolTime() internal view virtual returns (uint256) {
+        return block.timestamp;
     }
     
     // ============ Initialization ============

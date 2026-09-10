@@ -1,0 +1,19 @@
+{
+  "status": "candidate-not-deployed",
+  "chainId": 8453,
+  "selectedAt": "2026-09-10",
+  "vault": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
+  "venueOracle": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
+  "governance": "0x1d7fF432a93d0085Fb69474c7E567f859829e6cd",
+  "writer": "0xC57bF47310897B49aa72503AE568Fa46f2a5E008",
+  "reporter": "0xC57bF47310897B49aa72503AE568Fa46f2a5E008",
+  "reserveRecipient": "0x8DAD1B6c1A40e2649d50952977b5af1992f098d1",
+  "maxAgeSeconds": 60,
+  "maxImpactBps": 25,
+  "bufferBps": 10,
+  "maxOutstandingEur": "1000",
+  "maxOutstandingEurRaw": "1000000000000000000000",
+  "reporterConfirmations": 4,
+  "reporterAckDustEur": "1",
+  "documentation": "https://smartcontracts.quantillon.money/Deployment.html#execution-pricing-launch-configuration"
+}

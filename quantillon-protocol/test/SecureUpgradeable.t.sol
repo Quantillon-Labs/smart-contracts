@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {SecureUpgradeable} from "../src/core/SecureUpgradeable.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -751,5 +752,145 @@ contract SecureUpgradeableTest is Test {
 
         // Note: After upgrade, the proxy points to V2 but state is preserved
         // The version getter would need to be re-initialized to show V2
+    }
+
+    // =============================================================================
+    // PROTOCOL TIME
+    // =============================================================================
+
+    /**
+     * @notice A timelock that cannot answer currentTime() must not be probed
+     * @dev Regression: the live timelock is a stock OpenZeppelin TimelockController with no
+     *      currentTime(). The old _protocolTime() called it anyway and swallowed the revert,
+     *      burning gas and flagging every healthy transaction as errored on explorers.
+     */
+    function test_ProtocolTime_StockTimelockIsNotProbed() public {
+        MockTimelockWithoutCurrentTime stockTimelock = new MockTimelockWithoutCurrentTime();
+        vm.prank(admin);
+        secureContract.setTimelock(address(stockTimelock));
+
+        vm.startStateDiffRecording();
+        vm.prank(admin);
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        VmSafe.AccountAccess[] memory accesses = vm.stopAndReturnStateDiff();
+        for (uint256 i; i < accesses.length; ++i) {
+            assertFalse(
+                accesses[i].account == address(stockTimelock)
+                    && accesses[i].kind == VmSafe.AccountAccessKind.StaticCall,
+                "protocol time must not probe the stock timelock, even if the revert is caught"
+            );
+        }
+
+        assertEq(
+            secureContract.emergencyDisablePendingAt(),
+            block.timestamp + secureContract.EMERGENCY_DISABLE_DELAY(),
+            "protocol time must come from block.timestamp, not the timelock"
+        );
+    }
+
+    /**
+     * @notice The base _protocolTime() must never read the timelock, even when it answers
+     * @dev The timelock is an upgrade authority, not a time source. A timelock reporting a
+     *      different time must have no influence on protocol timing.
+     */
+    function test_ProtocolTime_DoesNotReadTheTimelock() public {
+        MockLyingTimelock lyingTimelock = new MockLyingTimelock();
+        vm.prank(admin);
+        secureContract.setTimelock(address(lyingTimelock));
+
+        vm.prank(admin);
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+
+        assertEq(
+            secureContract.emergencyDisablePendingAt(),
+            block.timestamp + secureContract.EMERGENCY_DISABLE_DELAY(),
+            "timelock time must be ignored"
+        );
+        assertTrue(
+            secureContract.emergencyDisablePendingAt()
+                != lyingTimelock.currentTime() + secureContract.EMERGENCY_DISABLE_DELAY(),
+            "timelock time must not leak into protocol timing"
+        );
+    }
+
+    /**
+     * @notice Contracts owning a TimeProvider override _protocolTime() and read it directly
+     * @dev Mirrors UserPool, HedgerPool, QTIToken and stQEUROToken.
+     */
+    function test_ProtocolTime_OverrideReadsTimeProvider() public {
+        MockSecureUpgradeableWithTimeProvider impl =
+            new MockSecureUpgradeableWithTimeProvider(timeProvider);
+        bytes memory initData = abi.encodeWithSelector(
+            MockSecureUpgradeableWithTimeProvider.initialize.selector,
+            admin,
+            address(timelock)
+        );
+        MockSecureUpgradeableWithTimeProvider withProvider =
+            MockSecureUpgradeableWithTimeProvider(address(new ERC1967Proxy(address(impl), initData)));
+
+        int256 offset = 2 hours;
+        vm.prank(admin);
+        timeProvider.setTimeOffset(offset, "regression test");
+
+        vm.prank(admin);
+        withProvider.proposeEmergencyDisableSecureUpgrades();
+
+        assertEq(
+            withProvider.emergencyDisablePendingAt(),
+            timeProvider.currentTime() + withProvider.EMERGENCY_DISABLE_DELAY(),
+            "override must use the contract's own TimeProvider"
+        );
+        assertEq(
+            withProvider.emergencyDisablePendingAt(),
+            block.timestamp + uint256(offset) + withProvider.EMERGENCY_DISABLE_DELAY(),
+            "TimeProvider offset must be reflected"
+        );
+    }
+}
+
+/**
+ * @title MockTimelockWithoutCurrentTime
+ * @notice Stand-in for a stock OpenZeppelin TimelockController: it has no currentTime()
+ * @dev Any call to currentTime() reverts, exactly as the live Base timelock does.
+ */
+contract MockTimelockWithoutCurrentTime {
+    function getMinDelay() external pure returns (uint256) {
+        return 43200;
+    }
+}
+
+/**
+ * @title MockLyingTimelock
+ * @notice Timelock that answers currentTime() with a value far from block.timestamp
+ * @dev Used to prove the base _protocolTime() never consults the timelock.
+ */
+contract MockLyingTimelock {
+    function currentTime() external view returns (uint256) {
+        return block.timestamp + 1 days;
+    }
+}
+
+/**
+ * @title MockSecureUpgradeableWithTimeProvider
+ * @notice Concrete SecureUpgradeable that owns a TimeProvider and overrides _protocolTime()
+ * @dev Mirrors UserPool, HedgerPool, QTIToken and stQEUROToken.
+ */
+contract MockSecureUpgradeableWithTimeProvider is SecureUpgradeable {
+    TimeProvider public immutable TIME_PROVIDER;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(TimeProvider _TIME_PROVIDER) {
+        TIME_PROVIDER = _TIME_PROVIDER;
+        _disableInitializers();
+    }
+
+    function initialize(address admin_, address _timelock) external initializer {
+        __SecureUpgradeable_init(_timelock);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(UPGRADER_ROLE, admin_);
+    }
+
+    function _protocolTime() internal view override returns (uint256) {
+        return TIME_PROVIDER.currentTime();
     }
 }

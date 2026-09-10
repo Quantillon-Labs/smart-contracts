@@ -115,7 +115,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.3";
+        return "1.0.4";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -484,6 +484,23 @@ contract UserPool is
         if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
+    }
+
+    /**
+     * @notice Returns canonical protocol time from this contract's TimeProvider
+     * @dev Overrides the SecureUpgradeable base, which returns `block.timestamp`.
+     * @return Canonical protocol time in seconds
+     * @custom:security Reads the immutable TimeProvider set at construction
+     * @custom:validation None required
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Read-only helper; no state mutation
+     * @custom:access Internal helper
+     * @custom:oracle No oracle dependencies
+     */
+    function _protocolTime() internal view override returns (uint256) {
+        return TIME_PROVIDER.currentTime();
     }
 
     /**

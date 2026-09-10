@@ -93,14 +93,14 @@ contract HedgerPoolFuzz is Test {
     }
 
     /**
-     * @notice Fuzz test P&L with zero filled volume always returns zero
+     * @notice Fuzz test P&L with zero cost basis still recognizes debt
      */
-    function testFuzz_PnL_ZeroFilledVolume_AlwaysZero(
+    function testFuzz_PnL_ZeroFilledVolume_RecognizesDebt(
         uint64 qeuroBacked,
         uint64 price
     ) public pure {
         int256 pnl = _calculatePnL(0, uint256(qeuroBacked) * QEURO_DECIMALS, uint256(price) * 1e10);
-        assertEq(pnl, 0, "Zero filled volume should always give zero P&L");
+        assertEq(pnl, -int256(uint256(qeuroBacked) * QEURO_DECIMALS * uint256(price) * 1e10 / 1e30));
     }
 
     /**
@@ -485,20 +485,6 @@ contract HedgerPoolFuzz is Test {
         uint256 qeuroBacked,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        if (filledVolume == 0 || currentPrice == 0) {
-            return 0;
-        }
-
-        if (qeuroBacked == 0) {
-            return -int256(filledVolume);
-        }
-
-        uint256 qeuroValueInUSDC = qeuroBacked * currentPrice / 1e30;
-
-        if (filledVolume >= qeuroValueInUSDC) {
-            return int256(filledVolume - qeuroValueInUSDC);
-        } else {
-            return -int256(qeuroValueInUSDC - filledVolume);
-        }
+        return HedgerPoolLogicLibrary.calculatePnL(filledVolume, qeuroBacked, currentPrice);
     }
 }

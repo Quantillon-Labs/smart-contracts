@@ -53,11 +53,11 @@ contract HedgerPoolLogicLibraryTest is Test {
     // =============================================================================
 
     /**
-     * @notice Test P&L calculation with zero filled volume returns zero
+     * @notice Test P&L calculation with zero cost basis still recognizes outstanding debt
      */
-    function test_CalculatePnL_ZeroFilledVolume_ReturnsZero() public pure {
+    function test_CalculatePnL_ZeroFilledVolume_RecognizesDebt() public pure {
         int256 pnl = _calculatePnL(0, 1000 * QEURO_DECIMALS, EUR_USD_PRICE_1_10);
-        assertEq(pnl, 0, "Zero filled volume should return zero P&L");
+        assertEq(pnl, -1100e6, "Outstanding debt is a loss even with zero cost basis");
     }
 
     /**
@@ -69,12 +69,12 @@ contract HedgerPoolLogicLibraryTest is Test {
     }
 
     /**
-     * @notice Test P&L calculation with zero QEURO backed returns negative filled volume
+     * @notice Test P&L calculation with zero QEURO backed returns the remaining asset value
      */
-    function test_CalculatePnL_ZeroQeuroBacked_ReturnsNegativeFilledVolume() public pure {
+    function test_CalculatePnL_ZeroQeuroBacked_ReturnsRemainingCost() public pure {
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         int256 pnl = _calculatePnL(filledVolume, 0, EUR_USD_PRICE_1_10);
-        assertEq(pnl, -int256(filledVolume), "Zero QEURO should return negative filled volume");
+        assertEq(pnl, int256(filledVolume), "No debt means the remaining cost is an asset");
     }
 
     /**
@@ -243,7 +243,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     }
 
     /**
-     * @notice Test realized P&L affects liquidation status
+     * @notice Test historical realized P&L does not change liquidation status
      */
     function test_IsPositionLiquidatable_WithRealizedPnL_CorrectCalculation() public pure {
         uint256 margin = 100 * USDC_DECIMALS;
@@ -261,8 +261,14 @@ contract HedgerPoolLogicLibraryTest is Test {
             realizedPnL
         );
 
-        // The calculation accounts for realized P&L properly
-        assertFalse(liquidatable, "Position with realized profit should be healthier");
+        assertFalse(liquidatable, "Remaining position is healthy");
+        assertEq(liquidatable, HedgerPoolLogicLibrary.isPositionLiquidatable(
+            margin, filledVolume, 0, EUR_USD_PRICE_1_00,
+            LIQUIDATION_THRESHOLD, qeuroBacked, int128(1_000_000e6)
+        ), "Historical profit cannot consume remaining margin twice");
+        assertTrue(HedgerPoolLogicLibrary.isPositionLiquidatable(
+            10e6, 1000e6, 0, 1e18, 500, uint128(1000e18), int128(-1_000_000e6)
+        ), "Historical loss cannot create collateral");
     }
 
     // =============================================================================
@@ -669,21 +675,6 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint256 qeuroBacked,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        // Direct calculation matching library logic
-        if (filledVolume == 0 || currentPrice == 0) {
-            return 0;
-        }
-
-        if (qeuroBacked == 0) {
-            return -int256(filledVolume);
-        }
-
-        uint256 qeuroValueInUSDC = qeuroBacked * currentPrice / 1e30;
-
-        if (filledVolume >= qeuroValueInUSDC) {
-            return int256(filledVolume - qeuroValueInUSDC);
-        } else {
-            return -int256(qeuroValueInUSDC - filledVolume);
-        }
+        return HedgerPoolLogicLibrary.calculatePnL(filledVolume, qeuroBacked, currentPrice);
     }
 }

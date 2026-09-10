@@ -1898,8 +1898,8 @@ contract HedgerPoolTestSuite is Test {
     }
     
     /**
-     * @notice Test that calculatePnL returns -filledVolume when qeuroBacked is zero
-     * @dev Verifies that when all QEURO is redeemed, unrealized P&L is calculated as -filledVolume
+     * @notice Test that full redemption leaves no unrealized exposure
+     * @dev Verifies that full redemption releases all cost and effective collateral equals margin
      * @custom:security Tests critical P&L calculation edge case
      * @custom:validation Ensures correct unrealized P&L when no QEURO is backed
      * @custom:state-changes Creates position, fills it, redeems all QEURO, verifies P&L calculation
@@ -1947,30 +1947,10 @@ contract HedgerPoolTestSuite is Test {
         (uint96 filledVolumeAfter, uint128 qeuroBackedAfter) = _positionFillState(positionId);
         assertEq(qeuroBackedAfter, 0, "QEURO backed should be zero after full redemption");
         
-        // When qeuroBacked == 0, calculatePnL should return -filledVolume
-        // This represents the remaining unrealized loss
-        int256 expectedUnrealizedPnL = -int256(uint256(filledVolumeAfter));
-        
-        // Get effective hedger collateral which uses calculatePnL internally
-        uint256 effectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(redeemPrice);
-        
-        // Calculate what the effective collateral should be
-        // Effective collateral = margin + net unrealized P&L
-        // Net unrealized P&L = total unrealized - realized
-        // When qeuroBacked == 0, total unrealized = -filledVolume
-        (uint96 margin, int128 realizedPnL) = _positionMarginAndRealizedPnL(positionId);
-        int256 netUnrealizedPnL = expectedUnrealizedPnL - int256(realizedPnL);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        int256 expectedEffectiveMargin = int256(uint256(margin)) + netUnrealizedPnL;
+        assertEq(filledVolumeAfter, 0, "Full redemption releases all original cost");
+        (uint96 margin,) = _positionMarginAndRealizedPnL(positionId);
+        assertEq(hedgerPool.getTotalEffectiveHedgerCollateral(redeemPrice), margin);
 
-        if (expectedEffectiveMargin > 0) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            assertEq(effectiveCollateral, uint256(expectedEffectiveMargin),
-                "Effective collateral should match margin + net unrealized P&L");
-        } else {
-            assertEq(effectiveCollateral, 0,
-                "Effective collateral should be zero when margin + net unrealized P&L is negative");
-        }
     }
     
 
@@ -3813,8 +3793,7 @@ contract HedgerPoolPositionClosureTest is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20);
 
         // Fill the position, then redeem everything except an unredeemable dust residue.
-        // The USDC share is capped at filledVolume, so filledVolume lands exactly at 0
-        // while qeuroBacked keeps the round-down residue — the live incident state.
+        // Proportional original-cost release leaves one USDC base unit with the QEURO dust.
         vm.prank(address(mockVault));
         hedgerPool.recordUserMint(1000e6, 1e18, 1000e18);
         vm.prank(address(mockVault));
@@ -3822,7 +3801,7 @@ contract HedgerPoolPositionClosureTest is Test {
 
         (, , uint96 filledVolume, uint96 marginNow, , , , , , , , uint128 qeuroBacked, ) =
             hedgerPool.positions(positionId);
-        assertEq(uint256(filledVolume), 0);
+        assertEq(uint256(filledVolume), 1);
         assertEq(uint256(qeuroBacked), 5e11);
         assertLe(uint256(qeuroBacked), hedgerPool.QEURO_DUST_THRESHOLD());
         assertGt(uint256(marginNow), 0);
@@ -3861,7 +3840,7 @@ contract HedgerPoolPositionClosureTest is Test {
 
         (, , uint96 filledVolume, uint96 marginNow, , , , , , , , uint128 qeuroBacked, ) =
             hedgerPool.positions(positionId);
-        assertEq(uint256(filledVolume), 0);
+        assertEq(uint256(filledVolume), 2);
         assertEq(uint256(qeuroBacked), residue);
 
         vm.prank(hedger);

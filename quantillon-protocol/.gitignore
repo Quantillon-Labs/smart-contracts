@@ -61,6 +61,7 @@ broadcast/
 # which is committed so deployed-version provenance syncs across workstations via git pull.
 deployments/*/*
 !deployments/*/versions.json
+!deployments/8453/execution-pricing-candidate.json
 deployment-*.log
 deployment-*.json
 

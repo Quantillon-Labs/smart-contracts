@@ -14,8 +14,8 @@ contract HedgerPoolRedeemMathLibraryTest is Test {
             int128(100e6) // previousRealizedPnL
         );
 
-        // totalUnrealized = +300e6, netUnrealized = +200e6, 25% share => +50e6
-        assertEq(realizedDelta, int256(50e6));
+        // Released cost 325 USDC minus payout 250 USDC; history has no effect.
+        assertEq(realizedDelta, int256(75e6));
     }
 
     function test_CalculateRedeemPnL_LossVector() public pure {
@@ -27,8 +27,8 @@ contract HedgerPoolRedeemMathLibraryTest is Test {
             int128(-50e6) // previousRealizedPnL
         );
 
-        // totalUnrealized = -200e6, netUnrealized = -150e6, 20% share => -30e6
-        assertEq(realizedDelta, -int256(30e6));
+        // Released cost 160 USDC minus payout 200 USDC; history has no effect.
+        assertEq(realizedDelta, -int256(40e6));
     }
 
     function test_ComputeMarginTransition_ProfitVector() public pure {

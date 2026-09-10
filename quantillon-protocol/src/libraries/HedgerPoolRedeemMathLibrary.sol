@@ -23,7 +23,7 @@ library HedgerPoolRedeemMathLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     using VaultMath for uint256;
@@ -40,18 +40,14 @@ library HedgerPoolRedeemMathLibrary {
 
     /**
      * @notice Computes realized PnL delta for a redemption share.
-     * @dev Derives the realized PnL portion corresponding to `qeuroAmount` being redeemed
-     *      from a position with `currentQeuroBacked`, using filled volume and mark price.
-     *      Works by:
-     *        1. Converting `currentQeuroBacked` to USDC notionals using `price`.
-     *        2. Computing total unrealized PnL relative to `filledBefore`.
-     *        3. Subtracting `previousRealizedPnL` to get net unrealized.
-     *        4. Allocating a proportional share of that PnL to `qeuroAmount`.
+     * @dev Releases qeuroAmount / currentQeuroBacked of the original cost, rounded down,
+     *      and subtracts the redemption payout, also rounded down to USDC units.
+     *      The final redemption releases all remaining cost. The last argument is kept
+     *      for ABI compatibility; historical realized P&L never changes this delta.
      * @param currentQeuroBacked Total QEURO amount currently backed by the position.
      * @param filledBefore Total filled USDC notionals before redemption.
      * @param price Current EUR/USD price scaled as in `VaultMath.mulDiv` context (1e30 factor).
      * @param qeuroAmount QEURO amount being redeemed (share of the position).
-     * @param previousRealizedPnL Previously realized PnL stored on the position (signed, 128-bit).
      * @return realizedDelta Signed realized PnL delta attributable to this redemption.
      * @custom:security Pure math helper; no direct security impact.
      * @custom:validation Assumes `currentQeuroBacked > 0` and `qeuroAmount <= currentQeuroBacked`
@@ -68,21 +64,13 @@ library HedgerPoolRedeemMathLibrary {
         uint256 filledBefore,
         uint256 price,
         uint256 qeuroAmount,
-        int128 previousRealizedPnL
+        int128 /* previousRealizedPnL */
     ) external pure returns (int256 realizedDelta) {
-        uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-        int256 totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
-            // forge-lint: disable-next-line(unsafe-typecast)
-            ? int256(filledBefore - qeuroValueInUSDC)
-            // forge-lint: disable-next-line(unsafe-typecast)
-            : -int256(qeuroValueInUSDC - filledBefore);
-
-        int256 netUnrealizedPnL = totalUnrealizedPnL - int256(previousRealizedPnL);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint256 absNetPnL = netUnrealizedPnL >= 0 ? uint256(netUnrealizedPnL) : uint256(-netUnrealizedPnL);
-        uint256 pnlShare = qeuroAmount.mulDiv(absNetPnL, currentQeuroBacked);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        realizedDelta = netUnrealizedPnL >= 0 ? int256(pnlShare) : -int256(pnlShare);
+        uint256 releasedCost = qeuroAmount.mulDiv(filledBefore, currentQeuroBacked);
+        uint256 redemptionValue = qeuroAmount.mulDiv(price, 1e30);
+        // Round the cost release and payout independently, exactly as settlement does.
+        // Historical realized P&L is already in margin and is informational only.
+        realizedDelta = int256(releasedCost) - int256(redemptionValue);
     }
 
     /**

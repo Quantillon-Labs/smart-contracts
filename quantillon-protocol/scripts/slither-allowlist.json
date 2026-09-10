@@ -1,5 +1,35 @@
 [
   {
+    "check": "unused-return",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_computeMintAmounts",
+    "reason": "The function directly returns all three ExecutionPricingLibrary.mint results to its caller. Slither misidentifies the direct tuple return as unused; combined-release integration verifies the resulting mint amount and backing."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "_reference",
+    "reason": "The current price, oracle-computed staleness and bounds flags are checked. Historical fallback price and raw update time are deliberately unused; the active oracle computes freshness from its update time."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "publish",
+    "reason": "Timestamp comparisons intentionally enforce monotonic observations, reject future or expired depth, and prevent depth reuse before hedge acknowledgment."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "acknowledge",
+    "reason": "Timestamp comparisons intentionally reject future, expired, regressing or pre-configuration capacity observations."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "_validate",
+    "reason": "Depth and account observations deliberately expire after the configured maximum age; timestamps are used for freshness, not randomness."
+  },
+  {
     "check": "timestamp",
     "file": "src/core/QuantillonVault.sol",
     "function": "applyDevMode",

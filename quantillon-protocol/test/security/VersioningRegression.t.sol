@@ -21,12 +21,12 @@ contract VersioningRegression is DeploymentSmokeTest {
     /// @dev QuantillonVault is at 1.1.0 (harvestAndDistributeVaultYield / stQEURO yield distribution).
     function test_AllCoreContractsExposeVersion() public {
         deployFullProtocol();
-        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.6");
-        _assertVersioned(address(qtiToken), "QTIToken", "1.0.2");
-        _assertVersioned(address(vault), "QuantillonVault", "1.1.11");
-        _assertVersioned(address(userPool), "UserPool", "1.0.3");
-        _assertVersioned(address(hedgerPool), "HedgerPool", "1.0.9");
-        _assertVersioned(address(stQEURO), "stQEUROToken", "1.0.3");
+        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.7");
+        _assertVersioned(address(qtiToken), "QTIToken", "1.0.3");
+        _assertVersioned(address(vault), "QuantillonVault", "1.2.0");
+        _assertVersioned(address(userPool), "UserPool", "1.0.4");
+        _assertVersioned(address(hedgerPool), "HedgerPool", "1.1.0");
+        _assertVersioned(address(stQEURO), "stQEUROToken", "1.0.4");
         _assertVersioned(address(feeCollector), "FeeCollector", "1.0.2");
         _assertVersioned(address(yieldShift), "YieldShift", "1.0.5");
         _assertVersioned(address(timeProvider), "TimeProvider", "1.0.0");
@@ -35,6 +35,6 @@ contract VersioningRegression is DeploymentSmokeTest {
     /// @notice version() is a pure getter callable directly (reflects the implementation code).
     function test_VersionIsCallableDirectly() public {
         deployFullProtocol();
-        assertEq(vault.version(), "1.1.11", "direct call returns semver");
+        assertEq(vault.version(), "1.2.0", "direct call returns semver");
     }
 }

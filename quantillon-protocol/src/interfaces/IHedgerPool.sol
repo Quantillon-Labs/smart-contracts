@@ -4,6 +4,35 @@ pragma solidity 0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IHedgerPool {
+    /**
+     * @notice Activates remaining-cost accounting on a paused, fully settled proxy.
+     * @dev Fresh deployments activate during initialization; an upgraded proxy activates once.
+     * @custom:security Restricted to governance with no active position or outstanding exposure.
+     * @custom:validation Requires a paused pool, zero counters and QEURO supply at most dust.
+     * @custom:state-changes Activates remaining-cost accounting.
+     * @custom:events Emits Initialized.
+     * @custom:errors Reverts when caller, pause, settlement or initialization checks fail.
+     * @custom:reentrancy No state-changing external calls.
+     * @custom:access GOVERNANCE_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
+    function initializeCostBasisAccounting() external;
+
+    /**
+     * @notice Reports whether remaining-cost accounting is active.
+     * @dev False on an upgraded proxy until settlement and activation are complete.
+     * @return initialized Whether the accounting model has been activated.
+     * @custom:security Read-only getter.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy No external calls.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
+    function costBasisAccountingInitialized() external view returns (bool initialized);
+
     struct HedgerRiskConfig {
         uint256 minMarginRatio;
         uint256 maxLeverage;

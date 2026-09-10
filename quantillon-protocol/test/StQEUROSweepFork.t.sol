@@ -56,11 +56,11 @@ contract StQEUROSweepForkTest is Test {
         assertGt(orphaned, 0);
         assertEq(vaultToken.totalSupply(), 0);
 
-        // Upgrade the real proxy to the local v1.0.3 implementation via the timelock.
+        // Upgrade the real proxy to the local v1.0.4 implementation via the timelock.
         stQEUROToken newImpl = new stQEUROToken(TimeProvider(TIME_PROVIDER));
         vm.prank(TIMELOCK);
         vaultToken.upgradeToAndCall(address(newImpl), "");
-        assertEq(vaultToken.version(), "1.0.3");
+        assertEq(vaultToken.version(), "1.0.4");
 
         // Factory template switch (direct Safe call in the same batch).
         vm.prank(SAFE);

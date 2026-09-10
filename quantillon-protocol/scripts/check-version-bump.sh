@@ -53,6 +53,8 @@ TARGETS=(
   "src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary"
   "src/libraries/UserPoolStakingLibrary.sol:UserPoolStakingLibrary"
   "src/libraries/VaultMath.sol:VaultMath"
+  "src/libraries/ExecutionPricingLibrary.sol:ExecutionPricingLibrary"
+  "src/oracle/ExecutionPricing.sol:ExecutionPricing"
   "src/libraries/YieldShiftCalculationLibrary.sol:YieldShiftCalculationLibrary"
   "src/libraries/YieldShiftOptimizationLibrary.sol:YieldShiftOptimizationLibrary"
 )

@@ -55,6 +55,118 @@ scripts/deployment/build-verifiable-impl.sh QuantillonVault \
   --deploy
 ```
 
+### HedgerPool remaining-cost accounting activation
+
+HedgerPool v1.1.0 values `filledVolume` as the original USDC cost of the remaining
+QEURO backing. Deploy its implementation with HedgerPoolLogicLibrary v1.0.1 and
+HedgerPoolRedeemMathLibrary v1.0.1. Fresh proxies activate this model in `initialize`.
+Build and verify with `FOUNDRY_PROFILE=production` (`optimizer_runs = 0`), using an
+isolated output/cache directory when test builds are running concurrently.
+
+An existing proxy requires settlement before upgrading: position 1 must be inactive,
+`totalMargin`, `totalExposure`, and `totalFilledExposure` must be zero, and the vault's
+`totalMinted()` must be at most `QEURO_DUST_THRESHOLD`. Reconcile the position and vault
+balances before closure; this upgrade does not convert an active position's balances.
+
+After settlement, pause the pool through `EMERGENCY_ROLE`, execute the implementation
+upgrade through the configured timelock, and call `initializeCostBasisAccounting()`
+through `GOVERNANCE_ROLE` while the pool remains paused. Verify
+`costBasisAccountingInitialized() == true` before unpausing. Installing the implementation
+alone leaves mint/redeem accounting, margin changes, normal exits, and effective-collateral
+queries blocked until activation. The generic upgrade script does not perform this
+governance activation call.
+
+### Coordinated core implementation release
+
+Deploy the seven core implementations together: QuantillonVault v1.2.0,
+HedgerPool v1.1.0, QEUROToken v1.0.7, QTIToken v1.0.3, UserPool v1.0.4,
+stQEUROFactory v1.0.2, and each registered stQEUROToken proxy at v1.0.4.
+Link the vault to ExecutionPricingLibrary v1.0.1 and the pool to the two
+HedgerPool libraries listed above. Preserve each implementation's existing
+TimeProvider constructor argument. Check the factory registry for all token
+proxies; the zero `stQEUROToken` entry in `addresses.json` is not an upgrade target.
+
+The base timing helper uses `block.timestamp`; contracts with a TimeProvider
+read that provider directly. Before upgrading, check the provider's offset and
+ensure no emergency-disable proposal spans a change of clock.
+
+For the Base controller, schedule all implementation upgrades with
+`TimelockController.scheduleBatch` from the governance Safe. Read `getMinDelay()`
+and wait for readiness. The Safe's execution batch must then pause vault and pool,
+call `TimelockController.executeBatch`, call `HedgerPool.initializeCostBasisAccounting()`
+directly as governance, update the factory's `tokenImplementation` to the new
+stQEUROToken implementation, and unpause pool and vault. Use an atomic Safe batch
+so failure of activation also rolls back the implementation upgrades. Settlement
+must satisfy the activation conditions at execution time.
+
+Installing QuantillonVault v1.2.0 leaves `executionPricing()` at zero on an existing
+proxy. This installs pricing support while retaining reference-price settlement.
+Pricing can be activated in the same release by deploying a vault-bound module
+with explicit writer/reporter addresses, reserve recipient and risk limits.
+Configure the publisher and hedge reporter against that module before execution.
+Align report freshness, hedge tolerance and execution-impact limits with the
+hedge engine. Both depth and capacity reports must remain fresh through the
+upgrade window.
+
+For coordinated pricing activation, add the Safe's call to
+`QuantillonVault.configureExecutionPricing(module)` after P&L activation and before
+unpausing. Check that the module has fresh depth, reconciled hedge exposure,
+positive executable capacity and usable previews before enabling settlement.
+An implementation upgrade alone does not activate the pricing module.
+
+Rehearse the exact staged bytecode and controller calls on a pinned Base fork
+with `scripts/deployment/DryRunCombinedRelease.s.sol`. Its deployment input contains
+library link offsets, constructor arguments and the seven proxy addresses; the
+script never broadcasts. Independently validate storage, ABI, versions, runtime
+size and reproducible verification inputs before deploying implementations.
+
+#### Execution-pricing launch configuration
+
+The Base release candidate uses the following configuration, recorded in
+`deployments/8453/execution-pricing-candidate.json`. These are deployment settings;
+the active module and its getters remain the source of truth for live values.
+
+| Setting | Selected value | Purpose |
+| --- | --- | --- |
+| Maximum depth/account age | 60 seconds | Reject stale book or margin observations; the execution publisher refreshes on the 10-second polling loop when due. |
+| Maximum execution impact | 25 bps (0.25%) | Total per-level price limit relative to the reference oracle, consistent with the hedge engine's existing limit. |
+| Execution buffer | 10 bps (0.10%) | Included in the execution rate and inside the 25 bps ceiling; covers venue fees plus a limited timing allowance. |
+| Maximum unacknowledged exposure | EUR 1,000 | Aggregate across mint and redeem directions; additionally limited by current depth and reporter-certified margin capacity. |
+| Published depth | Up to 10 observed levels per side | Keeps cold publication within the writer's existing gas ceiling; omitted depth never contributes to capacity. |
+| Base confirmations for reporting | 4 blocks | Reporter uses confirmed supply and admission counters and checks the block hash again. |
+| Hedge acknowledgment tolerance | EUR 1 | Matches the engine's existing target tolerance; bounds residual exposure, rather than asserting an exactly matched hedge. |
+| Writer and reporter | `0xC57bF47310897B49aa72503AE568Fa46f2a5E008` | Existing publisher; both roles use its single durable transaction journal. |
+| Spread reserve recipient | `0x8DAD1B6c1A40e2649d50952977b5af1992f098d1` | Existing hedge-funding account; governance withdrawals pay this fixed recipient. |
+
+The reporter permits at most one wei of difference between the engine's indexed
+target and confirmed QEURO supply to accommodate the residue after full redemption.
+This bookkeeping tolerance is separate from the EUR 1 actual hedge-exposure check.
+
+At selection, the unified Hyperliquid account held approximately 108.43 USDC.
+EUR 1,000 at the observed 1.16355 reference price requires approximately 23.27 USDC
+of margin at the engine's existing 50x leverage, before its 1 USDC cushion. This
+is a launch ceiling, not an assertion that this capacity is always available.
+The reporter reduces admission as available funding decreases; no additional
+leverage is enabled by this configuration.
+
+The observed `xyz:EUR` market had growth mode enabled and deployer fee scale 1.
+With the account's 0.045% base taker rate and no referral discount, the documented
+fee formula gives approximately 0.009% (0.9 bps), before any aligned-collateral
+discount. Fees and market conditions can change; the buffer does not guarantee a
+hedge fill. See [Hyperliquid's fee formula](https://hyperliquid.gitbook.io/hyperliquid-docs/trading/fees#fee-formula-for-developers).
+
+ExecutionPricing v1.1.0 lets governance update age, impact, buffer and the exposure
+ceiling through `updateRiskLimits(age, impact, buffer, outstandingLimit)`. The vault
+must be paused and outstanding admission must be zero. The update invalidates both
+depth and capacity; new reports must carry source timestamps strictly after the
+update. Keep settlement paused until those reports restore usable quotes.
+
+The admin Parameters tab provides editable inputs, validates contract bounds and
+generates the governance Safe transaction. It displays release settings separately
+from live on-chain values and quote status. The reserve recipient remains fixed;
+changing that address requires replacing the module. Publisher confirmations and
+hedge tolerance are service configuration, separate from the four contract limits.
+
 ### LighterEurUsdOracle (historical — venue not adopted)
 
 `LighterEurUsdOracle` was deployed on 2026-07-17 as the candidate market oracle for a second hedge venue and upgraded to 1.0.1 in the 2026-08-26 bundle; on 2026-09-01 the Lighter venue was ruled out for good, so the proxy stays deployed and **inert** (no router slot, no consumer) as a historical record and no activation is planned. Like the other oracle proxies it is plain UUPS controlled by `UPGRADER_ROLE` (Safe direct, no timelock), and its upgrade script (`scripts/deployment/UpgradeLighterOracle.s.sol`, `UPGRADE_ACTION=deploy-only` then `record`) follows the pattern described above — kept only so the inert deployment can be maintained if ever required.

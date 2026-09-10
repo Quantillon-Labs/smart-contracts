@@ -28,6 +28,8 @@ import {IExternalStakingVault} from "../interfaces/IExternalStakingVault.sol";
 import {IStQEUROFactory} from "../interfaces/IStQEUROFactory.sol";
 import {IstQEURO} from "../interfaces/IstQEURO.sol";
 import {FeeCollector} from "./FeeCollector.sol";
+import {IExecutionPricing} from "../interfaces/IExecutionPricing.sol";
+import {ExecutionPricingLibrary} from "../libraries/ExecutionPricingLibrary.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {StakingYieldLibrary} from "../libraries/StakingYieldLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -120,10 +122,18 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.11";
+        return "1.2.0";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
+
+    /// @notice Collateralization is below the minimum required to mint.
+    /// @dev Included in the vault ABI for errors propagated by its linked pricing library.
+    error InsufficientCollateralization();
+
+    /// @notice Minting requires available liquidity from an active hedger.
+    /// @dev Included in the vault ABI for errors propagated by its linked pricing library.
+    error NoActiveHedgerLiquidity();
 
     // =============================================================================
     // CONSTANTS - Roles and identifiers
@@ -886,11 +896,9 @@ contract QuantillonVault is
      * @custom:oracle Uses the supplied live EUR/USD price for the collateralization gate.
      */
     function _enforceMintEligibility(uint256 eurUsdPrice) internal view {
-        if (lastValidEurUsdPrice == 0) revert CommonErrorLibrary.NotInitialized();
-        if (address(hedgerPool) == address(0) || !hedgerPool.hasActiveHedger()) {
-            revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-        }
-        if (!_canMintAtPrice(eurUsdPrice)) revert CommonErrorLibrary.InsufficientCollateralization();
+        ExecutionPricingLibrary.enforceMintEligibility(
+            IERC20(address(qeuro)), hedgerPool, lastValidEurUsdPrice, eurUsdPrice, minCollateralizationRatioForMinting
+        );
     }
 
     /**
@@ -910,17 +918,7 @@ contract QuantillonVault is
     function _enforcePriceDeviation(uint256 eurUsdPrice) internal {
         if (devModeEnabled) return;
 
-        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
-            eurUsdPrice,
-            lastValidEurUsdPrice,
-            MAX_PRICE_DEVIATION,
-            lastPriceUpdateBlock,
-            MIN_BLOCKS_BETWEEN_UPDATES
-        );
-        if (shouldRevert) {
-            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-            revert CommonErrorLibrary.ExcessiveSlippage();
-        }
+        ExecutionPricingLibrary.enforceDeviation(eurUsdPrice, lastValidEurUsdPrice, lastPriceUpdateBlock);
     }
 
     /**
@@ -943,13 +941,9 @@ contract QuantillonVault is
      */
     function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 minQeuroOut)
         internal
-        view
         returns (uint256 fee, uint256 netAmount, uint256 qeuroToMint)
     {
-        fee = usdcAmount.mulDiv(mintFee, 1e18);
-        netAmount = usdcAmount - fee;
-        qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
-        if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        return ExecutionPricingLibrary.mint(executionPricing, usdcAmount, mintFee, eurUsdPrice, minQeuroOut);
     }
 
     /**
@@ -978,16 +972,10 @@ contract QuantillonVault is
         uint256 eurUsdPrice,
         uint256 minRatio
     ) internal view {
-        uint256 currentSupply = qeuro.totalSupply();
-        uint256 collateralBeforeMint = _getTotalCollateralWithAccruedYield();
-        uint256 projectedSupply = currentSupply + qeuroToMint;
-        uint256 projectedCollateral = collateralBeforeMint + netAmount;
-        uint256 projectedBackingRequirement = projectedSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        if (projectedBackingRequirement == 0) revert CommonErrorLibrary.InvalidAmount();
-        uint256 projectedCollateralizationRatio = projectedCollateral.mulDiv(1e20, projectedBackingRequirement);
-        if (projectedCollateralizationRatio < minRatio) {
-            revert CommonErrorLibrary.InsufficientCollateralization();
-        }
+        ExecutionPricingLibrary.enforceCollateralization(
+            _getTotalCollateralWithAccruedYield() + netAmount,
+            qeuro.totalSupply() + qeuroToMint, eurUsdPrice, minRatio
+        );
     }
 
     /**
@@ -1043,6 +1031,8 @@ contract QuantillonVault is
 
         // INTERACTIONS
         usdc.safeTransferFrom(payer, address(this), usdcAmount);
+        uint256 executionSpread = usdcAmount - fee - netAmount;
+        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
         _routeProtocolFees(fee, "minting");
         qeuro.mint(qeuroRecipient, qeuroToMint);
 
@@ -1131,14 +1121,8 @@ contract QuantillonVault is
 
         // Normal mode redemption
         // Calculate USDC to return using validated oracle price
-        uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
-        usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
-
-        // Calculate fees before slippage check so minUsdcOut applies to the actual net payout
-        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
-        uint256 netUsdcToReturn = usdcToReturn - fee;
-
-        if (netUsdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        (uint256 usdcToReturn, uint256 netUsdcToReturn, uint256 fee) =
+            ExecutionPricingLibrary.redeem(executionPricing, qeuroAmount, redemptionFee, eurUsdPrice, minUsdcOut);
 
         // Check if total available USDC (vault + Aave principal + accrued Aave yield) is sufficient.
         uint256 totalAvailable = _getTotalCollateralWithAccruedYield();
@@ -1235,6 +1219,8 @@ contract QuantillonVault is
         // INTERACTIONS
         qeuro.burn(redeemer, qeuroAmount);
         usdc.safeTransfer(redeemer, netUsdcToReturn);
+        uint256 executionSpread = usdcToReturn - netUsdcToReturn - fee;
+        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
         _routeProtocolFees(fee, "redemption");
     }
 
@@ -1444,7 +1430,6 @@ contract QuantillonVault is
      * @custom:oracle None
      */
     function _transferLiquidationFees(uint256 fee) internal {
-        if (fee == 0) return;
         _routeProtocolFees(fee, "liquidation");
     }
 
@@ -2488,24 +2473,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle interaction.
      */
     function _routeProtocolFees(uint256 fee, string memory sourceType) internal {
-        if (fee == 0) return;
-
-        uint256 hedgerReserveShare = fee.mulDiv(hedgerRewardFeeSplit, 1e18);
-        uint256 collectorShare = fee - hedgerReserveShare;
-
-        if (hedgerReserveShare > 0) {
-            if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
-            usdc.safeIncreaseAllowance(address(hedgerPool), hedgerReserveShare);
-            hedgerPool.fundRewardReserve(hedgerReserveShare);
-        }
-
-        if (collectorShare > 0) {
-            if (feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
-            usdc.safeIncreaseAllowance(feeCollector, collectorShare);
-            FeeCollector(feeCollector).collectFees(address(usdc), collectorShare, sourceType);
-        }
-
-        emit ProtocolFeeRouted(sourceType, fee, hedgerReserveShare, collectorShare);
+        ExecutionPricingLibrary.routeFees(usdc, fee, hedgerRewardFeeSplit, hedgerPool, feeCollector, sourceType);
     }
 
     
@@ -2555,18 +2523,7 @@ contract QuantillonVault is
             return 0;
         }
 
-        // Get current QEURO supply for denominator calculation
-        uint256 currentQeuroSupply = qeuro.totalSupply();
-        if (currentQeuroSupply == 0) {
-            return 0;
-        }
-
-        if (eurUsdPrice == 0) return 0;
-        uint256 backingRequirement = currentQeuroSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        if (backingRequirement == 0) return 0;
-
-        uint256 totalCollateral = _getTotalCollateralWithAccruedYield();
-        ratio = (totalCollateral * 1e20) / backingRequirement;
+        return ExecutionPricingLibrary.collateralizationRatio(IERC20(address(qeuro)), eurUsdPrice);
     }
     
     /**
@@ -2895,6 +2852,32 @@ contract QuantillonVault is
     /// @notice Recipient of the hedger funding share routed during yield distribution.
     /// @dev Falls back to `treasury` when unset (address(0)).
     address internal hedgerYieldRecipient;
+
+    /// @notice Optional volume-dependent execution pricing; appended for proxy storage compatibility.
+    /// @dev Zero before coordinated activation. All ordinary mint/redeem routes use this module.
+    IExecutionPricing public executionPricing;
+
+    /// @notice Emitted when governance configures the execution pricing module.
+    event ExecutionPricingConfigured(address indexed module);
+
+    /**
+     * @notice Configure the execution pricing module while settlement is paused.
+     * @dev Existing admission must be fully acknowledged before changing modules.
+     * @param module Vault-bound module, or zero to deactivate after reconciliation.
+     * @custom:security Governance only; cannot discard outstanding admission.
+     * @custom:validation Requires paused vault, correct module binding and zero pending exposure.
+     * @custom:state-changes Updates executionPricing.
+     * @custom:events ExecutionPricingConfigured.
+     * @custom:errors Propagates access, pause, binding or pending-exposure errors.
+     * @custom:reentrancy Calls trusted read-only module checks.
+     * @custom:access GOVERNANCE_ROLE while paused.
+     * @custom:oracle No price read.
+     */
+    function configureExecutionPricing(address module) external onlyRole(GOVERNANCE_ROLE) whenPaused {
+        ExecutionPricingLibrary.validateConfiguration(executionPricing, module);
+        executionPricing = IExecutionPricing(module);
+        emit ExecutionPricingConfigured(module);
+    }
 
     /**
      * @notice Toggles dev mode to disable price caching requirements

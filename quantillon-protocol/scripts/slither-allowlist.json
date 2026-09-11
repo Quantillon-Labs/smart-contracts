@@ -1,5 +1,11 @@
 [
   {
+    "check": "reentrancy-no-eth",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_creditVaultYield",
+    "reason": "Both callers (creditVaultYield and harvestAndDistributeVaultYield) hold nonReentrant throughout pricing admission and settlement. The linked pricing library calls the configured module; the deployed module has no mutable external callbacks. Price-cache initialization is governance-only. MintExecutionBoundaryAudit explicitly tests adversarial module callbacks into both yield entrypoints, public minting, and initializePriceCache. The flagged internal helper cannot be entered externally."
+  },
+  {
     "check": "unused-return",
     "file": "src/core/QuantillonVault.sol",
     "function": "_computeMintAmounts",

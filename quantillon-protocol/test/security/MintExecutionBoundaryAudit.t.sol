@@ -6,6 +6,34 @@ import {ExecutionPricing} from "../../src/oracle/ExecutionPricing.sol";
 import {TokenErrorLibrary} from "../../src/libraries/TokenErrorLibrary.sol";
 import {CommonErrorLibrary as Errors} from "../../src/libraries/CommonErrorLibrary.sol";
 
+/// @dev An adversarial module checks callback boundaries while a yield mint is in progress.
+contract YieldReentryProbe {
+    address public immutable vault;
+    uint256 private immutable vaultId;
+    bool public callbacksChecked;
+
+    constructor(address vault_, uint256 vaultId_) { vault = vault_; vaultId = vaultId_; }
+
+    function consumeMint(uint256 budget, uint256 ref) external returns (uint256 q, uint256 backing) {
+        require(msg.sender == vault);
+        bytes4 guarded = bytes4(keccak256("ReentrancyGuardReentrantCall()"));
+        _reject(abi.encodeWithSignature("creditVaultYield(uint256,uint256)", vaultId, 1e6), guarded);
+        _reject(abi.encodeWithSignature("harvestAndDistributeVaultYield(uint256)", vaultId), guarded);
+        _reject(abi.encodeWithSignature("mintQEUROToVault(uint256,uint256,uint256)", 1e6, 0, 0), guarded);
+        _reject(
+            abi.encodeWithSignature("initializePriceCache(uint256)", ref),
+            bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)"))
+        );
+        callbacksChecked = true;
+        return (budget * 1e30 / ref, budget);
+    }
+
+    function _reject(bytes memory data, bytes4 expected) private {
+        (bool ok, bytes memory result) = vault.call(data);
+        require(!ok && result.length >= 4 && bytes4(result) == expected, "unexpected callback outcome");
+    }
+}
+
 /// @notice Regression coverage for public mint routes and yield execution admission.
 /// @dev Real vault, token, UserPool, stQEURO and pricing module; mocked oracle, venue and hedger integration.
 contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest {
@@ -287,4 +315,27 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         assertEq(pricing.admittedBuy(), 100e18);
         assertEq(usdc.balanceOf(address(pricing)), 1e6);
     }
+
+    function _probeYieldReentry(bool harvest) internal {
+        _prepare(200e18);
+        YieldReentryProbe probe = new YieldReentryProbe(address(vault), VAULT_ID);
+        vm.startPrank(admin);
+        vault.pause();
+        vault.configureExecutionPricing(address(probe));
+        vault.unpause();
+        vm.stopPrank();
+        if (harvest) {
+            mockAaveVault.setAccruedYield(108e6);
+            vm.prank(admin);
+            vault.harvestAndDistributeVaultYield(VAULT_ID);
+        } else {
+            _fundYield(108e6);
+            vm.prank(admin);
+            vault.creditVaultYield(VAULT_ID, 108e6);
+        }
+        assertTrue(probe.callbacksChecked());
+    }
+
+    function test_Audit_YieldAdmissionCannotReenterVault() public { _probeYieldReentry(false); }
+    function test_Audit_HarvestAdmissionCannotReenterVault() public { _probeYieldReentry(true); }
 }

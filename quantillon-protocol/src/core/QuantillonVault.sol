@@ -122,7 +122,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.2.0";
+        return "1.2.1";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -1760,6 +1760,7 @@ contract QuantillonVault is
     /**
      * @notice Credits harvested user yield into a specific stQEURO vault as real QEURO backing.
      * @dev Converts harvested user-side USDC into newly minted QEURO sent directly to the target stQEURO vault.
+     *      Configured execution pricing applies after the yield fee; execution costs are paid from the yield.
      * @param vaultId Vault identifier whose stQEURO series receives the compounded yield.
      * @param usdcAmount Amount of harvested USDC allocated to users for this vault.
      * @return qeuroMinted Net QEURO minted into the stQEURO vault.
@@ -1770,7 +1771,7 @@ contract QuantillonVault is
      * @custom:errors Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
      * @custom:reentrancy Guarded by `nonReentrant`.
      * @custom:access Restricted to addresses with `YIELD_DISTRIBUTOR_ROLE`.
-     * @custom:oracle Requires fresh validated EUR/USD and USDC/USD oracle reads.
+     * @custom:oracle Requires validated EUR/USD and fresh execution depth/capacity when pricing is enabled.
      */
     // slither-disable-next-line reentrancy-benign
     function creditVaultYield(uint256 vaultId, uint256 usdcAmount)
@@ -1790,6 +1791,7 @@ contract QuantillonVault is
      * @dev Shared core used by `creditVaultYield` (after pulling USDC from the caller) and by
      *      `harvestAndDistributeVaultYield` (after realizing adapter yield into this contract).
      *      Assumes `usdcAmount` USDC is already held by this contract; performs no transfer-in.
+     *      Reserves execution exposure before minting and excludes execution costs from reference backing.
      * @param vaultId Vault identifier whose stQEURO series receives the compounded yield.
      * @param usdcAmount Amount of already-held USDC to convert into stQEURO backing.
      * @return qeuroMinted Net QEURO minted into the stQEURO vault.
@@ -1800,7 +1802,7 @@ contract QuantillonVault is
      * @custom:errors Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
      * @custom:reentrancy Must be invoked from a `nonReentrant` external entrypoint.
      * @custom:access Internal.
-     * @custom:oracle Requires fresh validated EUR/USD and USDC/USD oracle reads.
+     * @custom:oracle Requires validated EUR/USD and fresh execution depth/capacity when pricing is enabled.
      */
     // slither-disable-next-line reentrancy-benign
     function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns (uint256 qeuroMinted) {
@@ -1818,13 +1820,18 @@ contract QuantillonVault is
         _enforceMintEligibility(eurUsdPrice);
         _enforcePriceDeviation(eurUsdPrice);
 
-        uint256 feeUsdc = usdcAmount.percentageOf(IstQEURO(stToken).yieldFee());
-        uint256 netUsdcAmount = usdcAmount - feeUsdc;
-        qeuroMinted = netUsdcAmount.mulDiv(1e30, eurUsdPrice);
+        // The yield fee is in basis points; the shared mint calculation takes an
+        // 18-decimal fee fraction. Yield does not also pay the public mint fee.
+        uint256 yieldFeeBps = IstQEURO(stToken).yieldFee();
+        if (yieldFeeBps > 10_000) revert CommonErrorLibrary.PercentageTooHigh();
+        (uint256 feeUsdc, uint256 netUsdcAmount, uint256 executionQeuro) = ExecutionPricingLibrary.mint(
+            executionPricing, usdcAmount, yieldFeeBps * 1e14, eurUsdPrice, 0
+        );
+        qeuroMinted = executionQeuro;
         if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
 
         // Yield crediting adds fully-backed collateral (1:1), so gate on a 100% floor
-        // rather than the 105% mint floor so yield stays distributable
+        // rather than the public mint floor so yield stays distributable
         // when protocol CR sits at the minting equilibrium.
         _enforceProjectedCollateralizationFloor(netUsdcAmount, qeuroMinted, eurUsdPrice, 100e18);
 
@@ -1838,6 +1845,8 @@ contract QuantillonVault is
         if (feeUsdc > 0) {
             usdc.safeTransfer(treasury, feeUsdc);
         }
+        uint256 executionSpread = usdcAmount - feeUsdc - netUsdcAmount;
+        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
         qeuro.mint(stToken, qeuroMinted);
     }
 

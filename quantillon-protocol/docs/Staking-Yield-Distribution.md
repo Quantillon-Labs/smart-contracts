@@ -1,7 +1,10 @@
 # Staking Yield Distribution
 
 How yield reaches stQEURO stakers: accrual model, the three-way split, the on-chain functions,
-parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**; the live vault is **v1.1.11** (which added loss-aware valuation of external-vault collateral).
+parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**.
+Version **v1.2.1** applies execution pricing and capacity admission to yield minting. This describes
+the source implementation; `audits/2026-09-11-mint-execution/REMEDIATION.md` in the source repository
+tracks validation and the pending production upgrade.
 
 > Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
 > [stQEUROFactory](./stQEUROFactory.md) ·
@@ -94,10 +97,25 @@ the distribution policy. Implemented by all three adapters (Aave / Morpho / Meta
 the excess over `principalDeposited`; leaves principal in the strategy.
 
 ### `QuantillonVault.creditVaultYield(uint256 vaultId, uint256 usdcAmount)`
-`YIELD_DISTRIBUTOR_ROLE`. Pulls `usdcAmount` USDC from the caller and mints the equivalent QEURO
-(at the EUR/USD oracle price, minus the stQEURO `yieldFee`) directly into the stQEURO contract,
-raising the share price. Reverts (`NotInitialized`) if the vault has no shares yet. Internally this
-shares its core with `harvestAndDistributeVaultYield` (which supplies already-held USDC).
+`YIELD_DISTRIBUTOR_ROLE`. Pulls `usdcAmount` USDC from the caller, deducts the stQEURO `yieldFee`,
+and consumes a mint quote from the configured execution-pricing module. QEURO is minted directly
+into the stQEURO contract, raising the share price. The public mint fee is not additionally charged.
+Reverts (`NotInitialized`) if the vault has no shares yet. Internally this shares its core with
+`harvestAndDistributeVaultYield` (which supplies already-held USDC).
+
+With execution pricing enabled, yield mints use the same published ask depth, freshness checks,
+impact limits, and outstanding-capacity budget as public mints. Admission is reserved atomically
+before minting. The EUR/USD oracle still determines reference backing and collateralization:
+
+```
+userShare = yieldFeeToTreasury + referenceBacking + executionSpreadToPricingModule
+```
+
+For example, 109 USDC of yield after fees at a 1.09 USD/EUR execution price and a 1.08 reference
+price mints 100 QEURO, adds 108 USDC of reference backing, and transfers 1 USDC to the pricing
+module. If governance has disabled the module, the existing reference-price conversion applies.
+Any failed admission or settlement reverts the whole transaction, including harvest withdrawals,
+funding-clock updates, fee transfers, and execution counters.
 
 ### `QuantillonVault.harvestConfig(uint256 vaultId)`
 View returning `(fundingRateBps, hedgerRecipient, lastHarvest)` for a vault id — a single read replacing
@@ -129,10 +147,12 @@ the per-field getters (the config vars are `internal`) to keep the contract unde
   deposit/withdraw/harvest.
 
 **Events**
-- `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)` — the only event for this flow. The setters do not emit (the param-change events were removed to fit EIP-170).
+- `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)` — the distribution split before the user share pays yield fees and execution costs. Execution admission also emits the pricing module's events. The setters do not emit (the param-change events were removed to fit EIP-170).
 
 **Common reverts:** `InvalidVault` (zero/inactive id), `ZeroAddress` (unset adapter/recipient),
-`NotInitialized` (crediting a vault with zero stQEURO supply), `AboveLimit` (funding rate > cap).
+`NotInitialized` (crediting a vault with zero stQEURO supply), `AboveLimit` (funding rate > cap),
+`InvalidOraclePrice` (stale execution observations), and `InsufficientBalance` (insufficient
+execution depth or capacity within the configured impact limit).
 
 ---
 
@@ -156,7 +176,7 @@ Deferred (documented, **not** built):
 ## 7. Operator runbook
 
 One-time, per environment:
-1. Deploy the current `QuantillonVault` implementation (v1.1.11 live; upgrade via Safe + TimelockController).
+1. Deploy and verify the intended `QuantillonVault` implementation; upgrade via Safe + TimelockController.
 2. `setFundingRateAnnualBps(0)` for commercial launch, or `50` for staging.
 3. `setHedgerYieldRecipient(<hedger pool / treasury>)` (optional; defaults to treasury).
 4. Grant `YIELD_DISTRIBUTOR_ROLE` to the operator (Safe or keeper EOA).
@@ -166,11 +186,17 @@ One-time, per environment:
 Recurring:
 - Call `harvestAndDistributeVaultYield(vaultId)` on a schedule (keeper or admin action). The first
   call anchors the funding clock; subsequent calls accrue funding over the elapsed interval.
+- With execution pricing enabled, the user share must fit fresh published depth and available
+  capacity. Retry after refreshed data or restored capacity when admission fails. Harvesting is
+  atomic and does not partially distribute an oversized yield amount.
 
 Verify after a run:
 - `VaultYieldDistributed` event values sum to `realizedYield`.
 - `stQEURO.convertToAssets(1e18)` increased (share price up).
 - `hedgerYieldRecipient` and `treasury` USDC balances increased by their shares.
+- For a nonzero user share with execution pricing enabled, admitted buy exposure increased by
+  the minted QEURO and the module received the execution spread; only reference backing was
+  added to the vault's collateral accounting.
 - `adapter.totalUnderlying() ≈ principalUsdcByVaultId[vaultId]` (yield realized out of the strategy).
 
 ---
@@ -181,3 +207,5 @@ Verify after a run:
   `_creditVaultYield`, `setFundingRateAnnualBps`, `setHedgerYieldRecipient`.
 - `src/interfaces/IExternalStakingVault.sol` + `src/core/vaults/{Aave,Morpho,MetaMorpho}StakingVaultAdapter.sol` — `harvestYieldToVault`.
 - `test/StQEUROYieldDistribution.t.sol` — distribution at 0.5% funding (hedger-first, share-price rise, treasury split, conservation, access control).
+- `test/security/MintExecutionBoundaryAudit.t.sol` — yield/public admission sharing, execution costs, fee isolation, and atomic rollback.
+- `test/security/MintExecutionLiveForkAudit.t.sol` — deployed v1.2.0 reproduction and v1.2.1 upgrade regressions on the pinned Base fork.

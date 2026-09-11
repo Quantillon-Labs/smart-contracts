@@ -10,6 +10,8 @@ See `CLAUDE.md` → "Documentation Site" for full details.
 
 ## Transaction artifact publication
 
+Audit records are private. Never commit or publish an `audits/` directory or its contents. Keep audit artifacts outside public repositories and web-served directories.
+
 Never publish transaction JSON files or Safe import payloads in the dapp's public assets, `releases/`, or other public file hosting. This is an explicit user prohibition. Keep staging artifacts local and private, and submit reviewed proposals directly to the intended Safe transaction service when authorized. Do not create public transaction download links.
 
 ## Contract versioning (traceability)

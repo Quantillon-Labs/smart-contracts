@@ -3,8 +3,7 @@
 How yield reaches stQEURO stakers: accrual model, the three-way split, the on-chain functions,
 parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**.
 Version **v1.2.1** applies execution pricing and capacity admission to yield minting. This describes
-the source implementation; `audits/2026-09-11-mint-execution/REMEDIATION.md` in the source repository
-tracks validation and the pending production upgrade.
+the source implementation; check the deployed vault's `version()` to determine whether it is active.
 
 > Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
 > [stQEUROFactory](./stQEUROFactory.md) ·

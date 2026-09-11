@@ -93,3 +93,5 @@ optimizer_runs = 0
 via_ir = true
 bytecode_hash = "none"
 cbor_metadata = false
+# forge doc compiles before rendering; contract references do not need tests.
+skip = ["*/test/**", "*/script/**"]

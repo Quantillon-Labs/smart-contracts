@@ -18,16 +18,44 @@ on:
     - cron: "0 3 * * *"
 
 jobs:
+  test-shards:
+    name: Tests (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    defaults:
+      run:
+        working-directory: quantillon-protocol
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
+      - name: Run test shard
+        run: bash scripts/ci-test-shard.sh ${{ matrix.shard }} 4
+
   test:
     name: Build & Test (gating)
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule'
+    needs: test-shards
+    if: always() && github.event_name != 'schedule'
 
     defaults:
       run:
         working-directory: quantillon-protocol
 
     steps:
+      - name: Require all test shards to pass
+        env:
+          TEST_RESULT: ${{ needs.test-shards.result }}
+        run: test "$TEST_RESULT" = success
+        working-directory: .
+
       - name: Checkout repository
         uses: actions/checkout@v7
 
@@ -38,9 +66,6 @@ jobs:
 
       - name: Build contracts
         run: make build
-
-      - name: Run tests
-        run: make test
 
       # Upgrade-safety gate on every PR: EIP-170 size (vault/UserPool sit at ~99%),
       # append-only storage-layout diff, and additive-only ABI/selector diff.

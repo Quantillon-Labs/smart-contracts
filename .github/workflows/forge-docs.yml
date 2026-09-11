@@ -28,10 +28,11 @@ jobs:
         with:
           version: v1.7.1
 
-      - name: Build contracts (optional but recommended)
+      - name: Build production contracts
         run: |
           cd quantillon-protocol
-          forge build --sizes
+          # Docs need production artifacts, not optimized test harnesses.
+          make build
 
       - name: Install mdBook
         run: |
@@ -44,6 +45,7 @@ jobs:
 
       - name: Generate docs with correct GitHub URLs
         env:
+          FOUNDRY_PROFILE: docs
           RUST_MIN_STACK: 50331648
         run: |
           cd quantillon-protocol
@@ -74,12 +76,9 @@ jobs:
           if timeout 600 forge doc --out docs; then
               echo "Documentation markdown generated successfully"
           else
-              echo "Documentation generation failed, creating fallback..."
-              mkdir -p docs/src
-              echo "# Quantillon Protocol" > docs/src/README.md
-              echo "Documentation generation failed. Please check the contract complexity." >> docs/src/README.md
-              echo "# Summary" > docs/src/SUMMARY.md
-              echo "- [Home](README.md)" >> docs/src/SUMMARY.md
+              echo "Documentation generation failed; refusing to publish an incomplete book." >&2
+              git remote set-url origin "$ORIGINAL_REMOTE"
+              exit 1
           fi
 
           # COPY custom markdown files into docs/src/ so mdBook builds them with navigation
@@ -182,13 +181,10 @@ jobs:
           if [ -d "docs/book" ] && [ "$(ls -A docs/book)" ]; then
               echo "✅ Documentation generated successfully!"
               echo "Documentation files:"
-              find docs/book -name "*.html" | head -10
+              find docs/book -name "*.html" | sed -n '1,10p'
           else
-              echo "❌ Documentation generation failed!"
-              echo "Creating emergency fallback documentation..."
-              mkdir -p docs/book
-              echo '<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>' > docs/book/index.html
-              echo "Emergency fallback documentation created"
+              echo "Documentation output is empty; refusing to publish." >&2
+              exit 1
           fi
           
 

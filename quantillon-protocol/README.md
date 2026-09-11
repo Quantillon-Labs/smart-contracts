@@ -104,7 +104,7 @@ make test
 make slither
 ```
 
-**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions, `.github/workflows/quantillon-protocol-tests.yml` at the repository root) runs `make build && make test` on push and pull requests to main, the upgrade-safety gate (`make analyze-contract-sizes check-storage-layout check-abi check-version-bump`) on every PR, and a nightly heavy suite. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See the `test/` directory for test structure and coverage.
+**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions, `.github/workflows/quantillon-protocol-tests.yml` at the repository root) splits all test files across four runners on push and pull requests to main. Reproduce one shard with `bash scripts/ci-test-shard.sh 0 4` (indices 0–3); each uses the normal test profile and fuzz/invariant settings. The gating job requires every shard to pass, then runs `make build` and the upgrade-safety gate (`make analyze-contract-sizes check-storage-layout check-abi check-version-bump`). The nightly heavy suite runs `make ci`. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See the `test/` directory for test structure and coverage.
 
 ## 🚀 Deployment
 

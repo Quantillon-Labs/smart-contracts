@@ -14,11 +14,11 @@
     "deployedAt": 1788624961
   },
   "HedgerPool": {
-    "deployedAt": 1788844869,
-    "gitCommit": "3c70e0f1",
-    "implementation": "0xFa59D71b0b892500B8be7B9BaD48dA083064F1e3",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "version": "1.0.9"
+    "implementation": "0xb6Ee88A705f0D12c81F542FE0391F5c151e67e8b",
+    "version": "1.1.0",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "HyperliquidEurUsdOracle": {
     "deployedAt": 1783062491,
@@ -43,24 +43,24 @@
   },
   "QEUROToken": {
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
-    "implementation": "0xAF7a1da8567E938cDD4f5c9832D437C666956eDe",
-    "version": "1.0.6",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementation": "0x179d092f392e739f3BA162e7830d87229f4151B0",
+    "version": "1.0.7",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "QTIToken": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0xcaa06f891adb999ca5efafc55268ac7b91786597",
     "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
-    "version": "1.0.2"
+    "implementation": "0xdc6444D8533A41d5095793C79C9Fd3091ed5bAAf",
+    "version": "1.0.3",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "QuantillonVault": {
-    "deployedAt": 1786967249,
-    "gitCommit": "4e0422a",
-    "implementation": "0x6Cd5446DD0293757C01B7B6685E101138B0F4C56",
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "version": "1.1.11"
+    "implementation": "0xd16E5A2B079b81CAF7755efF01340819DDb69d65",
+    "version": "1.2.0",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "SlippageStorage": {
     "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
@@ -87,10 +87,10 @@
   },
   "UserPool": {
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "implementation": "0xcE77eF777FF46F3Aa28F52108A9572c82A0c7E18",
-    "version": "1.0.3",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementation": "0xa5e5DB9083e1fa412174278F742fd744A3543811",
+    "version": "1.0.4",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "YieldShift": {
     "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
@@ -100,23 +100,47 @@
     "deployedAt": 1788624961
   },
   "stQEUROFactory": {
-    "deployedAt": 1783321653,
-    "gitCommit": "d2c3566",
-    "implementation": "0x0e5629093c5644dfdeec6b2cd19b8e769fef1900",
     "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
-    "version": "1.0.1"
+    "implementation": "0x2Ea4fD4082d8EA7Fd3f7EeF6B658728428Af7e6f",
+    "version": "1.0.2",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "stQEUROToken": {
-    "deployedAt": 1784185015,
-    "gitCommit": "4c661c4",
-    "implementation": "0x315F62A1f7aAF80D3a79824fdae2FB01E7a89c07",
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
-    "version": "1.0.3"
+    "implementation": "0xeaa70fa9AEAbeA8Af1E8F452553Be974b7283cFD",
+    "version": "1.0.4",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789109671
   },
   "YieldShiftCalculationLibrary": {
     "implementation": "0xbC559A4ADe6f5AA0Ec8bcf281BbbEd9D9B7f2847",
     "version": "1.0.2",
     "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
     "deployedAt": 1788624961
+  },
+  "ExecutionPricing": {
+    "implementation": "0x57fBdf17a55D8F1d89E244D8D88937a867FfD063",
+    "version": "1.1.0",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789054079
+  },
+  "ExecutionPricingLibrary": {
+    "implementation": "0x1aDc6233eEF1531c89043D40dC48E8a07301e8fa",
+    "version": "1.0.1",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789053993
+  },
+  "HedgerPoolLogicLibrary": {
+    "implementation": "0x1302c521AE49e6b36639Ee62B2C181dB76c3629E",
+    "version": "1.0.1",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789054021
+  },
+  "HedgerPoolRedeemMathLibrary": {
+    "implementation": "0x703E8872A5f84eC9151b3e57EE8fc71AEe2e9479",
+    "version": "1.0.1",
+    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
+    "deployedAt": 1789054029
   }
 }

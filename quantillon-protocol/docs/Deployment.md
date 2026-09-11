@@ -122,9 +122,13 @@ size and reproducible verification inputs before deploying implementations.
 
 #### Execution-pricing launch configuration
 
-The Base release candidate uses the following configuration, recorded in
-`deployments/8453/execution-pricing-candidate.json`. These are deployment settings;
-the active module and its getters remain the source of truth for live values.
+The combined Base release activated on 11 September 2026 at 06:54:31 UTC in
+[the Safe execution transaction](https://basescan.org/tx/0xe44a00334ce1d49c7bb8f7e31e2e31237b55029d4d7e5b7ee4c2030e137604d4).
+The active pricing module is `0x57fBdf17a55D8F1d89E244D8D88937a867FfD063`.
+The following launch configuration is recorded in
+`deployments/8453/execution-pricing-candidate.json`; the active module's getters
+remain the source of truth for current values. Verified deployed versions are
+recorded in `deployments/8453/versions.json`.
 
 | Setting | Selected value | Purpose |
 | --- | --- | --- |

@@ -7,9 +7,10 @@ cd "$(dirname "$0")/.."
 index="${1:-}"
 count="${2:-}"
 if [[ ! "$index" =~ ^[0-9]+$ || ! "$count" =~ ^[1-9][0-9]*$ ]] || (( index >= count )); then
-    echo "Usage: bash scripts/ci-test-shard.sh INDEX COUNT (0 <= INDEX < COUNT)" >&2
+    echo "Usage: bash scripts/ci-test-shard.sh INDEX COUNT [FORGE_ARGS...] (0 <= INDEX < COUNT)" >&2
     exit 2
 fi
+shift 2
 
 mapfile -t files < <(find test -type f -name '*.t.sol' | LC_ALL=C sort)
 selected=()
@@ -29,4 +30,4 @@ pattern=$(IFS=,; echo "${selected[*]}")
 if (( ${#selected[@]} > 1 )); then
     pattern="{$pattern}"
 fi
-FOUNDRY_PROFILE=test forge test --match-path "$pattern"
+FOUNDRY_PROFILE=test forge test --match-path "$pattern" "$@"

@@ -16,12 +16,12 @@ on:
   schedule:
     # Nightly heavy CI run (UTC)
     - cron: "0 3 * * *"
+  workflow_dispatch:
 
 jobs:
   test-shards:
     name: Tests (shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule'
     strategy:
       fail-fast: false
       matrix:
@@ -37,13 +37,29 @@ jobs:
         with:
           version: v1.7.1
       - name: Run test shard
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: bash scripts/ci-test-shard.sh ${{ matrix.shard }} 4
+      - name: Run test shard with gas report
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -o pipefail
+          mkdir -p scripts/results/gas-shards
+          bash scripts/ci-test-shard.sh ${{ matrix.shard }} 4 --gas-report \
+            | tee scripts/results/gas-shards/shard-${{ matrix.shard }}.txt
+      - name: Upload gas report
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-report-shard-${{ matrix.shard }}
+          path: quantillon-protocol/scripts/results/gas-shards/shard-${{ matrix.shard }}.txt
+          if-no-files-found: error
+          retention-days: 7
 
   test:
     name: Build & Test (gating)
     runs-on: ubuntu-latest
     needs: test-shards
-    if: always() && github.event_name != 'schedule'
+    if: always() && (github.event_name == 'push' || github.event_name == 'pull_request')
 
     defaults:
       run:
@@ -77,13 +93,20 @@ jobs:
   ci-heavy:
     name: Full CI Suite (nightly)
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    needs: test-shards
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
 
     defaults:
       run:
         working-directory: quantillon-protocol
 
     steps:
+      - name: Require all test shards to pass
+        env:
+          TEST_RESULT: ${{ needs.test-shards.result }}
+        run: test "$TEST_RESULT" = success
+        working-directory: .
+
       - name: Checkout repository
         uses: actions/checkout@v7
 
@@ -109,5 +132,26 @@ jobs:
         with:
           node-version: 24
 
-      - name: Run full CI suite (Makefile)
-        run: make ci
+      - name: Download gas reports from passing test shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gas-report-shard-*
+          path: ${{ runner.temp }}/gas-shards
+          merge-multiple: true
+
+      - name: Combine gas reports
+        env:
+          GAS_SHARDS_DIR: ${{ runner.temp }}/gas-shards
+          FORGE_GAS_REPORT_FILE: ${{ runner.temp }}/forge-gas-report.txt
+        run: |
+          for shard in 0 1 2 3; do
+            test -s "$GAS_SHARDS_DIR/shard-$shard.txt"
+          done
+          cat "$GAS_SHARDS_DIR"/shard-{0,1,2,3}.txt > "$FORGE_GAS_REPORT_FILE"
+
+      # The shards already ran every test with gas reporting. ci-base retains
+      # all analysis and upgrade gates without compiling the full test suite again.
+      - name: Run full CI analysis (Makefile)
+        env:
+          FORGE_GAS_REPORT_FILE: ${{ runner.temp }}/forge-gas-report.txt
+        run: make ci-base

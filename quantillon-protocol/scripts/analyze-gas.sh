@@ -136,9 +136,18 @@ fi
 print_section "Forge Gas Report"
 echo "🔍 Generating detailed gas report (single comprehensive run)..."
 
-# Run forge test with gas report ONCE and save full output
+# CI supplies reports from passing test shards to avoid compiling the entire
+# optimized test suite in one process. Local runs still generate their own report.
 GAS_REPORT_FILE="$OUTPUT_DIR/forge-gas-report-full.txt"
-if FOUNDRY_PROFILE=test forge test --gas-report 2>&1 | tee "$GAS_REPORT_FILE"; then
+if [ -n "${FORGE_GAS_REPORT_FILE:-}" ]; then
+    if [ ! -s "$FORGE_GAS_REPORT_FILE" ]; then
+        print_error "Supplied Forge gas report is missing or empty: $FORGE_GAS_REPORT_FILE"
+        exit 1
+    fi
+    cp "$FORGE_GAS_REPORT_FILE" "$GAS_REPORT_FILE"
+    print_success "Reusing Forge gas reports from passing test shards"
+    generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE")\n\n"
+elif (set -o pipefail; FOUNDRY_PROFILE=test forge test --gas-report 2>&1 | tee "$GAS_REPORT_FILE"); then
     print_success "Forge gas report generated and cached"
     if [ -f "$GAS_REPORT_FILE" ]; then
         generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE")\n\n"
@@ -147,8 +156,9 @@ if FOUNDRY_PROFILE=test forge test --gas-report 2>&1 | tee "$GAS_REPORT_FILE"; t
         generate_report "FORGE GAS REPORT\n---------------\n Gas report command succeeded but output file was not found at $GAS_REPORT_FILE\n\n"
     fi
 else
-    print_warning "Gas report generation had issues (partial results may be available)"
+    print_error "Gas report generation failed"
     generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE" 2>/dev/null || echo "Failed to generate gas report")\n\n"
+    exit 1
 fi
 
 # 3. Slither Analysis (if available)

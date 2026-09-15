@@ -28,6 +28,9 @@ UPDATE=0
 # Deployed contracts (16) + linked libraries (10). Inlined/internal-only libraries have no
 # standalone bytecode; their changes alter the consuming contract's bytecode and are caught there.
 TARGETS=(
+  "src/libraries/HedgerPoolMigrationLibrary.sol:HedgerPoolMigrationLibrary"
+  "src/libraries/HedgerPoolAccountingLibrary.sol:HedgerPoolAccountingLibrary"
+  "src/automation/QuantillonRebalancerModule.sol:QuantillonRebalancerModule"
   "src/core/QEUROToken.sol:QEUROToken"
   "src/core/QuantillonVault.sol:QuantillonVault"
   "src/core/QTIToken.sol:QTIToken"

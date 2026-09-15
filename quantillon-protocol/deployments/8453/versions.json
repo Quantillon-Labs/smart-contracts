@@ -15,10 +15,11 @@
   },
   "HedgerPool": {
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "implementation": "0xb6Ee88A705f0D12c81F542FE0391F5c151e67e8b",
-    "version": "1.1.0",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementation": "0x2eD9cde36EEc48eFd346d259459d9fF6649D372A",
+    "version": "1.2.0",
+    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
+    "deployedAt": 1789467405,
+    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
   },
   "HyperliquidEurUsdOracle": {
     "deployedAt": 1783062491,
@@ -132,15 +133,31 @@
     "deployedAt": 1789053993
   },
   "HedgerPoolLogicLibrary": {
-    "implementation": "0x1302c521AE49e6b36639Ee62B2C181dB76c3629E",
+    "implementation": "0x767dbC308Ac204f6Ee634FD41bC34Fc8D213A6bB",
     "version": "1.0.1",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789054021
+    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
+    "deployedAt": 1789467405,
+    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
   },
   "HedgerPoolRedeemMathLibrary": {
-    "implementation": "0x703E8872A5f84eC9151b3e57EE8fc71AEe2e9479",
+    "implementation": "0x98aDE99C5247fBeD8c2d5F99B0ffC71744713e3B",
     "version": "1.0.1",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789054029
+    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
+    "deployedAt": 1789467405,
+    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+  },
+  "HedgerPoolAccountingLibrary": {
+    "implementation": "0xfD53eF20135a21b97682fC979d9B1AbA7Ee209D0",
+    "version": "1.0.0",
+    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
+    "deployedAt": 1789467405,
+    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+  },
+  "HedgerPoolMigrationLibrary": {
+    "implementation": "0x19e7C6A93Cd5bC048A7a683220b87F55F35e6FE6",
+    "version": "1.0.0",
+    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
+    "deployedAt": 1789467405,
+    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
   }
 }

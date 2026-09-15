@@ -4,6 +4,51 @@ pragma solidity 0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IHedgerPool {
+    struct HedgerMigrationRequest {
+        uint8 action;
+        address newHedger;
+        uint64 expiresAt;
+        bytes32 proposalId;
+    }
+    struct HedgerMigrationProposal {
+        bytes32 id;
+        address previousHedger;
+        address newHedger;
+        uint64 expiresAt;
+        uint64 openBlock;
+        bool accepted;
+    }
+
+    /**
+     * @notice Proposes (0), accepts (1), executes (2), or cancels (3) a live ownership transfer.
+     * @dev Owner proposes, recipient accepts, governance executes while paused; any of these may cancel.
+     * @param request Action and exact proposal binding; proposing uses a zero proposal ID.
+     * @custom:security Requires all three authorities; proposals expire within seven days.
+     * @custom:validation Requires active cost-basis accounting and a recipient contract without pool state.
+     * @custom:state-changes Updates proposal state or moves ownership and pool reward claims.
+     * @custom:events HedgerMigrationProposed, HedgerMigrationAccepted, HedgerMigrationExecuted, HedgerMigrationCancelled, SingleHedgerRotationApplied.
+     * @custom:errors Reverts on invalid authority, proposal, expiry, pause or recipient state.
+     * @custom:reentrancy Protected by the pool guard; no token transfers.
+     * @custom:access Current hedger, receiving contract or governance according to action.
+     * @custom:oracle No oracle calls; position economics remain intact.
+     */
+    function manageHedgerMigration(HedgerMigrationRequest calldata request) external;
+
+    /**
+     * @notice Returns the current transfer proposal, or zeros if none exists.
+     * @dev Dedicated proposal namespace does not change existing position storage.
+     * @return proposal Current ownership transfer proposal.
+     * @custom:security Read only.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy No external state changes.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
+    function hedgerMigration() external view returns (HedgerMigrationProposal memory proposal);
+
     /**
      * @notice Activates remaining-cost accounting on a paused, fully settled proxy.
      * @dev Fresh deployments activate during initialization; an upgraded proxy activates once.

@@ -159,5 +159,25 @@
     "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
     "deployedAt": 1789467405,
     "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+  },
+  "PublicationBatcher": {
+    "implementation": "0x11303364768efAd0Ce349448cE8a10e932EB44Cb",
+    "version": "1.0.0",
+    "deployedAt": 1789481761,
+    "sourceSha256": "778558012668147aea6209f471793b44de2a238f65f0efa431d825915df150e6",
+    "transactionHash": "0x14ecbe6f5c82801a2edb586b2d6d3a3ce957f6e96f499e0ed32325c97b8399f8",
+    "blockNumber": 51346207,
+    "runtimeKeccak": "0x7ae6fa61477c9fb6a12b43f136a28e70b895af93d3151f2660b0b0e9a968e5ca",
+    "note": "Non-upgradeable batcher built from reviewed local sources; source hash identifies the deployed code. Writer grants require separate Safe execution."
+  },
+  "ReportPublicationBatcher": {
+    "implementation": "0x9916e2732fFb63310dfb47933D9E2b440522794e",
+    "version": "1.0.0",
+    "deployedAt": 1789485303,
+    "sourceSha256": "7e899156eefd7cfc134423c9e2b7a28b3d89cb012b331638f32915f2c8d1b165",
+    "transactionHash": "0x90fc1b3e2ea0524b6c9fc2f8a2f916fe462093a5c78397c88419883e55482377",
+    "blockNumber": 51347978,
+    "runtimeKeccak": "0x267958d3a847fe4977bcdb543b49b9fa20052ba95bb0fec55ead591a7ddd3bd5",
+    "note": "Non-upgradeable batcher built from reviewed local sources; source hash identifies the deployed code. Writer grants require separate Safe execution."
   }
 }

@@ -52,5 +52,53 @@
     "file": "src/core/SecureUpgradeable.sol",
     "function": "applyEmergencyDisableSecureUpgrades",
     "reason": "The emergency-disable path intentionally enforces its 24-hour activation deadline."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/core/HedgerPool.sol",
+    "function": "claimHedgingRewards",
+    "reason": "The function returns the linked accounting library's three reward amounts directly to the caller through a tuple return. Slither misidentifies the direct tuple return as unused, the same pattern as QuantillonVault._computeMintAmounts. The library performs every state update itself; HedgerPoolInterestRewardAccrual and HedgerPool tests assert the returned amounts."
+  },
+  {
+    "check": "cyclomatic-complexity",
+    "file": "src/libraries/HedgerPoolMigrationLibrary.sol",
+    "function": "manage",
+    "reason": "manage() is the single dispatcher of the Propose/Accept/Execute/Cancel ownership-transfer state machine. Each action is a linear run of authorization, exact proposal binding, freshness and recipient-state checks that must read and update one shared proposal record; splitting them across functions would duplicate the invariants without removing any. The library is a deployed linked unit, so a refactor is a versioned redeploy, not a static-analysis edit. HedgerMigration exercises every action and rejection path (authorities, pause, expiry, replaced proposals, dirty recipient, closed position, exact binding)."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/libraries/HedgerPoolMigrationLibrary.sol",
+    "function": "manage",
+    "reason": "Proposal expiry is deliberately time-based: a proposal must expire within seven days of creation, and Accept/Execute reject it once block.timestamp passes expiresAt. The timestamp is used for freshness only; a few seconds of validator drift cannot create or extend authority because every step still requires the proposer, the recipient and paused governance. HedgerMigration tests the expired and replaced-proposal rejections."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "_authorize",
+    "reason": "Request deadlines (at most 15 minutes ahead), the per-action cooldown and the daily usage bucket intentionally compare block.timestamp. The comparisons rate-limit an already whitelisted operator and reject stale requests; they are not used for randomness or ordering. QuantillonRebalancerModule tests cover nonce, deadline and cooldown handling and the day-boundary usage accounting."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "windowUsage",
+    "reason": "Derives the current day from block.timestamp to decide whether the previous day's spend still counts toward the rolling 48-hour window limit. The bucket boundary only affects how quickly the rate limit relaxes; the operator cannot exceed maxWindowUsdc by shifting a few seconds. Covered by the midnight and reconfiguration usage tests in QuantillonRebalancerModule."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "_authorize",
+    "reason": "positions() is the public HedgePosition getter and returns the full struct tuple. The destructuring intentionally reads only hedger and isActive to verify the Safe still owns the live position; the other components are irrelevant to the authorization check. Slither reports any partially consumed tuple as unused."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "_checkWithdrawalFloors",
+    "reason": "positions() and coreParams() are public struct getters returning full tuples. The floor check intentionally reads only qeuroBacked (the EUR liability) and minMarginRatio (the contract floor); the other components are not needed. Slither reports partially consumed tuples as unused."
+  },
+  {
+    "check": "low-level-calls",
+    "file": "src/oracle/PublicationBatcher.sol",
+    "function": "publishTogether",
+    "reason": "Deliberate raw call forwarding so destination revert data propagates unchanged. Both targets are immutable, code-checked at deployment and distinct from the writer; calldata must start with the pinned updateSlippageBatch/publish selectors; no ETH or delegatecall is involved; and only the immutable writer may call, so a destination cannot reenter. The contract is deployed non-upgradeable. PublicationBatcher tests cover exact forwarding, revert propagation and rollback, reentrancy and selector restrictions."
   }
 ]

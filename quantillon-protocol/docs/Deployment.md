@@ -55,6 +55,34 @@ scripts/deployment/build-verifiable-impl.sh QuantillonVault \
   --deploy
 ```
 
+### Base deployment reconciliation — September 20, 2026
+
+HedgerPool **1.3.0** is active at proxy `0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A`,
+using implementation `0x8d83F7463CbFfd188Df7bC4302900151e273435a` and
+HedgerPoolAccountingLibrary **1.1.0** at `0x4FDA47d379f00f849808500DD52b5106825ce5f1`.
+Both implementations were deployed at Base block **51,522,127**. The pool upgrade and
+one-time legacy correction executed together at block **51,548,748**, September 20 at
+06:47:23 UTC, in [the completed Safe transaction](https://basescan.org/tx/0x5fd056f9c7f48dd36e6b158a749d6a483e0137882279e3540f1e4d778c9c41c9).
+
+The correction assigned **0.388448 USDC** of existing unallocated backing to the current
+Safe hedger position's margin without transferring tokens or minting QEURO. The correction
+marker is already set; this is a record of completed execution, not a pending operation.
+The reconciled source and regression tests are recorded in commit
+`37d2381fbe0ed73bc28160fa46d335f6a73de265` (committed after deployment).
+
+The same reconciliation corrected the stale QuantillonVault manifest entry to **1.2.1**,
+implementation `0xdA2eF3B9CCD2b819806b29A5Ac65abCf689E2227`, activated at block **51,202,101**
+on September 12 at 06:12:29 UTC in
+[its existing upgrade transaction](https://basescan.org/tx/0x94a7ad653db940378407de75e4b5cfd5aafb1222ac0dc5c1c3609f0a7f0d5f44).
+The source is commit `03d8120181ea919dddc3ea7cd203b4793e0999cf`; no new vault upgrade was performed.
+
+For all three units, a fresh Solidity 0.8.24 verification-unit build (`via_ir`, optimizer
+runs 0) reproduced the complete deployed runtime after applying the live library addresses
+and constructor immutables, checked at block **51,571,753**. The manifest records the runtime
+code hashes and separates implementation deployment from proxy activation. All 31 hedger
+accounting/correction regression tests passed, including the pinned Base fork; ABI, storage
+layout, contract size, and version checks passed.
+
 ### HedgerPool remaining-cost accounting activation
 
 HedgerPool v1.1.0 values `filledVolume` as the original USDC cost of the remaining

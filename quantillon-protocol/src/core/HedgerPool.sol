@@ -70,7 +70,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.2.0";
+        return "1.3.0";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -220,6 +220,13 @@ contract HedgerPool is
     ///      economically indistinguishable from zero while 30 orders of magnitude below real supply.
     uint256 public constant QEURO_DUST_THRESHOLD = 1e12;
 
+    // Preserve the error ABI after moving the unchanged closure guard to the linked library.
+    error PositionClosureRestricted();
+    error LegacyCorrectionUnauthorized();
+    error LegacyCorrectionStateMismatch();
+    error LegacyCorrectionAlreadyApplied();
+
+    event LegacyMarginCorrected(bytes32 indexed correctionId, address indexed hedger, uint256 amount);
     event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
@@ -726,7 +733,7 @@ contract HedgerPool is
         _finalizePosition(hedger, positionId, position, cachedMargin, cachedPositionSize);
 
         // VALIDATIONS / INTERACTIONS
-        _validatePositionClosureSafety(cachedMargin);
+        HedgerPoolAccountingLibrary.validateClosure(vault, cachedMargin);
         uint256 currentPrice = _getValidOraclePrice();
         pnl = HedgerPoolLogicLibrary.calculatePnL(cachedFilledVolume, cachedQeuroBacked, currentPrice);
 
@@ -1405,24 +1412,23 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies
      */
     function setSingleHedger(address hedger) external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        singleHedger = HedgerPoolAccountingLibrary.assignSingleHedger(positions[1], hedger);
+    }
 
-        // Allow an immediate bootstrap assignment when no hedger exists yet.
-        if (singleHedger == address(0)) {
-            singleHedger = hedger;
-            emit SingleHedgerRotationApplied(address(0), hedger);
-            return;
-        }
-
-        // Single-hedger redesign: reassignment is only safe when the current hedger has no
-        // active backing position. The fixed positionId 1 must be free, otherwise a new hedger
-        // opening would overwrite live exposure, double-count totals, and strand margin.
-        if (positions[1].isActive) revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
-
-        address previousHedger = singleHedger;
-        singleHedger = hedger;
-        emit SingleHedgerRotationApplied(previousHedger, hedger);
+    /**
+     * @notice Credits the verified July 2026 legacy residue to the existing Safe position once.
+     * @dev Fixed Base pool, beneficiary, opening block and 388448 micro-USDC; no token movement.
+     * @custom:security Linked helper requires governance and a paused pool, and records replay protection.
+     * @custom:validation Requires initialized accounting, matching totals and the exact unallocated backing.
+     * @custom:state-changes Increases position/global margin and nominal exposure only.
+     * @custom:events LegacyMarginCorrected.
+     * @custom:errors Reverts on unauthorized, repeated or mismatched correction.
+     * @custom:reentrancy Protected by nonReentrant; external reads are static.
+     * @custom:access Governance only, enforced by the linked helper.
+     * @custom:oracle No price dependency; original-cost accounting is used.
+     */
+    function correctLegacyMargin() external nonReentrant {
+        (totalMargin, totalExposure) = HedgerPoolAccountingLibrary.correctLegacyMargin(positions[1]);
     }
 
     /**
@@ -1824,28 +1830,4 @@ contract HedgerPool is
         }
     }
 
-    /**
-     * @notice Validates that closing a position won't cause protocol undercollateralization
-     * @dev Checks if protocol remains collateralized after removing this position's margin
-     * @param positionMargin Amount of margin in the position being closed
-     * @custom:security Internal function - prevents protocol undercollateralization from position closures
-     * @custom:validation Checks vault is set, QEURO supply is above dust, protocol is collateralized, and remaining margin > positionMargin
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors Reverts with PositionClosureRestricted if closing would cause undercollateralization
-     * @custom:reentrancy Not applicable - view function, no state changes
-     * @custom:access Internal - only callable within contract
-     * @custom:oracle Not applicable - uses vault's collateralization check
-     */
-    function _validatePositionClosureSafety(uint256 positionMargin) internal view {
-        if (address(vault) == address(0)) return;
-        // If no QEURO is outstanding, closing is always safe (nothing to collateralize).
-        // Compared against QEURO_DUST_THRESHOLD rather than zero: redemption/unstake round-down
-        // can strand a few wei of supply that nobody can ever redeem (e.g. in a stQEURO vault
-        // whose share supply is zero), and an exact-zero check would dead-lock the sole hedger's
-        // exit forever while the outstanding value rounds to zero USDC.
-        if (vault.totalMinted() <= QEURO_DUST_THRESHOLD) return;
-        (bool isCollateralized, uint256 reportedMargin) = vault.isProtocolCollateralized();
-        if (!isCollateralized || reportedMargin <= positionMargin) revert HedgerPoolErrorLibrary.PositionClosureRestricted();
-    }
 }

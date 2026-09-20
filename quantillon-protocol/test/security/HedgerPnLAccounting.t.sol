@@ -218,4 +218,31 @@ contract HedgerPnLAccountingTest is HedgerVaultRegressionTest {
         _prepare();
         assertEq(_position().filledVolume, 1100e6);
     }
+    function test_Accounting_ClosedProfitCannotPolluteNextPosition() public {
+        _prepare();
+        _price(1.09e8);
+        vm.prank(user);
+        vault.redeemQEURO(1000e18, 1090e6);
+        vm.prank(hedger);
+        hedgerPool.exitHedgePosition(1);
+        assertEq(vault.getTotalUsdcAvailable(), 0);
+        vm.roll(block.number + 10);
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(200e6, 10);
+        HedgerPool.HedgePosition memory p = _position();
+        assertEq(p.margin, 200e6);
+        assertEq(p.filledVolume, 0);
+        assertEq(p.qeuroBacked, 0);
+        assertEq(p.realizedPnL, 0);
+        assertEq(p.unrealizedPnL, 0);
+        assertEq(hedgerPool.totalMargin(), 200e6);
+        assertEq(hedgerPool.totalFilledExposure(), 0);
+        assertEq(vault.getTotalUsdcAvailable(), 200e6);
+        vm.roll(block.number + 10);
+        uint256 beforeBalance = usdc.balanceOf(hedger);
+        vm.prank(hedger);
+        hedgerPool.exitHedgePosition(1);
+        assertEq(usdc.balanceOf(hedger) - beforeBalance, 200e6);
+        assertEq(vault.getTotalUsdcAvailable(), 0);
+    }
 }

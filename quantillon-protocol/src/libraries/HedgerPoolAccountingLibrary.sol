@@ -4,6 +4,8 @@ pragma solidity 0.8.24;
 import {HedgerPool} from "../core/HedgerPool.sol";
 import {HedgerPoolLogicLibrary} from "./HedgerPoolLogicLibrary.sol";
 import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
+import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
+import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -11,9 +13,118 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 /// @title HedgerPoolAccountingLibrary
 /// @notice Existing pool accounting extracted to keep HedgerPool deployable.
-/// @dev Delegatecalled with explicit storage references; owns no storage namespace.
+/// @dev Delegatecalled with explicit storage references; correction replay protection uses a dedicated hashed namespace.
 library HedgerPoolAccountingLibrary {
     using SafeERC20 for IERC20;
+
+    bytes32 private constant LEGACY_CORRECTION_SLOT = keccak256("quantillon.storage.LegacyMarginCorrection.20260701");
+    bytes32 private constant LEGACY_CORRECTION_ID = keccak256("base:48054036:hedger-profit:388448");
+    address private constant LEGACY_POOL = 0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A;
+    address private constant LEGACY_SAFE = 0x1d7fF432a93d0085Fb69474c7E567f859829e6cd;
+    uint256 private constant LEGACY_CREDIT = 388448;
+
+    error LegacyCorrectionUnauthorized();
+    error LegacyCorrectionStateMismatch();
+    error LegacyCorrectionAlreadyApplied();
+    event LegacyMarginCorrected(bytes32 indexed correctionId, address indexed hedger, uint256 amount);
+    event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
+
+    /**
+     * @notice Assigns the configured owner with the existing inactive-position restriction.
+     * @dev Extracted unchanged to preserve EIP-170 headroom for the correction entry point.
+     * @param position Fixed position one, used only to read its active flag.
+     * @param next Requested owner.
+     * @return Configured owner after assignment.
+     * @custom:security Helper enforces the existing governance role.
+     * @custom:validation Nonzero recipient and no active position when replacing an owner.
+     * @custom:state-changes None; wrapper stores returned owner.
+     * @custom:events SingleHedgerRotationApplied.
+     * @custom:errors InvalidAddress, HedgerHasActivePosition.
+     * @custom:reentrancy No external calls.
+     * @custom:access Linked library only.
+     * @custom:oracle No oracle dependency.
+     */
+    function assignSingleHedger(HedgerPool.HedgePosition storage position, address next) external returns (address) {
+        HedgerPool pool = HedgerPool(address(this));
+        if (!pool.hasRole(keccak256("GOVERNANCE_ROLE"), msg.sender)) revert CommonErrorLibrary.NotAuthorized();
+        address current = pool.singleHedger();
+        if (next == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        if (current != address(0) && position.isActive) revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
+        emit SingleHedgerRotationApplied(current, next);
+        return next;
+    }
+
+    /**
+     * @notice Reclassifies exactly the verified historical residue as current Safe margin once.
+     * @dev No deposit, withdrawal, mint, cost-basis change or realized-PnL adjustment occurs.
+     *      Exact surplus and opening-block checks reject drift or reuse for another position.
+     * @param position The pool's fixed active position one.
+     * @return nextTotalMargin Global margin after correction.
+     * @return nextTotalExposure Global nominal exposure after correction.
+     * @custom:security Fixed chain/pool/owner/position and governance, pause and replay guards.
+     * @custom:validation Verifies global totals, supply/backing dust and exact existing surplus.
+     * @custom:state-changes Updates margin, position size and namespaced one-time marker.
+     * @custom:events LegacyMarginCorrected.
+     * @custom:errors LegacyCorrectionUnauthorized, LegacyCorrectionStateMismatch, LegacyCorrectionAlreadyApplied.
+     * @custom:reentrancy Pool wrapper is nonReentrant; external calls are static reads.
+     * @custom:access Linked library invoked by the fixed Base pool through delegatecall.
+     * @custom:oracle Independent of oracle price and cached valuation.
+     */
+    function correctLegacyMargin(HedgerPool.HedgePosition storage position)
+        external returns (uint256 nextTotalMargin, uint256 nextTotalExposure)
+    {
+        HedgerPool pool = HedgerPool(address(this));
+        if (!pool.hasRole(keccak256("GOVERNANCE_ROLE"), msg.sender)) revert LegacyCorrectionUnauthorized();
+        bytes32 slot = LEGACY_CORRECTION_SLOT;
+        uint256 applied;
+        assembly ("memory-safe") { applied := sload(slot) }
+        if (applied != 0) revert LegacyCorrectionAlreadyApplied();
+        if (block.chainid != 8453 || address(this) != LEGACY_POOL || !pool.paused() || !pool.costBasisAccountingInitialized()
+            || pool.singleHedger() != LEGACY_SAFE || position.hedger != LEGACY_SAFE
+            || !position.isActive || position.openBlock != 51160486
+            || pool.totalMargin() != uint256(position.margin)
+            || pool.totalExposure() != uint256(position.positionSize)
+            || pool.totalFilledExposure() != uint256(position.filledVolume)
+            || uint256(position.positionSize) != uint256(position.margin) * position.leverage) {
+            revert LegacyCorrectionStateMismatch();
+        }
+        IQuantillonVault vault = pool.vault();
+        uint256 supply = IERC20(vault.qeuro()).totalSupply();
+        if (supply < position.qeuroBacked || supply - position.qeuroBacked > 1e12
+            || vault.getTotalUsdcAvailable() != uint256(position.margin) + position.filledVolume + LEGACY_CREDIT) {
+            revert LegacyCorrectionStateMismatch();
+        }
+        nextTotalMargin = uint256(position.margin) + LEGACY_CREDIT;
+        nextTotalExposure = nextTotalMargin * position.leverage;
+        if (nextTotalMargin > type(uint96).max || nextTotalExposure > type(uint96).max) {
+            revert LegacyCorrectionStateMismatch();
+        }
+        assembly ("memory-safe") { sstore(slot, 1) }
+        position.margin = uint96(nextTotalMargin);
+        position.positionSize = uint96(nextTotalExposure);
+        emit LegacyMarginCorrected(LEGACY_CORRECTION_ID, LEGACY_SAFE, LEGACY_CREDIT);
+    }
+
+    /**
+     * @notice Preserves the pool's existing restriction on closing while users remain exposed.
+     * @dev Extracted unchanged; bounded QEURO dust is treated as an empty supply.
+     * @param vault Configured vault.
+     * @param positionMargin Closing position's recorded margin.
+     * @custom:security Read-only closure guard.
+     * @custom:validation Requires sufficient remaining hedger margin when QEURO is outstanding.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors PositionClosureRestricted.
+     * @custom:reentrancy External static reads only.
+     * @custom:access Linked library invoked by HedgerPool.
+     * @custom:oracle No price dependency.
+     */
+    function validateClosure(IQuantillonVault vault, uint256 positionMargin) external view {
+        if (address(vault) == address(0)) return;
+        if (vault.totalMinted() <= 1e12) return;
+        (bool isCollateralized, uint256 reportedMargin) = vault.isProtocolCollateralized();
+        if (!isCollateralized || reportedMargin <= positionMargin) revert HedgerPoolErrorLibrary.PositionClosureRestricted();
+    }
 
     /**
      * @notice Validates and applies the existing risk and fee configuration.
@@ -92,7 +203,7 @@ library HedgerPoolAccountingLibrary {
      * @custom:access Linked library helper.
      * @custom:oracle No oracle lookup.
      */
-    function version() external pure returns (string memory) { return "1.0.0"; }
+    function version() external pure returns (string memory) { return "1.1.0"; }
 
     /**
      * @notice Accrues interest into withdrawal escrow and claims external yield.

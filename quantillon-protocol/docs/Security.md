@@ -37,7 +37,7 @@ graph TB
     end
     
     subgraph "External Layer"
-        AE[Independent Audit]
+        AE[Internal AI-assisted Security Reviews]
         BB[Responsible Disclosure]
         MC[Monitoring & Alerting]
     end
@@ -153,7 +153,7 @@ A bug bounty program is **planned**; reward tiers and scope will be published on
 
 ### Audits
 
-The protocol underwent an independent security audit; the resulting on-chain remediation went live in July 2026.
+Quantillon Protocol has not yet been audited by an external security firm. It goes through recurring internal, AI-assisted security reviews; remediation from the first reviews went live in June and July 2026. The scope, limits and report commitment of every review are published at [security.quantillon.money](https://security.quantillon.money).
 
 ---
 

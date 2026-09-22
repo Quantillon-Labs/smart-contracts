@@ -157,6 +157,14 @@ execution, configuration calls and adapter migration. Scheduling must not change
 runtime addresses or pause production. Execution time is measured from the
 confirmed scheduling block, not proposal submission.
 
+Preserve the approved 24/7 market-oracle policy: leave the optional Chainlink
+EUR/USD cross-check disabled, assert `maxReferenceDivergenceBps == 0` before and
+after execution, and exclude its activation from the Safe payload. A stale
+Chainlink EUR/USD reference must not introduce a new mint/redeem stop. Keep the
+independent publisher cross-check recorded as an explicit security exception;
+cumulative drift protection is not a replacement for independent price validation.
+See [Oracle Architecture](./Oracle-Architecture.md#independent-reference-configuration).
+
 Inventory factory implementation templates and every registered staking series
 separately from the factory proxy. Update the template even when existing series
 already use the desired token implementation. Include funded non-upgradeable

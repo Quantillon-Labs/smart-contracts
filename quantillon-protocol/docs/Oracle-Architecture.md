@@ -37,6 +37,15 @@ Safe (Multisig)          0x1d7fF432a93d0085Fb69474c7E567f859829e6cd
 
 All contracts are verified on Basescan. Proxy addresses are the stable reference; implementation addresses and live `version()` values are tracked in `deployments/8453/versions.json`.
 
+The active publication route uses ReportPublicationBatcher v1.0.0 at
+`0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB`, bound to SlippageStorage and
+ExecutionPricing v1.3.2 at `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897`.
+Its immutable writer is the existing publisher account. The batcher itself needs
+SlippageStorage `WRITER_ROLE` plus ExecutionPricing `WRITER_ROLE` and `REPORTER_ROLE`.
+Price, depth and reconciled capacity are independently accepted; check each target's
+events and timestamps. Depth/capacity have a 60-second maximum age, separate from
+the market oracle's price-staleness limit. See [Deployment](./Deployment.md#current-base-release-22-september-2026).
+
 ## Data flow
 
 ```

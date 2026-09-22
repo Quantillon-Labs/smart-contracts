@@ -36,11 +36,18 @@
     }
   },
   "HyperliquidEurUsdOracle": {
-    "deployedAt": 1783062491,
-    "gitCommit": "c256259",
-    "implementation": "0x4A2cd252bC5989D8b50785855B344f7D5B9e0184",
     "proxy": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
-    "version": "1.0.2"
+    "implementation": "0x177416BE9C62150cf5000c543B77cf557e50D4f8",
+    "version": "1.0.5",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790016937,
+    "implementationDeploymentBlock": 51613795,
+    "activationBlock": 51636550,
+    "activationTransactionHash": "0x9b5cafa67ca8ba72d33cdc4f396efa4b332dc3162d7ff9b724c34d2ebf0b7666",
+    "activatedAt": 1790062447,
+    "runtimeCodeHash": "0x718262a69e004f8a0f39343da2b1d7b80d1ac074df0635092dae64b44d45e867",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "LighterEurUsdOracle": {
     "proxy": "0xcd53182a430d48Be0f414CCA022ABA5d05903536",
@@ -72,17 +79,23 @@
   },
   "QuantillonVault": {
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "implementation": "0xdA2eF3B9CCD2b819806b29A5Ac65abCf689E2227",
-    "version": "1.2.1",
-    "gitCommit": "03d8120181ea919dddc3ea7cd203b4793e0999cf",
-    "deployedAt": 1789193549,
-    "runtimeCodeHash": "0x6b7ea36991a78009179a6ca5fc6305e34bae5d07a5008fcd495e9d6751eec3d3",
-    "bytecodeVerifiedAtBlock": 51571753,
-    "implementationDeployedAt": 1789146607,
-    "implementationDeploymentBlock": 51178630,
-    "activationBlock": 51202101,
-    "activationTransactionHash": "0x94a7ad653db940378407de75e4b5cfd5aafb1222ac0dc5c1c3609f0a7f0d5f44",
-    "note": "Reconciled on 2026-09-20 against deployed runtime bytecode using Solidity 0.8.24, via_ir, optimizer runs 0, live library links and constructor immutables. This records the existing 1.2.1 activation; no new vault upgrade was performed."
+    "implementation": "0x675BAe58A9132139534397d986EB14dc956540B5",
+    "version": "1.3.4",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790018319,
+    "implementationDeploymentBlock": 51614486,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x95ac28cf56376585f4f1f3e55e371b05bcd5baf749fad1c46f4ac9abedecd705",
+    "runtimeRecordedAtBlock": 51658693,
+    "linkedLibraries": {
+      "StakingYieldLibrary": "0x350c8fB213559F5e100C5613290cB6C441adb56e",
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c",
+      "ExecutionPricingLibrary": "0xf83FBC6315C16776ae6350800D732e7B27E92819",
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b"
+    },
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "SlippageStorage": {
     "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
@@ -130,10 +143,17 @@
   },
   "stQEUROToken": {
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
-    "implementation": "0xeaa70fa9AEAbeA8Af1E8F452553Be974b7283cFD",
-    "version": "1.0.4",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementation": "0x3b7407cd5F284D708159025f1823d561B34838CC",
+    "version": "1.2.4",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790016593,
+    "implementationDeploymentBlock": 51613623,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x4ff6138d2bbb109dcbdfe64a69470862ec158ad5243f6da9bcfa58c32585e657",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "YieldShiftCalculationLibrary": {
     "implementation": "0xbC559A4ADe6f5AA0Ec8bcf281BbbEd9D9B7f2847",
@@ -142,16 +162,31 @@
     "deployedAt": 1788624961
   },
   "ExecutionPricing": {
-    "implementation": "0x57fBdf17a55D8F1d89E244D8D88937a867FfD063",
-    "version": "1.1.0",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789054079
+    "implementation": "0xFA894CD2e0C8030c95925FfF3b8206F397e0D897",
+    "version": "1.3.2",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790014439,
+    "implementationDeploymentBlock": 51612546,
+    "deploymentTransactionHash": "0x411e737bc8fa2d2995fd1460842d32aca2ca1900cc04a27aa4c3d17e954915a9",
+    "activationBlock": 51636550,
+    "activationTransactionHash": "0x9b5cafa67ca8ba72d33cdc4f396efa4b332dc3162d7ff9b724c34d2ebf0b7666",
+    "activatedAt": 1790062447,
+    "runtimeCodeHash": "0x62a55e3669e57f25d34f258290e3e2ccfd2ef411e5b4d9e88fbda414f34b03e9",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "ExecutionPricingLibrary": {
-    "implementation": "0x1aDc6233eEF1531c89043D40dC48E8a07301e8fa",
-    "version": "1.0.1",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789053993
+    "implementation": "0xf83FBC6315C16776ae6350800D732e7B27E92819",
+    "version": "1.1.1",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790017613,
+    "implementationDeploymentBlock": 51614133,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x90afdd7abbc42feb30138a37efef72e5b053e141d783c196aa132d6493d46a1e",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "HedgerPoolLogicLibrary": {
     "implementation": "0x767dbC308Ac204f6Ee634FD41bC34Fc8D213A6bB",
@@ -189,23 +224,70 @@
     "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
   },
   "PublicationBatcher": {
-    "implementation": "0x11303364768efAd0Ce349448cE8a10e932EB44Cb",
+    "implementation": "0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE",
     "version": "1.0.0",
-    "deployedAt": 1789481761,
-    "sourceSha256": "778558012668147aea6209f471793b44de2a238f65f0efa431d825915df150e6",
-    "transactionHash": "0x14ecbe6f5c82801a2edb586b2d6d3a3ce957f6e96f499e0ed32325c97b8399f8",
-    "blockNumber": 51346207,
-    "runtimeKeccak": "0x7ae6fa61477c9fb6a12b43f136a28e70b895af93d3151f2660b0b0e9a968e5ca",
-    "note": "Non-upgradeable batcher built from reviewed local sources; source hash identifies the deployed code. Writer grants require separate Safe execution."
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790020523,
+    "implementationDeploymentBlock": 51615588,
+    "deploymentTransactionHash": "0xaeaaf72d2e39a31a62ac84ea7a623650de76778f4dd5890a6fffab8b19b92ed9",
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x8f34c09e807a3db1175ba9aff025419d6352ab035844728693ad6c42a1853daf",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "ReportPublicationBatcher": {
-    "implementation": "0x9916e2732fFb63310dfb47933D9E2b440522794e",
+    "implementation": "0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB",
     "version": "1.0.0",
-    "deployedAt": 1789485303,
-    "sourceSha256": "7e899156eefd7cfc134423c9e2b7a28b3d89cb012b331638f32915f2c8d1b165",
-    "transactionHash": "0x90fc1b3e2ea0524b6c9fc2f8a2f916fe462093a5c78397c88419883e55482377",
-    "blockNumber": 51347978,
-    "runtimeKeccak": "0x267958d3a847fe4977bcdb543b49b9fa20052ba95bb0fec55ead591a7ddd3bd5",
-    "note": "Non-upgradeable batcher built from reviewed local sources; source hash identifies the deployed code. Writer grants require separate Safe execution."
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790020571,
+    "implementationDeploymentBlock": 51615612,
+    "deploymentTransactionHash": "0xf7e1d84cc6f21907f5d561b63f6b5a874d77cc776bfa1cabc50a1bcef9ee044d",
+    "activationBlock": 51658431,
+    "activationTransactionHash": "0x1f5c32c62771f63fd53eb0c5a836445c6d46580310ef83a3ce0147def5878e62",
+    "activatedAt": 1790106209,
+    "runtimeCodeHash": "0xf23fd44129008d45eaec98ca11a02bfccdf603d353fe37efed77f4ad050d1dd3",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
+  },
+  "StakingYieldLibrary": {
+    "implementation": "0x350c8fB213559F5e100C5613290cB6C441adb56e",
+    "version": "1.3.2",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790016649,
+    "implementationDeploymentBlock": 51613651,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x4968ed5e6019c3876f58ffd68e9f933b49a54098e40134eb741fe2c291e06795",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
+  },
+  "TreasuryRecoveryLibrary": {
+    "implementation": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c",
+    "version": "1.0.1",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790018217,
+    "implementationDeploymentBlock": 51614435,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0xccee14f9b4736b0ddc045a4a8263431fbbb551c46f20c0e2ebfa438b7036b389",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
+  },
+  "SecureUpgradeLibrary": {
+    "implementation": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
+    "version": "1.0.1",
+    "sourceReferenceCommit": "6c2d547cacbbfca41035ffc114aff17632fbbc95",
+    "deployedAt": 1790016593,
+    "implementationDeploymentBlock": 51613623,
+    "activationBlock": 51658178,
+    "activationTransactionHash": "0x48f325946c2f52412a567df27651851eb967131d3d0b32cd6f49a8d273121955",
+    "activatedAt": 1790105703,
+    "runtimeCodeHash": "0x5dd0c18d9dd1c2f13772d5c8fa2c4f6a61d6b47c72c771e22a5f1390fd7ac153",
+    "runtimeRecordedAtBlock": 51658693,
+    "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   }
 }

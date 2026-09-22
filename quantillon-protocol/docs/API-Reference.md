@@ -38,6 +38,23 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The machine-readable 
 
 > Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0; the live router is v1.1.1) — switchable in one governance transaction via `switchOracle`. Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`); read it via `marketOracle()` (the pre-1.1.0 `storkOracle()` getter remains as a deprecated alias). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
 
+### Execution pricing and publication (Base, 22 September 2026)
+
+These contracts are deployed directly; use `QuantillonVault.executionPricing()`
+to resolve the active pricing module. The two batchers have immutable destination
+addresses and cannot be repointed to another pricing deployment.
+
+| Contract | Address | Version / role |
+| --- | --- | --- |
+| ExecutionPricing | `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897` | 1.3.2; active execution module |
+| PublicationBatcher | `0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE` | 1.0.0; price/depth route |
+| ReportPublicationBatcher | `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB` | 1.0.0; active price/depth/capacity route |
+
+The active report batcher holds `WRITER_ROLE` on SlippageStorage and ExecutionPricing,
+and `REPORTER_ROLE` on ExecutionPricing. See the [deployment guide](./Deployment.md#current-base-release-22-september-2026)
+for configuration and freshness checks. Live proxy versions are QuantillonVault
+1.3.4, vaultId-2 stQEUROToken 1.2.4, and HyperliquidEurUsdOracle 1.0.5.
+
 ### Governance & infrastructure
 
 | Contract | Address | Notes |

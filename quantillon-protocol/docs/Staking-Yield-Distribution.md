@@ -2,8 +2,11 @@
 
 How yield reaches stQEURO stakers: accrual model, the three-way split, the on-chain functions,
 parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**.
-Version **v1.2.1** applies execution pricing and capacity admission to yield minting. This describes
-the source implementation; check the deployed vault's `version()` to determine whether it is active.
+The Base deployment uses QuantillonVault **v1.3.4** and vaultId-2 stQEUROToken
+**v1.2.4** as of 22 September 2026. Yield conversion uses execution pricing and
+hedger-capacity admission with its separate collateralization gate. Check live
+`version()` values and the [deployment record](./Deployment.md#current-base-release-22-september-2026)
+when applying this guide to another deployment.
 
 > Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
 > [stQEUROFactory](./stQEUROFactory.md) ·

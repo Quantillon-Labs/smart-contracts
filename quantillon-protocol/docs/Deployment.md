@@ -104,13 +104,56 @@ alone leaves mint/redeem accounting, margin changes, normal exits, and effective
 queries blocked until activation. The generic upgrade script does not perform this
 governance activation call.
 
+### Current Base release (22 September 2026)
+
+The live versions and runtime hashes are recorded in `deployments/8453/versions.json`.
+Proxy addresses are unchanged. This record describes activated contracts; it does not
+mean every contract in the source tree is deployed at its latest version. Run
+`make check-deployed-versions` to identify other components needing a separate
+release. The active contracts in this release are QuantillonVault **1.3.4**,
+per-vault stQEUROToken **1.2.4**, HyperliquidEurUsdOracle **1.0.5**, and
+ExecutionPricing **1.3.2**. The vault links ExecutionPricingLibrary **1.1.1**,
+StakingYieldLibrary **1.3.2**, TreasuryRecoveryLibrary **1.0.1**, and
+SecureUpgradeLibrary **1.0.1**.
+
+| Component | Current address |
+| --- | --- |
+| ExecutionPricing | `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897` |
+| PublicationBatcher (price/depth) | `0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE` |
+| ReportPublicationBatcher (active publisher route) | `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB` |
+
+`QuantillonVault.executionPricing()` is authoritative for the active module.
+The local, gitignored `deployments/8453/addresses.json` and dapp
+`src/config/addresses.json` must agree with it. Preserve the zero-address
+`stQEUROToken` placeholder in those registries: resolve each live token through
+the factory; the manifest records the vaultId-2 proxy explicitly.
+
+Before switching publisher configuration, verify `writer()`, `priceStore()`, and
+`depthStore()` on the selected batcher. The active **ReportPublicationBatcher**
+needs all three grants: SlippageStorage `WRITER_ROLE`, ExecutionPricing
+`WRITER_ROLE`, and ExecutionPricing `REPORTER_ROLE`. A grant to PublicationBatcher
+or the publisher EOA does not confer permission on ReportPublicationBatcher.
+Set `EXECUTION_PRICING_ADDRESS`, `PUBLICATION_BATCHER_ADDRESS`, and
+`REPORT_PUBLICATION_BATCHER_ADDRESS` to the same deployment generation. Append
+both new batcher-to-module mappings to the indexer's `PUBLICATION_BATCHERS`;
+retain historical mappings for decoding older events.
+
+Verify accepted price, book and capacity events on chain, fresh observations,
+usable mint/redeem previews, token state and hedger reconciliation before opening
+the vault. Execution depth and capacity expire after **60 seconds** on this module;
+the batch heartbeat is `min(PUBLISHER_INTERVAL_S, maxAge / 2)` (30 seconds with
+the 60-second publisher interval). Partial price/depth reports may restore oracle
+health before capacity can be certified. Health endpoints alone do not prove that
+all reports were accepted. If the watchdog owns a pause, let its configured
+recovery checks complete before resuming operation.
+
 ### Coordinated core implementation release
 
 Deploy the coordinated core implementations from the release manifest. Read
 target versions from `version-baseline/` and live `versions.json`; do not reuse
 the historical version list in older runbooks.
-Link the vault to ExecutionPricingLibrary v1.0.1 and the pool to the two
-HedgerPool libraries listed above. Preserve each implementation's existing
+Link the vault using the library addresses recorded for its selected implementation
+in `versions.json`; preserve the pool library links recorded for that release. Preserve each implementation's existing
 TimeProvider constructor argument. Check the factory registry for all token
 proxies; the zero `stQEUROToken` entry in `addresses.json` is not an upgrade target.
 
@@ -155,7 +198,8 @@ size and reproducible verification inputs before deploying implementations.
 
 The combined Base release activated on 11 September 2026 at 06:54:31 UTC in
 [the Safe execution transaction](https://basescan.org/tx/0xe44a00334ce1d49c7bb8f7e31e2e31237b55029d4d7e5b7ee4c2030e137604d4).
-The active pricing module is `0x57fBdf17a55D8F1d89E244D8D88937a867FfD063`.
+That launch used `0x57fBdf17a55D8F1d89E244D8D88937a867FfD063`; the current
+module is listed in [Current Base release](#current-base-release-22-september-2026).
 The following launch configuration is recorded in
 `deployments/8453/execution-pricing-candidate.json`; the active module's getters
 remain the source of truth for current values. Verified deployed versions are

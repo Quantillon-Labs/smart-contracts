@@ -54,6 +54,14 @@ Chainlink and does not impose a calendar-based weekend shutdown. The off-hours
 setting selects a divergence limit, not an open/closed flag. The reference must
 still pass round, sequencer, timestamp and absolute-price checks.
 
+The approved coordinated release enables the strict reference check. A stale,
+unavailable, invalid or excessively divergent Chainlink EUR/USD reference makes
+the market oracle invalid and blocks minting and normal redemption, including on
+weekends. This availability tradeoff is intentional. Initial release settings are
+200 bps normal divergence, 300 bps off-hours divergence and 8,100 seconds maximum
+reference age; the independent probe's own checks remain authoritative. These are
+release targets until Safe execution; read live getters to determine activation.
+
 Configure the reference only after the Chainlink implementation exposes
 `peekEurUsdPrice()`. Read `maxReferenceDivergenceBps`,
 `maxReferenceDivergenceOffHoursBps`, and `maxReferenceAge` on chain: zero normal

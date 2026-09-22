@@ -157,6 +157,13 @@ execution, configuration calls and adapter migration. Scheduling must not change
 runtime addresses or pause production. Execution time is measured from the
 confirmed scheduling block, not proposal submission.
 
+The approved release includes the strict Chainlink EUR/USD cross-check:
+`setReferenceCheck(200, 300, 8100)`, after upgrading the independent reference
+probe. Verify all three values after execution and test that stale, unavailable
+and divergent references reject minting and normal redemption. This applies on
+weekends too; there is no stale-reference bypass. See
+[Oracle Architecture](./Oracle-Architecture.md#independent-reference-configuration).
+
 Inventory factory implementation templates and every registered staking series
 separately from the factory proxy. Update the template even when existing series
 already use the desired token implementation. Include funded non-upgradeable

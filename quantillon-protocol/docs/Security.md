@@ -110,6 +110,13 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 - Price bound validation
 - Circuit breaker mechanisms
 
+The approved coordinated release enables a strict independent Chainlink EUR/USD
+reference check. Invalid, unavailable, stale or excessively divergent reference
+data blocks minting and normal redemption, including on weekends. The release
+must verify both successful operation with valid prices and rejection with an
+invalid reference. Configuration targets and live-state checks are documented in
+[Oracle Architecture](./Oracle-Architecture.md#independent-reference-configuration).
+
 **Implementation**:
 ```solidity
 // QuantillonVault: an invalid oracle read is a hard stop for mint / redeem

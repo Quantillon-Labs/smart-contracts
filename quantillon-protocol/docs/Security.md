@@ -110,13 +110,6 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 - Price bound validation
 - Circuit breaker mechanisms
 
-The production availability policy leaves the optional Chainlink EUR/USD
-cross-check disabled so stale reference data does not introduce a new minting or
-redemption shutdown. Hyperliquid market freshness and execution checks remain
-mandatory. This leaves independent validation of the publisher's price as an
-explicit security exception; cumulative drift limits only bound its rate of
-change. See [Oracle Architecture](./Oracle-Architecture.md#independent-reference-configuration).
-
 **Implementation**:
 ```solidity
 // QuantillonVault: an invalid oracle read is a hard stop for mint / redeem

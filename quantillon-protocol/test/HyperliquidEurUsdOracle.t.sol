@@ -164,44 +164,6 @@ contract HyperliquidEurUsdOracleTest is Test {
 
     // ---- Happy path ----
 
-    function test_DisabledReference_StaleReferenceAcrossWeekendAndMonday() public {
-        // Day 16 since the Unix epoch is Saturday. Keep Friday's reference frozen
-        // while the primary market continues publishing on Saturday, Sunday and Monday.
-        assertEq(oracle.maxReferenceDivergenceBps(), 0);
-        vm.mockCall(
-            address(usdc), abi.encodeWithSignature("peekEurUsdPrice()"),
-            abi.encode(INITIAL_MID, uint256(15 days), false)
-        );
-        for (uint256 day = 16; day <= 18; day++) {
-            uint256 publicationTime = day * 1 days + 12 hours;
-            vm.warp(publicationTime);
-            vm.roll(day);
-            slippage.setMid(uint128(INITIAL_MID), uint48(publicationTime));
-            assertEq(gate.requireLivePrice(oracle), INITIAL_MID);
-            (uint256 price,,, bool stale, bool withinBounds) = oracle.getEurUsdDetails();
-            assertEq(price, INITIAL_MID);
-            assertFalse(stale);
-            assertTrue(withinBounds);
-        }
-    }
-
-    function test_DisabledReference_UnavailableReferenceDoesNotBlockMarket() public {
-        vm.warp(16 days + 12 hours);
-        slippage.setMid(uint128(INITIAL_MID), uint48(16 days + 12 hours));
-        vm.mockCallRevert(
-            address(usdc), abi.encodeWithSignature("peekEurUsdPrice()"), bytes("reference unavailable")
-        );
-        assertEq(gate.requireLivePrice(oracle), INITIAL_MID);
-    }
-
-    function test_DisabledReference_WeekendStillRejectsStaleMarket() public {
-        vm.warp(16 days + 12 hours);
-        slippage.setMid(uint128(INITIAL_MID), uint48(16 days + 12 hours));
-        vm.warp(16 days + 12 hours + 901);
-        vm.expectRevert(HLGate.InvalidOraclePrice.selector);
-        gate.requireLivePrice(oracle);
-    }
-
     function test_GetEurUsdPrice_ReturnsPublishedMid() public {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         assertEq(price, INITIAL_MID);

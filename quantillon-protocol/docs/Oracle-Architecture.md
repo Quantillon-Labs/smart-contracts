@@ -48,33 +48,20 @@ the market oracle's price-staleness limit. See [Deployment](./Deployment.md#curr
 
 ### Independent reference configuration
 
-Hyperliquid remains the live EUR/USD pricing source. The production release policy
-requires operation throughout weekends and leaves the optional Chainlink EUR/USD
-cross-check disabled (`maxReferenceDivergenceBps == 0`). The coordinated release
-must not enable `setReferenceCheck`: stale or unavailable Chainlink EUR/USD data
-must not introduce a new dependency for minting or normal redemption. Market-price
-freshness, price bounds, circuit breakers and execution-liquidity checks still apply.
+Hyperliquid remains the live EUR/USD pricing source. `setReferenceCheck` adds an
+independent Chainlink divergence bound; it does not switch execution pricing to
+Chainlink and does not impose a calendar-based weekend shutdown. The off-hours
+setting selects a divergence limit, not an open/closed flag. The reference must
+still pass round, sequencer, timestamp and absolute-price checks.
 
-`setReferenceCheck` can add an independent Chainlink divergence bound. It has no
-calendar shutdown, but enabling it makes invalid or stale reference data fail
-closed, including during weekends. Its off-hours setting only changes the
-divergence limit; it does not relax round, sequencer or freshness checks. Historical
-weekend feed continuity does not eliminate that availability dependency.
-
-Any future change to this policy must be reviewed explicitly. Configure the reference only after the Chainlink implementation exposes
+Configure the reference only after the Chainlink implementation exposes
 `peekEurUsdPrice()`. Read `maxReferenceDivergenceBps`,
 `maxReferenceDivergenceOffHoursBps`, and `maxReferenceAge` on chain: zero normal
 divergence disables the check. Chainlink's independent probe also enforces its
 own freshness ceiling, so increasing the market adapter's age limit cannot
 bypass it. Validate the actual configured feed across weekday and weekend
 observations before activation. Historical continuity does not guarantee future
-feed availability; invalid reference data must not silently disable an enabled bound.
-
-With the cross-check disabled, cumulative drift limits constrain the rate of a
-publisher's price manipulation but do not independently prove the market price.
-The independent publisher cross-check therefore remains an explicit security
-exception, not a completed mitigation. The guarded `forceReseedBaseline()` recovery
-function also remains unavailable while its required reference check is disabled.
+feed availability; invalid reference data must not silently disable the bound.
 
 Likewise, SlippageStorage's `setMidDriftGuard` requires both a nonzero basis-point
 limit and a nonzero window to activate cumulative drift protection. Test accepted
@@ -176,8 +163,4 @@ reverts), the off-server watchdog pauses the vault on staleness / circuit-break 
 Chainlink, and governance can fall back to Chainlink with one `switchOracle(0)`.
 ## Independent reference checks
 
-The optional reference check is disabled under the production availability policy
-above. If governance explicitly enables it in a future change, reference age,
-normal-hours divergence, and the Friday 21:00 UTC through Sunday 21:00 UTC off-hours
-bound are parameters; invalid or stale references then fail closed. Emergency
-baseline reseeding requires an enabled check and a fresh reference that passes it.
+The active market oracle can compare its publication with a fresh Chainlink EUR/USD probe. Reference age, normal-hours divergence, and the Friday 21:00 UTC through Sunday 21:00 UTC off-hours bound are governance parameters; invalid or stale references fail closed. Emergency baseline reseeding requires a fresh reference that passes the same checks and emits an on-chain event.

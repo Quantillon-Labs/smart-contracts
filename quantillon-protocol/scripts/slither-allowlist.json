@@ -148,5 +148,166 @@
     "file": "src/core/HedgerPool.sol",
     "function": "",
     "reason": "setSingleHedger delegates to HedgerPoolAccountingLibrary.assignSingleHedger, which performs the governance authorization and explicit zero-address rejection before returning the assigned address. Slither cannot follow this linked-library validation from the wrapper and reports the assignment location without a function name."
+  },
+  {
+    "id": "351e4f140a650a850ad91192c1a897f66bd5a1fc5b639d74fea427ecfaea1bf7",
+    "check": "divide-before-multiply",
+    "file": "src/libraries/UserPoolStakingLibrary.sol",
+    "function": "_calculateStakingRewards",
+    "reason": "This legacy reward calculator rounds down before a bonus calculation. UserPool has no reward claim/mint path and exposes zero live rewards; the unused calculation cannot transfer assets or affect the active ERC4626 staking flow."
+  },
+  {
+    "id": "105e7f90a92d2aa8916e87b411ab1240698bed1414d69a5f63aba82ae94243da",
+    "check": "incorrect-equality",
+    "file": "src/libraries/HedgerPoolAccountingLibrary.sol",
+    "function": "withdraw",
+    "reason": "The zero-amount guard intentionally handles an empty payout or vesting balance. Positive values follow the payout/vesting path; it is not an equality against a manipulable nonzero balance."
+  },
+  {
+    "id": "2deea880f3106e754a80ec37573b3c9f935a70ed721da2ddd760efba3c8da2fe",
+    "check": "incorrect-equality",
+    "file": "src/core/FeeCollector.sol",
+    "function": "_secureETHTransfer",
+    "reason": "The zero-amount guard intentionally handles an empty payout or vesting balance. Positive values follow the payout/vesting path; it is not an equality against a manipulable nonzero balance."
+  },
+  {
+    "id": "40c6d55a7282333c4f555aabb481c52aba8bff44787da15c4a37a60506b76a8c",
+    "check": "incorrect-equality",
+    "file": "src/core/vaults/MetaMorphoStakingVaultAdapter.sol",
+    "function": "harvestYieldToVault",
+    "reason": "Zero-yield return avoids a no-op withdrawal; exact USDC balance deltas reject nonstandard transfers and zero burned shares. These checks validate settlement amounts, not a manipulable external target balance."
+  },
+  {
+    "id": "4be70bc576e4ccc8e019c149818b2f818910097d024937fe3272e211c866241b",
+    "check": "incorrect-equality",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "_authorize",
+    "reason": "Exact day-bucket selection deliberately distinguishes the current and immediately previous bucket; the rolling sum retains both. Day-boundary limit tests exercise the transitions."
+  },
+  {
+    "id": "55e0096afe779da47ba457ad034e3f7c7d9cfc775bd022ead87ce2fbc8abe0fb",
+    "check": "incorrect-equality",
+    "file": "src/core/stQEUROToken.sol",
+    "function": "_vestedBalanceView",
+    "reason": "The zero-amount guard intentionally handles an empty payout or vesting balance. Positive values follow the payout/vesting path; it is not an equality against a manipulable nonzero balance."
+  },
+  {
+    "id": "86bc6d79b0e4c525295cec28fad2da8e543be04850b236d03085bb9ea32260dd",
+    "check": "incorrect-equality",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "windowUsage",
+    "reason": "Exact day-bucket selection deliberately distinguishes the current and immediately previous bucket; the rolling sum retains both. Day-boundary limit tests exercise the transitions."
+  },
+  {
+    "id": "b378cbd12c905c672e2ecb7a4d70e0738cee9ada2388dd0a4b0e930e52655a3b",
+    "check": "incorrect-equality",
+    "file": "src/core/vaults/MetaMorphoStakingVaultAdapter.sol",
+    "function": "harvestYieldToVault",
+    "reason": "Zero-yield return avoids a no-op withdrawal; exact USDC balance deltas reject nonstandard transfers and zero burned shares. These checks validate settlement amounts, not a manipulable external target balance."
+  },
+  {
+    "id": "e7693ab34e70ee6fab78aafaa557081339d097ead20fcd8be982d37c538e8968",
+    "check": "incorrect-equality",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "windowUsage",
+    "reason": "Exact day-bucket selection deliberately distinguishes the current and immediately previous bucket; the rolling sum retains both. Day-boundary limit tests exercise the transitions."
+  },
+  {
+    "id": "ec9b7cfb3a16bf73ad8f332206033ccfaab5065f28f46094af549949e09b75bd",
+    "check": "incorrect-equality",
+    "file": "src/core/stQEUROToken.sol",
+    "function": "deposit",
+    "reason": "A zero-share deposit must revert. The neighboring redeem-value check bounds ERC4626 rounding loss; donation and inflation regression tests verify rejection."
+  },
+  {
+    "id": "5a27efc1abd0fa872aa613eb6aea68a24db29d75542ca4ba85b7e8e8b33c7960",
+    "check": "arbitrary-send-erc20",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_mintQEUROCommit",
+    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
+  },
+  {
+    "id": "addd01bffa135a4d7f2cfd35aa8cdcd6939a8ce42d5a8959c9739c20b43213c0",
+    "check": "arbitrary-send-erc20",
+    "file": "src/core/HedgerPool.sol",
+    "function": "_enterHedgePositionCommit",
+    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
+  },
+  {
+    "id": "d4da9811cbd4a59e09f5823fc05a2d3da0b86497cdcd82dd8941c4c15f4c3044",
+    "check": "arbitrary-send-erc20",
+    "file": "src/core/HedgerPool.sol",
+    "function": "_enterHedgePositionCommit",
+    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
+  },
+  {
+    "id": "45e2a5c3cc753f61c238f9551f6d9da293b06a9ea7ba96179e4a03242845b162",
+    "check": "unused-return",
+    "file": "src/automation/MetaMorphoAdapterMigration.sol",
+    "function": "migrate",
+    "reason": "Migration verifies the resulting principal, underlying assets, USDC deltas, registry binding and tracked principal directly. The deposit return and fourth registry tuple field add no authority or accounting information; rollback and exact-balance tests cover settlement."
+  },
+  {
+    "id": "80e7ef012eccc5d4f525b83d7ca8cfb3c89a029136d97cebcfc3c00a93733281",
+    "check": "unused-return",
+    "file": "src/automation/MetaMorphoAdapterMigration.sol",
+    "function": "migrate",
+    "reason": "Migration verifies the resulting principal, underlying assets, USDC deltas, registry binding and tracked principal directly. The deposit return and fourth registry tuple field add no authority or accounting information; rollback and exact-balance tests cover settlement."
+  },
+  {
+    "id": "1eb6b32cd5be95fa3d5bfc2b4fda2c4f619a84243e6b71d0d7ecdc8c026b0603",
+    "check": "uninitialized-local",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "",
+    "reason": "Solidity initializes the value to zero. A positive external withdrawal overwrites it with the actual returned amount; the no-withdrawal branch must contribute zero to held collateral."
+  },
+  {
+    "id": "7e07f07e5d707f57306ef2796a9dc24696bc84a403511b8d84036fe8d8bce046",
+    "check": "uninitialized-local",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "",
+    "reason": "The memory payload fields are assigned explicitly before dispatch; the declaration is an allocated zero-initialized memory struct, not an uninitialized storage pointer."
+  },
+  {
+    "id": "b2ffa74a8d829870738efb763f6f20e527801eef64fbfe86561b5525f4b55335",
+    "check": "uninitialized-local",
+    "file": "src/oracle/ReportPublicationBatcher.sol",
+    "function": "",
+    "reason": "The uint8 bitmask starts at Solidity default zero and ORs each validated requested report. A zero mask explicitly reverts; report-batcher tests cover each combination."
+  },
+  {
+    "id": "b7a7557b1f11fa6101e94cb6d6bb667eb7eec1fff286b2f855d5ddb5065d354a",
+    "check": "uninitialized-local",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "",
+    "reason": "Solidity initializes the value to zero. A positive external withdrawal overwrites it with the actual returned amount; the no-withdrawal branch must contribute zero to held collateral."
+  },
+  {
+    "id": "b86af71854af472ed0e45c48a32a8f8860152d6779f5aa3edebda0375238f06d",
+    "check": "uninitialized-local",
+    "file": "src/core/UserPool.sol",
+    "function": "",
+    "reason": "The memory payload fields are assigned explicitly before dispatch; the declaration is an allocated zero-initialized memory struct, not an uninitialized storage pointer."
+  },
+  {
+    "id": "d070b43943e5a2ba2529febdf94adad233b221460c8c4a617da87e629c8cfd5c",
+    "check": "uninitialized-local",
+    "file": "src/oracle/HyperliquidEurUsdOracle.sol",
+    "function": "",
+    "reason": "The boolean starts false and is set only after a successful valid source read. Failed, stale or paused reads intentionally keep it false and fail closed."
+  },
+  {
+    "id": "d083d3f2cac8e96e1d33dd1f211576519b58873cd67b06631539f22bb8076746",
+    "check": "uninitialized-local",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "",
+    "reason": "The memory payload fields are assigned explicitly before dispatch; the declaration is an allocated zero-initialized memory struct, not an uninitialized storage pointer."
+  },
+  {
+    "id": "f54d29289bcfc9476700467eb570b258677244dd68b3911906a9096769e9665a",
+    "check": "uninitialized-local",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "",
+    "reason": "Solidity initializes the value to zero. A positive external withdrawal overwrites it with the actual returned amount; the no-withdrawal branch must contribute zero to held collateral."
   }
 ]

@@ -7,3 +7,6 @@
 4:1	uint128	16
 5:0	uint128	16
 5:16	uint16	2
+5:18	uint16	2
+5:20	uint32	4
+6:0	mapping(uint8 => struct SlippageStorage.MidDriftAnchor)	32

@@ -14,6 +14,7 @@
 20:0	mapping(address => struct HedgerPool.HedgerRewardState)	32
 21:0	mapping(address => uint256)	32
 22:0	mapping(address => uint256)	32
+23:0	bool	1
 2:0	contract IERC20	20
 3:0	contract IOracle	20
 4:0	contract IYieldShift	20

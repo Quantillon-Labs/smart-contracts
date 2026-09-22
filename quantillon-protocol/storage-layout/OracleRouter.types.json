@@ -1,0 +1,22 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract IChainlinkOracle",
+    "numberOfBytes": "20"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "contract IOracle",
+    "numberOfBytes": "20"
+  },
+  "1:20": {
+    "encoding": "inplace",
+    "label": "enum OracleRouter.OracleType",
+    "numberOfBytes": "1"
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  }
+}

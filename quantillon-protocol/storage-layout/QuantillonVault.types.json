@@ -1,0 +1,237 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ITimelockUpgradeable",
+    "numberOfBytes": "20"
+  },
+  "0:20": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "11:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "12:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => contract IExternalStakingVault)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "contract IExternalStakingVault",
+      "numberOfBytes": "20"
+    }
+  },
+  "13:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "14:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "15:0": {
+    "base": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "encoding": "dynamic_array",
+    "label": "uint256[]",
+    "numberOfBytes": "32"
+  },
+  "16:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "17:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => address)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    }
+  },
+  "18:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "19:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "20:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "21:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "22:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "23:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "24:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "25:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "26:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "27:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "27:1": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "28:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "29:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "contract IQEUROToken",
+    "numberOfBytes": "20"
+  },
+  "30:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "31:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "32:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "33:0": {
+    "encoding": "inplace",
+    "label": "contract IExecutionPricing",
+    "numberOfBytes": "20"
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "contract IERC20",
+    "numberOfBytes": "20"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "contract IOracle",
+    "numberOfBytes": "20"
+  },
+  "5:0": {
+    "encoding": "inplace",
+    "label": "contract IHedgerPool",
+    "numberOfBytes": "20"
+  },
+  "6:0": {
+    "encoding": "inplace",
+    "label": "contract IUserPool",
+    "numberOfBytes": "20"
+  },
+  "7:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

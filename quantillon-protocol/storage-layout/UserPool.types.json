@@ -1,0 +1,388 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ITimelockUpgradeable",
+    "numberOfBytes": "20"
+  },
+  "0:20": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "11:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "12:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "13:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "14:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "15:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "16:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => struct UserPool.UserInfo)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "struct UserPool.UserInfo",
+      "members": [
+        {
+          "member": "qeuroBalance",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "stakedAmount",
+          "offset": 16,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "pendingRewards",
+          "offset": 0,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "unstakeAmount",
+          "offset": 16,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "depositHistory",
+          "offset": 0,
+          "slot": "2",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint96",
+            "numberOfBytes": "12"
+          }
+        },
+        {
+          "member": "lastStakeTime",
+          "offset": 12,
+          "slot": "2",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        },
+        {
+          "member": "unstakeRequestTime",
+          "offset": 20,
+          "slot": "2",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        }
+      ],
+      "numberOfBytes": "96"
+    }
+  },
+  "17:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "18:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "19:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "20:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "21:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "22:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "23:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => struct UserPool.UserDepositInfo[])",
+    "numberOfBytes": "32",
+    "value": {
+      "base": {
+        "encoding": "inplace",
+        "label": "struct UserPool.UserDepositInfo",
+        "members": [
+          {
+            "member": "usdcAmount",
+            "offset": 0,
+            "slot": "0",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint128",
+              "numberOfBytes": "16"
+            }
+          },
+          {
+            "member": "qeuroReceived",
+            "offset": 16,
+            "slot": "0",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint128",
+              "numberOfBytes": "16"
+            }
+          },
+          {
+            "member": "timestamp",
+            "offset": 0,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint64",
+              "numberOfBytes": "8"
+            }
+          },
+          {
+            "member": "oracleRatio",
+            "offset": 8,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          },
+          {
+            "member": "blockNumber",
+            "offset": 12,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "encoding": "dynamic_array",
+      "label": "struct UserPool.UserDepositInfo[]",
+      "numberOfBytes": "32"
+    }
+  },
+  "24:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => struct UserPool.UserWithdrawalInfo[])",
+    "numberOfBytes": "32",
+    "value": {
+      "base": {
+        "encoding": "inplace",
+        "label": "struct UserPool.UserWithdrawalInfo",
+        "members": [
+          {
+            "member": "qeuroAmount",
+            "offset": 0,
+            "slot": "0",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint128",
+              "numberOfBytes": "16"
+            }
+          },
+          {
+            "member": "usdcReceived",
+            "offset": 16,
+            "slot": "0",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint128",
+              "numberOfBytes": "16"
+            }
+          },
+          {
+            "member": "timestamp",
+            "offset": 0,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint64",
+              "numberOfBytes": "8"
+            }
+          },
+          {
+            "member": "oracleRatio",
+            "offset": 8,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          },
+          {
+            "member": "blockNumber",
+            "offset": 12,
+            "slot": "1",
+            "type": {
+              "encoding": "inplace",
+              "label": "uint32",
+              "numberOfBytes": "4"
+            }
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "encoding": "dynamic_array",
+      "label": "struct UserPool.UserWithdrawalInfo[]",
+      "numberOfBytes": "32"
+    }
+  },
+  "25:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "26:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "contract IQEUROToken",
+    "numberOfBytes": "20"
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "contract IERC20",
+    "numberOfBytes": "20"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "5:0": {
+    "encoding": "inplace",
+    "label": "contract IQuantillonVault",
+    "numberOfBytes": "20"
+  },
+  "6:0": {
+    "encoding": "inplace",
+    "label": "contract IOracle",
+    "numberOfBytes": "20"
+  },
+  "7:0": {
+    "encoding": "inplace",
+    "label": "contract IYieldShift",
+    "numberOfBytes": "20"
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

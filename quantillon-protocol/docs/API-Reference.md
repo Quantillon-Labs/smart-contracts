@@ -59,8 +59,8 @@ for configuration and freshness checks. Live proxy versions are QuantillonVault
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-3; holds all privileged roles |
-| TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | OpenZeppelin `TimelockController`, 12 h delay, Safe = sole proposer/executor. Gates upgrades of the eight `SecureUpgradeable` proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, per-vault stQEUROToken). FeeCollector, OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle and SlippageStorage are plain UUPS proxies whose upgrade role is held by the Safe: they upgrade in a single Safe transaction, with no timelock |
+| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-3 governance; core admin handover uses the controller |
+| TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | OpenZeppelin `TimelockController`, 12 h delay, Safe = sole proposer/executor. Gates upgrades and, after the coordinated admin handover, default-admin operations of the eight `SecureUpgradeable` proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, per-vault stQEUROToken). FeeCollector, OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle and SlippageStorage are plain UUPS proxies whose upgrade role is held by the Safe: they upgrade in a single Safe transaction, with no timelock |
 
 ### External vault adapters (onboarded post-core)
 
@@ -1220,7 +1220,7 @@ event TimeReset(address indexed resetter, uint256 timestamp);
 
 | Role | Where | Description / key functions |
 |------|-------|-----------------------------|
-| `DEFAULT_ADMIN_ROLE` | all contracts | Role administration; QEURO supply cap and rate limits (`updateMaxSupply`, `updateRateLimits`); treasury / fee-collector wiring; token/ETH recovery; `SecureUpgradeable.setTimelock` |
+| `DEFAULT_ADMIN_ROLE` | all contracts | Role administration; QEURO supply cap and rate limits (`updateMaxSupply`, `updateRateLimits`); treasury / fee-collector wiring; token/ETH recovery; controller bootstrap only (`setTimelock` requires the current controller after bootstrap) |
 | `GOVERNANCE_ROLE` | QuantillonVault, QEUROToken-adjacent core (QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, stQEUROToken), FeeCollector, TimeProvider | Parameter updates, dependency wiring, fee ratios, time offsets; on FeeCollector it also gates `_authorizeUpgrade` |
 | `EMERGENCY_ROLE` | core contracts, FeeCollector, oracles, SlippageStorage, TimeProvider | Pause/unpause, emergency position close / unstake / withdraw, circuit breakers |
 | `UPGRADER_ROLE` | OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle, SlippageStorage, TimeProvider | `_authorizeUpgrade` on the plain-UUPS proxies — held by the Safe and effective immediately (**no timelock**). The eight `SecureUpgradeable` proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, stQEUROToken) are instead gated by their `timelock` pointer, the 12 h OpenZeppelin `TimelockController` |
@@ -1234,9 +1234,9 @@ event TimeReset(address indexed resetter, uint256 timestamp);
 | `ORACLE_MANAGER_ROLE` | OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle | `switchOracle`, `updateOracleAddresses`, feed / bounds / staleness / source configuration |
 | `MANAGER_ROLE` / `WRITER_ROLE` | SlippageStorage | Store configuration (`MANAGER_ROLE`) / publishing the venue mid on-chain (`WRITER_ROLE`) |
 | `TREASURY_ROLE` / `FEE_SOURCE_ROLE` | FeeCollector | `distributeFees` / contracts allowed to push fees (`QuantillonVault`, `HedgerPool`) |
-| `YIELD_MANAGER_ROLE` | YieldShift | Granted to the admin by the initializer; no YieldShift entrypoint is gated by it today (vestigial) |
+| `YIELD_MANAGER_ROLE` | YieldShift | Initializer-granted legacy role; the public update interval applies normally, and `forceUpdateYieldDistribution` requires `GOVERNANCE_ROLE` |
 
-> On Base mainnet the 2-of-3 governance Safe holds the admin, governance, upgrade, emergency and oracle-manager roles on every contract. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (vault CR <= 101%), not a per-position keeper action.
+> On Base mainnet the governance Safe holds operational governance, upgrade, emergency and oracle-manager roles as configured per contract. The coordinated release transfers core default-admin roles to the controller while retaining Safe operational roles; direct-Safe oracle/fee administration is unchanged. Read live `hasRole` values to distinguish pending from executed handovers. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (vault CR <= 101%), not a per-position keeper action.
 
 ---
 

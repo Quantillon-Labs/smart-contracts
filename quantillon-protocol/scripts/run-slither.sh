@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+umask 077
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
+REQUESTED_RESULTS_DIR="${RESULTS_DIR:-}"
 setup_environment --allow-missing
+RESULTS_DIR="${REQUESTED_RESULTS_DIR:-${RUNNER_TEMP:-/tmp}/quantillon-static-analysis}"
 
 if [ ! -d "venv" ]; then
     python3 -m venv venv
@@ -23,6 +26,7 @@ fi
 
 SLITHER_DIR="$RESULTS_DIR_ABS/slither"
 mkdir -p "$SLITHER_DIR"
+chmod 700 "$RESULTS_DIR_ABS" "$SLITHER_DIR"
 
 CHECKLIST_FILE="$SLITHER_DIR/slither-checklist.txt"
 IGNORED_FILE="$SLITHER_DIR/slither-ignored-checklist.txt"
@@ -38,8 +42,20 @@ SUPPRESSED_FILE="$SLITHER_DIR/slither-suppressed.txt"
 REPORT_TXT="$SLITHER_DIR/slither-report.txt"
 ALLOWLIST_FILE="scripts/slither-allowlist.json"
 
-IN_SCOPE_JSON='["arbitrary-send-eth","reentrancy-no-eth","unused-return","missing-zero-check","reentrancy-benign","timestamp","low-level-calls","costly-loop","cyclomatic-complexity"]'
-IN_SCOPE_DETECTORS="arbitrary-send-eth,reentrancy-no-eth,unused-return,missing-zero-check,reentrancy-benign,timestamp,low-level-calls,costly-loop,cyclomatic-complexity"
+# Include every High/Medium detector from the installed analyzer, plus the
+# existing lower-severity checks. New analyzer detectors become gating by default.
+IN_SCOPE_JSON="$(python3 - <<'SCOPE'
+import inspect, json
+from slither.detectors import all_detectors
+from slither.detectors.abstract_detector import AbstractDetector, DetectorClassification
+checks = {'missing-zero-check','reentrancy-benign','timestamp','low-level-calls','costly-loop','cyclomatic-complexity'}
+checks.update(c.ARGUMENT for _, c in inspect.getmembers(all_detectors, inspect.isclass)
+              if issubclass(c, AbstractDetector) and c is not AbstractDetector
+              and c.IMPACT in (DetectorClassification.HIGH, DetectorClassification.MEDIUM))
+print(json.dumps(sorted(checks)))
+SCOPE
+)"
+IN_SCOPE_DETECTORS="$(jq -r 'join(",")' <<< "$IN_SCOPE_JSON")"
 SLITHER_SCOPE_ARGS=(--config-file slither.config.json --exclude-dependencies --detect "$IN_SCOPE_DETECTORS")
 
 # Slither refuses to overwrite existing report files; ensure a fresh run each time.
@@ -57,6 +73,10 @@ slither . "${SLITHER_SCOPE_ARGS[@]}" --json "$REPORT_JSON" || JSON_EXIT=$?
 if [ ! -s "$REPORT_JSON" ]; then
     echo "[slither] failed to produce JSON report: $REPORT_JSON"
     deactivate
+    exit 2
+fi
+if ! jq -e '.success == true and .error == null' "$REPORT_JSON" >/dev/null; then
+    echo "[slither] analysis failed; an empty or incomplete report cannot pass the gate"
     exit 2
 fi
 
@@ -126,16 +146,18 @@ fi
 # protocol version bumps. Any detector/file/function tuple not listed here remains gating.
 jq --slurpfile allowlist "$ALLOWLIST_FILE" '
   def key: .check + "|" + .file + "|" + .function;
-  ($allowlist[0] | map(.check + "|" + .file + "|" + .function)) as $allowed
+  ($allowlist[0] | map(select(.id == null) | .check + "|" + .file + "|" + .function)) as $allowed
+  | ($allowlist[0] | map(.id // empty)) as $allowed_ids
   | [.[]
      | select(.file | startswith("src/"))
      | select(.file | startswith("src/mocks/") | not)
-     | select((key as $key | $allowed | index($key)) == null)]
+     | select((key as $key | $allowed | index($key)) == null and (.id as $id | $allowed_ids | index($id)) == null)]
 ' "$ANALYSIS_FILE" > "$UNRESOLVED_FILE"
 jq --slurpfile allowlist "$ALLOWLIST_FILE" '
   def key: .check + "|" + .file + "|" + .function;
-  ($allowlist[0] | map(.check + "|" + .file + "|" + .function)) as $allowed
-  | [.[] | select((key as $key | $allowed | index($key)) != null)]
+  ($allowlist[0] | map(select(.id == null) | .check + "|" + .file + "|" + .function)) as $allowed
+  | ($allowlist[0] | map(.id // empty)) as $allowed_ids
+  | [.[] | select((key as $key | $allowed | index($key)) != null or (.id as $id | $allowed_ids | index($id)) != null)]
 ' "$ANALYSIS_FILE" > "$ALLOWLISTED_FILE"
 jq '[.[] | select((.file | startswith("lib/")) or (.file | startswith("src/mocks/")) or (.file | startswith("src/") | not))]' "$ANALYSIS_FILE" > "$EXCLUDED_FILE"
 jq '[.[] | select(.file | startswith("src/")) | select(.file | startswith("src/mocks/") | not)]' "$IGNORED_ONLY_JSON" > "$IGNORED_ONLY_JSON.tmp" && mv "$IGNORED_ONLY_JSON.tmp" "$IGNORED_ONLY_JSON"

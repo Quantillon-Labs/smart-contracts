@@ -18,7 +18,7 @@ Every core contract implements `IVersioned.version()` — a `pure` semver getter
 
 This is enforced in CI by `make check-version-bump`: it hashes each versioned unit's **import closure** (deterministic, build-independent) and **fails** if a source dependency changed without a `version()` bump — comment and NatSpec edits count as changes. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
 
-**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
+**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse HEAD)` to the upgrade scripts so the commit is recorded.
 
 **Answering "what is deployed / what needs upgrading?"**
 
@@ -46,9 +46,9 @@ contract/version diverges is per-compile luck, so gate every impl:
 make check-verifiable-bytecode CONTRACT=QuantillonVault
 
 # On FAIL: same sources & settings, equally valid compile — but reproducible by the verifier.
-# Deploys with PRIVATE_KEY/RPC_URL from .env, writes records to deployments/verifiable/,
-# and prints the exact verification command. Continue the normal Safe/timelock flow with
-# the printed implementation address.
+# Requires CAST_ACCOUNT, RPC_URL, RELEASE_MANIFEST and private VERIFIABLE_OUTDIR.
+# Uses a Foundry keystore; raw keys never enter cast arguments. Continue the
+# Safe/timelock flow with the verified implementation address.
 scripts/deployment/build-verifiable-impl.sh QuantillonVault \
   --lib src/libraries/StakingYieldLibrary.sol:StakingYieldLibrary=<addr> \
   --lib src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary=<addr> \
@@ -642,7 +642,7 @@ Set `USDC=<mock_address>` in `.env.localhost` after deploying MockUSDC, or let d
 ### Production Role Configuration
 - `TREASURY`, `DEV_FUND`, and `COMMUNITY_FUND` should be multisig wallets (e.g., Safe)
 - `SINGLE_HEDGER` should be an audited, authorized hedger address
-- After deployment, transfer admin roles to the governance multisig
+- After deployment, transfer core default-admin roles to the configured controller and operational governance/emergency roles to the multisig; verify the handover before enabling deposits
 
 ### Never Commit Secrets
 - `.env`, `.env.base`, `.env.base-sepolia` and `.env.localhost` are **tracked but git-crypt encrypted** (`.gitattributes`): never commit them in plaintext and never disable the git-crypt filter
@@ -651,3 +651,47 @@ Set `USDC=<mock_address>` in `.env.localhost` after deploying MockUSDC, or let d
 ---
 
 *Maintained by Quantillon Labs.*
+
+### Reviewed release bindings and controller administration
+
+`build-upgrade-safe-txs.sh <implementation> <version>` requires `RPC_URL`,
+`RELEASE_MANIFEST` and `SAFE_TX_OUT_DIR`. Both staging directories must be private
+(mode 0700), outside repositories and web roots. Never publish generated payloads.
+The manifest is a reviewed local JSON object containing `chainId`, `sourceCommit`
+(full Git SHA), `safe`, `timelock`, `minimumDelay`, `contracts`, and `libraries`.
+Each contract entry contains `name`, `address` (candidate), `version`,
+`runtimeCodeHash`, `proxy`, and `currentImplementation`. Each library entry
+contains `name`, `fqn`, `address`, `version`, and `runtimeCodeHash`. Derive expected
+hashes from the reproducible, reviewed build and verified library links; do not
+blindly bless whatever code an address currently returns.
+
+The builder checks chain, runtime hashes, versions, UUPS identity, current
+implementation, controller, Safe permissions and the live delay. It creates a
+unique salt and matching schedule, execute and cancel payloads. Rehearse the exact
+payload on a pinned fork before proposing it. `build-verifiable-impl.sh` requires
+the same reviewed library bindings for every `--lib`; an address alone is insufficient.
+`UpgradeBase` and the vault upgrade script detect OZ controllers and direct
+operators to this Safe builder instead of the legacy proposal-registry interface.
+
+The coordinated core activation grants the controller default-admin authority on
+all seven core proxies and every registered staking token, checks that authority
+through the scheduled batch, and renounces the Safe's default-admin role in the
+same atomic transaction. Preserve all operational roles and verify immediate
+Safe pause/resume plus delayed role grants/revocations in the rehearsal. The dapp
+reads current authority and produces matched schedule/execute actions when a
+controller is required. New staking series must complete the same admin handover
+before users can deposit; retain Safe governance/emergency roles separately.
+
+After the confirmed activation, reconcile each proxy and linked library against
+the reviewed runtime hashes, read versions from live storage, and run the upgrade
+scripts' `record` action with the release commit, or the release manifest tool's `record-live` mode. The latter requires `RELEASE_ACTIVATION_TX`, plus `executionSafeTxHash` and `operationId` in the reviewed manifest; it checks the successful canonical Safe receipt, completed controller operation, and every live implementation/library binding before atomically updating `versions.json`. This is a required release-close
+step, not a candidate-deployment step. Update adapter inventory and all affected
+address/documentation entries only after their bindings change on chain. Re-run
+`make check-deployed-versions` and the dapp contract-drift check; verify production
+publisher, watchdog and rebalancer health before closing the release.
+
+Storage gates recursively compare mappings, arrays and struct members and keep an
+append-only registry of assembly storage anchors and schemas. `--update` cannot
+approve an incompatible existing recursive layout. Run the gate's Python regression
+tests as well as Solidity tests. Static analysis includes every installed High/Medium
+detector and fails on unreviewed production results; stage reports privately.

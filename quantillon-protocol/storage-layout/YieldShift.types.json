@@ -1,0 +1,368 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ITimelockUpgradeable",
+    "numberOfBytes": "20"
+  },
+  "0:20": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "11:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "12:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "13:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "14:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "15:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "16:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "17:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "18:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(bytes32 => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "19:0": {
+    "base": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "encoding": "dynamic_array",
+    "label": "bytes32[]",
+    "numberOfBytes": "32"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "20:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "21:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => bytes32)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    }
+  },
+  "22:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "23:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "24:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "25:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "26:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "27:0": {
+    "base": {
+      "encoding": "inplace",
+      "label": "struct YieldShift.PoolSnapshot",
+      "members": [
+        {
+          "member": "userPoolSize",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "hedgerPoolSize",
+          "offset": 16,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "timestamp",
+          "offset": 0,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        }
+      ],
+      "numberOfBytes": "64"
+    },
+    "encoding": "dynamic_array",
+    "label": "struct YieldShift.PoolSnapshot[]",
+    "numberOfBytes": "32"
+  },
+  "28:0": {
+    "base": {
+      "encoding": "inplace",
+      "label": "struct YieldShift.PoolSnapshot",
+      "members": [
+        {
+          "member": "userPoolSize",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "hedgerPoolSize",
+          "offset": 16,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "timestamp",
+          "offset": 0,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        }
+      ],
+      "numberOfBytes": "64"
+    },
+    "encoding": "dynamic_array",
+    "label": "struct YieldShift.PoolSnapshot[]",
+    "numberOfBytes": "32"
+  },
+  "29:0": {
+    "base": {
+      "encoding": "inplace",
+      "label": "struct YieldShift.YieldShiftSnapshot",
+      "members": [
+        {
+          "member": "yieldShift",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint128",
+            "numberOfBytes": "16"
+          }
+        },
+        {
+          "member": "timestamp",
+          "offset": 16,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint64",
+            "numberOfBytes": "8"
+          }
+        }
+      ],
+      "numberOfBytes": "32"
+    },
+    "encoding": "dynamic_array",
+    "label": "struct YieldShift.YieldShiftSnapshot[]",
+    "numberOfBytes": "32"
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "contract IERC20",
+    "numberOfBytes": "20"
+  },
+  "30:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "31:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "32:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "contract IUserPool",
+    "numberOfBytes": "20"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "contract IHedgerPool",
+    "numberOfBytes": "20"
+  },
+  "5:0": {
+    "encoding": "inplace",
+    "label": "contract IMockAaveVault",
+    "numberOfBytes": "20"
+  },
+  "6:0": {
+    "encoding": "inplace",
+    "label": "contract IStQEUROFactory",
+    "numberOfBytes": "20"
+  },
+  "7:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

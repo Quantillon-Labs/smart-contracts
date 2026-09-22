@@ -8,14 +8,14 @@
 # baseline of each contract's layout and fails CI if any existing slot changes.
 #
 # Design notes:
-#   * We key each entry on "slot:offset" and compare "type|bytes" (the readable
-#     type from `forge inspect`, which is stable across recompiles, unlike the
-#     JSON `astId`-suffixed encoding). We deliberately do NOT key on the variable
-#     NAME, so renaming a now-dead variable to `__deprecated_*` (which preserves
-#     the slot) passes the gate.
+#   * We recursively compare mapping keys/values, array elements and struct members,
+#     including their slots, offsets, encodings and widths. Readable type labels
+#     stay stable across recompiles; compiler AST identifiers do not. Top-level
+#     variable names may change, while struct member names are frozen to catch
+#     same-width member reordering.
 #   * Appends (new slot:offset pairs) are allowed. Any baseline slot:offset whose
 #     type/bytes changed, or that disappeared, is a violation. A struct that grows
-#     internally is caught via the shifted following slots and the changed `bytes`.
+#     internally is rejected even when its outer slot and size do not change.
 #
 # Usage:
 #   scripts/check-storage-layout.sh            # check against committed baseline (CI)
@@ -53,27 +53,25 @@ CONTRACTS=(
 )
 
 mkdir -p "$BASELINE_DIR"
+namespace_args=()
+[[ "$UPDATE" == "1" ]] && namespace_args+=(--update)
+python3 scripts/check-storage-namespaces.py "${namespace_args[@]}"
 
-# Normalize `forge inspect <C> storage-layout --json` into stable, sorted
-# "slot:offset<TAB>type<TAB>bytes" lines (one per storage variable).
-# We resolve each entry's type through the JSON `types` map to its readable
-# `label` + `numberOfBytes`. Those come straight from solc's storageLayout
-# (solc 0.8.24 is pinned), so they are stable across forge versions AND across
-# unrelated source edits — unlike the raw `t_...` type strings, which carry
-# astId suffixes that shift, or the ASCII-table rendering, which is forge's.
-normalize() {
-  forge inspect "$1" storage-layout --json 2>/dev/null \
-    | jq -r '.types as $t | .storage[]
-             | "\(.slot):\(.offset)\t\($t[.type].label)\t\($t[.type].numberOfBytes)"' \
-    | sort
-}
 
 fail=0
 for c in "${CONTRACTS[@]}"; do
   name="${c##*:}"
   baseline="$BASELINE_DIR/$name.layout"
   new="$(mktemp)"
-  normalize "$c" > "$new"
+  raw="$(mktemp)"
+  forge inspect "$c" storage-layout --json > "$raw"
+  jq -r '.types as $t | .storage[] | "\(.slot):\(.offset)\t\($t[.type].label)\t\($t[.type].numberOfBytes)"' "$raw" | sort > "$new"
+  type_args=()
+  [[ "$UPDATE" == "1" ]] && type_args+=(--update)
+  if ! python3 scripts/storage-layout-check.py "$raw" "$BASELINE_DIR/$name.types.json" "${type_args[@]}"; then
+    fail=1; rm -f "$raw" "$new"; continue
+  fi
+  rm -f "$raw"
 
   if [[ ! -s "$new" ]]; then
     echo "ERROR: could not read storage layout for $c (build first with: make build)"
@@ -103,7 +101,7 @@ for c in "${CONTRACTS[@]}"; do
   rm -f "$new"
 done
 
-if [[ "$fail" != "0" && "$UPDATE" != "1" ]]; then
+if [[ "$fail" != "0" ]]; then
   echo ""
   echo "Storage layout changed for a deployed proxy. Upgrades must be APPEND-ONLY."
   echo "If this change is intentional and append-only, re-baseline with:"

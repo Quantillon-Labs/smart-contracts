@@ -109,7 +109,7 @@ Token creation:
 
 At initialization:
 
-- `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, `EMERGENCY_ROLE` -> `admin`
+- At initialization, `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, `EMERGENCY_ROLE` -> `admin`. Before production activation, hand default-admin authority to the configured controller while preserving Safe governance/emergency roles; see the [onboarding runbook](./External-Vault-Onboarding-Runbook.md#new-series-authority-check).
 - `YIELD_MANAGER_ROLE` -> `admin`
 - `YIELD_MANAGER_ROLE` -> `yieldShift` (explicit grant)
 

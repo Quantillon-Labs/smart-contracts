@@ -1,0 +1,358 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ITimelockUpgradeable",
+    "numberOfBytes": "20"
+  },
+  "0:20": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "11:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "12:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "13:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "14:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "15:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "16:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => uint256)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  },
+  "17:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => bytes32)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    }
+  },
+  "18:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "2:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => struct QTIToken.LockInfo)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "struct QTIToken.LockInfo",
+      "members": [
+        {
+          "member": "amount",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint96",
+            "numberOfBytes": "12"
+          }
+        },
+        {
+          "member": "votingPower",
+          "offset": 12,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint96",
+            "numberOfBytes": "12"
+          }
+        },
+        {
+          "member": "initialVotingPower",
+          "offset": 0,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint96",
+            "numberOfBytes": "12"
+          }
+        },
+        {
+          "member": "unlockTime",
+          "offset": 12,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint32",
+            "numberOfBytes": "4"
+          }
+        },
+        {
+          "member": "lastClaimTime",
+          "offset": 16,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint32",
+            "numberOfBytes": "4"
+          }
+        },
+        {
+          "member": "lockTime",
+          "offset": 20,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint32",
+            "numberOfBytes": "4"
+          }
+        }
+      ],
+      "numberOfBytes": "64"
+    }
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "5:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "label": "mapping(uint256 => struct QTIToken.Proposal)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "struct QTIToken.Proposal",
+      "members": [
+        {
+          "member": "proposer",
+          "offset": 0,
+          "slot": "0",
+          "type": {
+            "encoding": "inplace",
+            "label": "address",
+            "numberOfBytes": "20"
+          }
+        },
+        {
+          "member": "startTime",
+          "offset": 0,
+          "slot": "1",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "endTime",
+          "offset": 0,
+          "slot": "2",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "forVotes",
+          "offset": 0,
+          "slot": "3",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "againstVotes",
+          "offset": 0,
+          "slot": "4",
+          "type": {
+            "encoding": "inplace",
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "executed",
+          "offset": 0,
+          "slot": "5",
+          "type": {
+            "encoding": "inplace",
+            "label": "bool",
+            "numberOfBytes": "1"
+          }
+        },
+        {
+          "member": "canceled",
+          "offset": 1,
+          "slot": "5",
+          "type": {
+            "encoding": "inplace",
+            "label": "bool",
+            "numberOfBytes": "1"
+          }
+        },
+        {
+          "member": "description",
+          "offset": 0,
+          "slot": "6",
+          "type": {
+            "encoding": "bytes",
+            "label": "string",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "data",
+          "offset": 0,
+          "slot": "7",
+          "type": {
+            "encoding": "bytes",
+            "label": "bytes",
+            "numberOfBytes": "32"
+          }
+        },
+        {
+          "member": "receipts",
+          "offset": 0,
+          "slot": "8",
+          "type": {
+            "encoding": "mapping",
+            "key": {
+              "encoding": "inplace",
+              "label": "address",
+              "numberOfBytes": "20"
+            },
+            "label": "mapping(address => struct QTIToken.Receipt)",
+            "numberOfBytes": "32",
+            "value": {
+              "encoding": "inplace",
+              "label": "struct QTIToken.Receipt",
+              "members": [
+                {
+                  "member": "hasVoted",
+                  "offset": 0,
+                  "slot": "0",
+                  "type": {
+                    "encoding": "inplace",
+                    "label": "bool",
+                    "numberOfBytes": "1"
+                  }
+                },
+                {
+                  "member": "support",
+                  "offset": 1,
+                  "slot": "0",
+                  "type": {
+                    "encoding": "inplace",
+                    "label": "bool",
+                    "numberOfBytes": "1"
+                  }
+                },
+                {
+                  "member": "votes",
+                  "offset": 0,
+                  "slot": "1",
+                  "type": {
+                    "encoding": "inplace",
+                    "label": "uint256",
+                    "numberOfBytes": "32"
+                  }
+                }
+              ],
+              "numberOfBytes": "64"
+            }
+          }
+        }
+      ],
+      "numberOfBytes": "288"
+    }
+  },
+  "6:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "7:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

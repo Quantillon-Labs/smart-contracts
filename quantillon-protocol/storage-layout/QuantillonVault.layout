@@ -26,6 +26,7 @@
 30:0	uint256	32
 31:0	mapping(uint256 => uint256)	32
 32:0	address	20
+33:0	contract IExecutionPricing	20
 3:0	contract IERC20	20
 4:0	contract IOracle	20
 5:0	contract IHedgerPool	20

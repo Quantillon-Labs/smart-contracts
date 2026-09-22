@@ -187,7 +187,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 
 ## Architecture Patterns
 
-1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (a `timelock` pointer gates upgrades; a quorum-gated 24hr emergency-disable path exists in the base). **Live trust model (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** all privileged roles are held by a **2-of-3 Gnosis Safe** (`0x1d7fF432…e6cd`); each core proxy's `timelock` is an **OpenZeppelin `TimelockController`** (`0x7Ade8f3B…8342`, 12h delay, Safe = sole proposer/executor); the deployer EOA is fully de-privileged (retains only SlippageStorage `WRITER`). Upgrades run `Safe → controller.schedule → wait 12h → controller.execute`.
+1. **UUPS Upgradeable**: Core proxies use `SecureUpgradeable` and an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h minimum), with the governance Safe (`0x1d7fF432…e6cd`, 2-of-3) as proposer/executor. After controller bootstrap, changing its pointer requires the current controller. The coordinated release hands core default-admin authority to the controller while retaining Safe operational roles. Read live roles to distinguish scheduled from executed changes. Enabled Zodiac modules provide separate scoped USDC/bridge authority; publisher and recipient identities are separate trust considerations. See `docs/Security.md`.
 2. **Role-Based Access**: `AccessControlUpgradeable` with defined roles (`MINTER_ROLE`, `PAUSER_ROLE`, `UPGRADER_ROLE`, etc.)
 3. **Library Pattern**: Business logic extracted to libraries to stay under EIP-170 bytecode limit — 22 libraries in `src/libraries/`
 4. **Error Libraries**: Custom errors in domain-specific libraries (`CommonErrorLibrary`, `VaultErrorLibrary`, `HedgerPoolErrorLibrary`, `TokenErrorLibrary`, etc.) for gas efficiency
@@ -232,9 +232,9 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 ## Security Notes
 
 - Security contact: team@quantillon.money
-- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). OracleRouter / ChainlinkOracle / HyperliquidEurUsdOracle / StorkOracle / LighterEurUsdOracle (inert) / SlippageStorage / FeeCollector are plain-UUPS and upgrade via the Safe *directly* (no 12h Timelock) — deliberate, to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate.
+- **Governance (Base):** the Safe controls ordinary governance operations. Core upgrades use the 12h OZ controller; the coordinated admin handover extends that delay to core role administration. Plain-UUPS oracle and fee upgrades remain direct Safe operations. Enabled Zodiac modules can independently exercise their configured USDC/bridge permissions. The deployment key retains SlippageStorage writer authority and operational recipient/module responsibilities; do not describe it as fully de-privileged. Check live roles and modules before releases.
 - **Public-surface policy:** this repo and the docs site are public — never put internal audit finding IDs, remediation history, or past-vulnerability narratives in NatSpec, struct comments, `docs/*.md`, `README.md`, or this file. Internal security context (git-crypt encrypted, plaintext only in unlocked checkouts): @CLAUDE.private.md
-- Slither: 0 Critical, 0 Medium findings
+- Slither runs all installed High/Medium detectors plus selected lower-severity checks; unresolved production findings fail the gate. Reviewed exceptions are explicit in `scripts/slither-allowlist.json`. Reports remain private.
 - Custom errors required (not `require` strings)
 - NatSpec 100% coverage enforced via `make validate-natspec`
 - Scripts in `scripts/deployment/` are git-crypt encrypted

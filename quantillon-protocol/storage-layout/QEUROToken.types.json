@@ -1,0 +1,146 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ITimelockUpgradeable",
+    "numberOfBytes": "20"
+  },
+  "0:20": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "11:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "12:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "struct QEUROToken.RateLimitCaps",
+    "members": [
+      {
+        "member": "mint",
+        "offset": 0,
+        "slot": "0",
+        "type": {
+          "encoding": "inplace",
+          "label": "uint128",
+          "numberOfBytes": "16"
+        }
+      },
+      {
+        "member": "burn",
+        "offset": 16,
+        "slot": "0",
+        "type": {
+          "encoding": "inplace",
+          "label": "uint128",
+          "numberOfBytes": "16"
+        }
+      }
+    ],
+    "numberOfBytes": "32"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "struct QEUROToken.RateLimitInfo",
+    "members": [
+      {
+        "member": "currentHourMinted",
+        "offset": 0,
+        "slot": "0",
+        "type": {
+          "encoding": "inplace",
+          "label": "uint96",
+          "numberOfBytes": "12"
+        }
+      },
+      {
+        "member": "currentHourBurned",
+        "offset": 12,
+        "slot": "0",
+        "type": {
+          "encoding": "inplace",
+          "label": "uint96",
+          "numberOfBytes": "12"
+        }
+      },
+      {
+        "member": "lastRateLimitReset",
+        "offset": 24,
+        "slot": "0",
+        "type": {
+          "encoding": "inplace",
+          "label": "uint64",
+          "numberOfBytes": "8"
+        }
+      }
+    ],
+    "numberOfBytes": "32"
+  },
+  "5:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "6:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "7:0": {
+    "encoding": "mapping",
+    "key": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "label": "mapping(address => bool)",
+    "numberOfBytes": "32",
+    "value": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    }
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

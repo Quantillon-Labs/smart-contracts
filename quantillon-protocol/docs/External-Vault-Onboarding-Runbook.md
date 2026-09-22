@@ -153,3 +153,14 @@ Its withdrawal-only interface can leave fractional ERC-4626 shares worth zero
 USDC base units; retain its address in the deployment history and record that
 residue explicitly. The migration rejects losses, unavailable liquidity and
 principal mismatches, and cannot be reused or directed to another destination.
+
+### New-series authority check
+
+After creating a staking series, preserve the governance and emergency roles
+assigned to the Safe, grant `DEFAULT_ADMIN_ROLE` to the configured controller,
+verify its controller configuration, and renounce the Safe's default-admin role.
+Complete creation, role handover and registry activation in one reviewed Safe
+batch while deposits are paused. The factory's initial `tokenAdmin` is a bootstrap
+identity; changing it to the controller alone would also redirect governance and
+emergency roles, so it is not a substitute for this explicit handover. Verify all
+role holders before unpausing and include the new series in subsequent upgrade inventories.

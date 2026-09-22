@@ -1,0 +1,62 @@
+{
+  "0:0": {
+    "encoding": "inplace",
+    "label": "contract ISlippageMidSource",
+    "numberOfBytes": "20"
+  },
+  "10:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "1:0": {
+    "encoding": "inplace",
+    "label": "contract IOracle",
+    "numberOfBytes": "20"
+  },
+  "1:20": {
+    "encoding": "inplace",
+    "label": "uint8",
+    "numberOfBytes": "1"
+  },
+  "2:0": {
+    "encoding": "inplace",
+    "label": "address",
+    "numberOfBytes": "20"
+  },
+  "3:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "4:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "5:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "6:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "7:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "8:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
+  "9:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  }
+}

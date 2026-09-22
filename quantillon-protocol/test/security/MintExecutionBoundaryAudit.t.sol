@@ -393,6 +393,26 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         _assertCreditReverts(109e6, bytes4(keccak256("EnforcedPause()")));
     }
 
+    function test_YieldRejectsTokenSupplyCapAtomically() public {
+        _prepare(200e18);
+        uint256 supply = qeuro.totalSupply();
+        vm.prank(admin);
+        qeuro.updateMaxSupply(supply);
+        _assertCreditReverts(109e6, Errors.WouldExceedLimit.selector);
+    }
+
+    function test_YieldRejectsProjectedCollateralizationBelowSolvency() public {
+        _prepare(200e18);
+        _setRatio(102e18);
+        // A misconfigured replacement module cannot admit an underbacked yield mint.
+        vm.mockCall(
+            address(pricing),
+            abi.encodeWithSignature("consumeMint(uint256,uint256)", 109e6, uint256(1.08e18)),
+            abi.encode(uint256(2000e18), uint256(109e6))
+        );
+        _assertCreditReverts(109e6, Errors.InsufficientCollateralization.selector);
+    }
+
     function test_YieldRejectsHedgerFailureAtomically() public {
         _prepare(200e18);
         vm.mockCallRevert(address(hedgerPool), abi.encodeWithSignature("recordUserMint(uint256,uint256,uint256)", 108e6, uint256(1.08e18), 100e18), abi.encodeWithSelector(Errors.InsufficientBalance.selector));

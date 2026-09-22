@@ -74,7 +74,7 @@ jobs:
           # SAVE custom markdown files BEFORE deleting docs
           echo "Saving custom markdown documentation files..."
           mkdir -p /tmp/custom-docs
-          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md favicon.png favicon.ico; do
+          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md favicon.png favicon.ico; do
             if [ -f "docs/$f" ]; then
               cp "docs/$f" "/tmp/custom-docs/$f"
               echo "Saved $f"
@@ -104,7 +104,7 @@ jobs:
 
           # COPY custom markdown files into docs/src/ so mdBook builds them with navigation
           echo "Copying custom markdown files into docs/src/..."
-          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md; do
+          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md; do
             if [ -f "/tmp/custom-docs/$f" ]; then
               cp "/tmp/custom-docs/$f" "docs/src/$f"
               echo "Copied $f to docs/src/"
@@ -131,6 +131,7 @@ jobs:
               echo "- [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)"
               echo "- [Staking Yield Distribution](Staking-Yield-Distribution.md)"
               echo "- [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)"
+              echo "- [Dapp Compatibility](Dapp-Compatibility.md)"
               echo ""
               # Append the rest of SUMMARY.md (skip the first two lines: # Summary and - [Home])
               tail -n +3 docs/src/SUMMARY.md

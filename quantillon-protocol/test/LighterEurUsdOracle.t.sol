@@ -757,7 +757,7 @@ contract LighterEurUsdOracleTest is Test {
     // -- additional branch coverage --
 
     function test_version_returnsSemver() public view {
-        assertEq(oracle.version(), "1.0.1");
+        assertEq(oracle.version(), "1.0.2");
     }
 
     /// @notice A reverting USDC source does not block the EUR/USD commit: the event read
@@ -862,7 +862,7 @@ contract LighterEurUsdOracleTest is Test {
         LighterEurUsdOracle newImpl = new LighterEurUsdOracle(timeProvider);
         vm.prank(admin);
         oracle.upgradeToAndCall(address(newImpl), "");
-        assertEq(oracle.version(), "1.0.1");
+        assertEq(oracle.version(), "1.0.2");
     }
 
 }

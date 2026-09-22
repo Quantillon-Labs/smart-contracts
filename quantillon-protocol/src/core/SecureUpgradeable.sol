@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ITimelockUpgradeable} from "../interfaces/ITimelockUpgradeable.sol";
+import {SecureUpgradeLibrary} from "../libraries/SecureUpgradeLibrary.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 
 /**
@@ -151,7 +152,12 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:access Restricted to authorized roles
       * @custom:oracle Not applicable - no oracle dependency
      */
-    function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setTimelock(address _timelock) external {
+        if (address(timelock) == address(0)) {
+            if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert CommonErrorLibrary.NotAuthorized();
+        } else {
+            _onlyTimelock();
+        }
         if (_timelock == address(0)) revert CommonErrorLibrary.ZeroAddress();
         timelock = ITimelockUpgradeable(_timelock);
         emit TimelockSet(_timelock);
@@ -206,7 +212,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         if (!secureUpgradesEnabled) revert CommonErrorLibrary.NotActive();
         if (address(timelock) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
-        timelock.proposeUpgrade(newImplementation, description, customDelay);
+        SecureUpgradeLibrary.propose(timelock, newImplementation, description, customDelay);
     }
     
     /**
@@ -291,10 +297,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:oracle Not applicable - no oracle dependency
      */
     function isUpgradePending(address implementation) external view returns (bool isPending) {
-        if (address(timelock) == address(0)) return false;
-        
-        ITimelockUpgradeable.PendingUpgrade memory upgrade = timelock.getPendingUpgrade(implementation);
-        return upgrade.implementation != address(0);
+        return SecureUpgradeLibrary.isPending(timelock, implementation);
     }
     
     /**
@@ -312,20 +315,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:oracle Not applicable - no oracle dependency
      */
     function getPendingUpgrade(address implementation) external view returns (ITimelockUpgradeable.PendingUpgrade memory upgrade) {
-        if (address(timelock) == address(0)) {
-            return ITimelockUpgradeable.PendingUpgrade({
-                implementation: address(0),
-                proposingProxy: address(0),
-                proposedAt: 0,
-                executableAt: 0,
-                expiryAt: 0,
-                description: "",
-                isEmergency: false,
-                proposer: address(0)
-            });
-        }
-        
-        return timelock.getPendingUpgrade(implementation);
+        return SecureUpgradeLibrary.pending(timelock, implementation);
     }
     
     /**
@@ -343,8 +333,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:oracle Not applicable - no oracle dependency
      */
     function canExecuteUpgrade(address implementation) external view returns (bool canExecute) {
-        if (address(timelock) == address(0)) return false;
-        return timelock.canExecuteUpgrade(implementation);
+        return SecureUpgradeLibrary.canExecute(timelock, implementation);
     }
     
     /**

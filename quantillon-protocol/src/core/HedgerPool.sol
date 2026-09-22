@@ -70,7 +70,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.3.0";
+        return "1.4.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -575,6 +575,7 @@ contract HedgerPool is
         uint256 netMargin,
         uint256 positionSize
     ) external onlySelf returns (uint256 positionId) {
+        _checkpointRewards();
         // Use fixed position ID 1 for single position model.
         positionId = 1;
         HedgePosition storage position = positions[positionId];
@@ -728,12 +729,13 @@ contract HedgerPool is
         // Pack position data for the close event before the position is finalized/zeroed.
         bytes32 closedData = _packHedgeEventData(position.positionSize, position.margin, position.leverage);
 
+        HedgerPoolAccountingLibrary.validateClosure(vault, cachedMargin);
+
         // EFFECTS
         _unwindFilledVolume(position);
         _finalizePosition(hedger, positionId, position, cachedMargin, cachedPositionSize);
 
         // VALIDATIONS / INTERACTIONS
-        HedgerPoolAccountingLibrary.validateClosure(vault, cachedMargin);
         uint256 currentPrice = _getValidOraclePrice();
         pnl = HedgerPoolLogicLibrary.calculatePnL(cachedFilledVolume, cachedQeuroBacked, currentPrice);
 
@@ -814,6 +816,8 @@ contract HedgerPool is
 
         uint256 deltaPositionSize = newPositionSize - currentPositionSize;
 
+        _checkpointRewards();
+
         HedgerPoolValidationLibrary.validateTotals(
             totalMargin,
             totalExposure,
@@ -870,18 +874,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependency
      */
     function _routeHedgeFee(address funder, uint256 fee, string memory sourceType) private {
-        if (fee == 0) return;
-        uint256 reserveShare = fee.mulDiv(rewardFeeSplit, 1e18);
-        uint256 collectorShare = fee - reserveShare;
-
-        if (reserveShare > 0) {
-            emit RewardReserveFunded(funder, reserveShare);
-        }
-
-        if (collectorShare > 0 && feeCollector != address(0)) {
-            usdc.safeIncreaseAllowance(feeCollector, collectorShare);
-            FeeCollector(feeCollector).collectFees(address(usdc), collectorShare, sourceType);
-        }
+        HedgerPoolAccountingLibrary.routeFee(usdc, feeCollector, rewardFeeSplit, funder, fee, sourceType);
     }
 
     /**
@@ -986,6 +979,7 @@ contract HedgerPool is
         uint256 deltaPositionSize,
         uint256 amount
     ) private {
+        _checkpointRewards();
         HedgePosition storage position = positions[positionId];
 
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -1041,6 +1035,7 @@ contract HedgerPool is
         _requireCostBasisAccounting();
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (redeemPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        _checkpointRewards();
         _decreaseFilledVolume(usdcAmount, redeemPrice, qeuroAmount);
     }
 
@@ -1077,6 +1072,8 @@ contract HedgerPool is
         
         HedgePosition storage pos = positions[positionId];
         if (!pos.isActive) return;
+
+        _checkpointRewards();
         
         uint256 currentMargin = uint256(pos.margin);
         
@@ -1239,7 +1236,8 @@ contract HedgerPool is
     function configureRiskAndFees(HedgerRiskConfig calldata cfg) external {
         _validateRole(GOVERNANCE_ROLE);
 
-        HedgerPoolAccountingLibrary.configure(coreParams, cfg);
+        _checkpointRewards();
+        HedgerPoolAccountingLibrary.configure(coreParams, cfg, positions[1]);
 
         minPositionHoldBlocks = cfg.minPositionHoldBlocks;
         minMarginAmount = cfg.minMarginAmount;
@@ -1564,6 +1562,7 @@ contract HedgerPool is
         uint256 marginDelta,
         uint256 exposureDelta
     ) internal {
+        _checkpointRewards();
         // Defensive clamp: a position's tracked margin/size can exceed the global counters if an
         // accounting desync ever occurs (e.g. realized-PnL margin growth on redeem that grows
         // positionSize without mirroring into totalExposure). Without flooring at zero, both
@@ -1803,31 +1802,30 @@ contract HedgerPool is
      */
     function _applyRealizedPnLToMargin(uint256, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta == 0) return;
-        uint256 oldPositionSize = uint256(pos.positionSize);
-        HedgerPoolRedeemMathLibrary.MarginTransition memory transition = HedgerPoolRedeemMathLibrary.computeMarginTransition(
-            totalMargin,
-            uint256(pos.margin),
-            uint256(pos.leverage),
-            realizedDelta
+        (totalMargin, totalExposure) = HedgerPoolAccountingLibrary.applyMarginTransition(
+            pos, totalMargin, totalExposure, realizedDelta
         );
+    }
 
-        totalMargin = transition.totalMarginAfter;
-        // forge-lint: disable-next-line(unsafe-typecast)
-        pos.margin = uint96(transition.nextMargin);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        pos.positionSize = uint96(transition.nextPositionSize);
-
-        // ROOT-CAUSE FIX: keep the global exposure counter in sync with the position-size change.
-        // Realizing P&L on redeem recomputes positionSize (= margin*leverage) but this update was
-        // previously missing here, so a realized gain grew positionSize above totalExposure (and a
-        // loss shrank it below) — desyncing the counter and later bricking exitHedgePosition /
-        // emergencyClosePosition with an arithmetic underflow (Panic 0x11) at `totalExposure -= positionSize`.
-        if (transition.nextPositionSize >= oldPositionSize) {
-            totalExposure += transition.nextPositionSize - oldPositionSize;
-        } else {
-            uint256 exposureDrop = oldPositionSize - transition.nextPositionSize;
-            totalExposure -= exposureDrop > totalExposure ? totalExposure : exposureDrop;
-        }
+    /**
+     * @notice Checkpoints the configured hedger's interest reward before exposure changes.
+     * @dev No-op when no hedger is configured.
+     * @custom:security Uses the linked accounting library and existing reward storage.
+     * @custom:validation Applies the configured reward-period cap and overflow guard.
+     * @custom:state-changes Updates pending rewards and the hedger's accrual timestamp.
+     * @custom:events None.
+     * @custom:errors RewardOverflow when pending accounting exceeds uint128.
+     * @custom:reentrancy No external calls.
+     * @custom:access Internal.
+     * @custom:oracle No oracle dependency.
+     */
+    function _checkpointRewards() private {
+        address hedger = singleHedger;
+        if (hedger == address(0)) return;
+        HedgerPoolAccountingLibrary.checkpoint(
+            hedgerRewards[hedger], hedgerLastRewardBlock, coreParams,
+            totalExposure, TIME_PROVIDER.currentTime(), MAX_REWARD_PERIOD, hedger
+        );
     }
 
 }

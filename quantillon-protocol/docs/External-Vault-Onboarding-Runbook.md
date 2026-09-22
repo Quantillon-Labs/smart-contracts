@@ -127,4 +127,7 @@ cast call "$YIELD_SHIFT" "authorizedYieldSources(address)(bool)" 0xAdapterA --rp
 cast call "$YIELD_SHIFT" "sourceToVaultId(address)(uint256)" 0xAdapterA --rpc-url "$RPC_URL"
 cast call "$YIELD_SHIFT" "enforceSourceVaultBinding()(bool)" --rpc-url "$RPC_URL"
 ```
+## Adapter withdrawal and migration invariants
+
+An adapter must report the actual USDC withdrawn. A one-unit ERC-4626 rounding shortfall is permitted only when the aggregate flow can still satisfy the payout; principal trackers follow the actual return. Adapter replacement requires the old adapter to hold zero shares, and migration must be rehearsed atomically while the vault is paused.
 

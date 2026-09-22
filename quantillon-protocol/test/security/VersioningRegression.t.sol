@@ -18,23 +18,23 @@ contract VersioningRegression is DeploymentSmokeTest {
     }
 
     /// @notice Every deployed core contract in the harness exposes version() through its proxy.
-    /// @dev QuantillonVault is at 1.1.0 (harvestAndDistributeVaultYield / stQEURO yield distribution).
+    /// @dev Version assertions cover the current deployed implementation set.
     function test_AllCoreContractsExposeVersion() public {
         deployFullProtocol();
-        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.7");
-        _assertVersioned(address(qtiToken), "QTIToken", "1.0.3");
-        _assertVersioned(address(vault), "QuantillonVault", "1.2.1");
-        _assertVersioned(address(userPool), "UserPool", "1.0.4");
-        _assertVersioned(address(hedgerPool), "HedgerPool", "1.2.0");
-        _assertVersioned(address(stQEURO), "stQEUROToken", "1.0.4");
-        _assertVersioned(address(feeCollector), "FeeCollector", "1.0.2");
-        _assertVersioned(address(yieldShift), "YieldShift", "1.0.5");
-        _assertVersioned(address(timeProvider), "TimeProvider", "1.0.0");
+        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.9");
+        _assertVersioned(address(qtiToken), "QTIToken", "1.0.5");
+        _assertVersioned(address(vault), "QuantillonVault", "1.3.4");
+        _assertVersioned(address(userPool), "UserPool", "1.0.6");
+        _assertVersioned(address(hedgerPool), "HedgerPool", "1.4.1");
+        _assertVersioned(address(stQEURO), "stQEUROToken", "1.2.4");
+        _assertVersioned(address(feeCollector), "FeeCollector", "1.0.3");
+        _assertVersioned(address(yieldShift), "YieldShift", "1.1.1");
+        _assertVersioned(address(timeProvider), "TimeProvider", "1.0.1");
     }
 
     /// @notice version() is a pure getter callable directly (reflects the implementation code).
     function test_VersionIsCallableDirectly() public {
         deployFullProtocol();
-        assertEq(vault.version(), "1.2.1", "direct call returns semver");
+        assertEq(vault.version(), "1.3.4", "direct call returns semver");
     }
 }

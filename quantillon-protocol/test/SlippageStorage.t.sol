@@ -183,7 +183,7 @@ contract SlippageStorageTest is Test {
         store.updateSlippage(1.10e18, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
         // Out-of-band write reverts.
         vm.prank(writer);
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(1.60e18, DEPTH_EUR, WORST_BPS + 100, SPREAD_BPS, _defaultBuckets());
     }
 
@@ -195,7 +195,7 @@ contract SlippageStorageTest is Test {
         // A >5% jump vs the last stored mid (1.10 -> 1.20 ~ 9%) is rejected even though
         // it is inside the absolute band.
         vm.prank(writer);
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(1.20e18, DEPTH_EUR, WORST_BPS + 100, SPREAD_BPS, _defaultBuckets());
     }
 

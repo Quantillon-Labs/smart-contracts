@@ -294,3 +294,6 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 - [Morpho](https://morpho.org/) (MetaMorpho vaults) for the live external yield venue and [Hyperliquid](https://hyperliquid.xyz/) for the hedge venue and EUR/USD market price
 - [Foundry](https://getfoundry.sh/) for development framework
 - Standard .env files for environment variable management
+
+
+Yield crediting uses an independent solvency gate above `max(101%, criticalCollateralizationRatio)` and a projected 100% floor; public minting continues to use the live configured mint floor.

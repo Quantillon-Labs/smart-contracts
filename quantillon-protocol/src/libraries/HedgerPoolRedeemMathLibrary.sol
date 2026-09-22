@@ -23,7 +23,7 @@ library HedgerPoolRedeemMathLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
 
     using VaultMath for uint256;

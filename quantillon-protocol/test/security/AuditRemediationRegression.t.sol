@@ -98,6 +98,9 @@ contract AuditRemediationRegression is DeploymentSmokeTest {
         uint256 donation = qeuroBal / 3;
         vm.prank(user1);
         IERC20(address(qeuroToken)).transfer(address(stQEURO), donation);
+        stQEURO.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        stQEURO.syncVesting();
 
         // A 1-wei deposit now previews 0 shares -> must revert (no asset forfeiture).
         vm.startPrank(user1);
@@ -106,14 +109,16 @@ contract AuditRemediationRegression is DeploymentSmokeTest {
         stQEURO.deposit(1, user1);
         vm.stopPrank();
 
-        // A deposit larger than the donation still mints non-zero shares (guard only blocks the
-        // zero-share rounding case). user1 retains `qeuroBal - donation`; deposit within that.
+        // Nonzero shares are also rejected when donation inflation causes excessive
+        // rounding loss. The whole transfer must roll back.
+        uint256 remaining = qeuroToken.balanceOf(user1);
         vm.startPrank(user1);
-        uint256 ok = qeuroBal - donation; // all remaining balance, which is > donation
-        qeuroToken.approve(address(stQEURO), ok);
-        uint256 shares = stQEURO.deposit(ok, user1);
-        assertGt(shares, 0, "deposit above donation mints shares");
+        qeuroToken.approve(address(stQEURO), remaining);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
+        stQEURO.deposit(remaining, user1);
         vm.stopPrank();
+        assertEq(qeuroToken.balanceOf(user1), remaining);
+
     }
 
     // ----------------------------------------------------------------- F-6

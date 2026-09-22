@@ -122,7 +122,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.2.1";
+        return "1.3.4";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -441,6 +441,7 @@ contract QuantillonVault is
 
     /// @notice Emitted when an external staking vault adapter is configured.
     event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
+    event ExternalVaultLossRealized(uint256 indexed vaultId, uint256 previousPrincipal, uint256 currentUnderlying);
     event DefaultStakingVaultUpdated(uint256 indexed previousVaultId, uint256 indexed newVaultId);
     event RedemptionPriorityUpdated(uint256[] vaultIds);
     event StQEURORegistered(
@@ -1199,7 +1200,11 @@ contract QuantillonVault is
         bool isValidPrice,
         uint256 externalWithdrawalAmount
     ) external onlySelf {
-        uint256 projectedHeld = totalUsdcHeld + externalWithdrawalAmount;
+        uint256 externalWithdrawn;
+        if (externalWithdrawalAmount > 0) {
+            externalWithdrawn = _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
+        }
+        uint256 projectedHeld = totalUsdcHeld + externalWithdrawn;
         if (projectedHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
         // EFFECTS
@@ -1209,10 +1214,6 @@ contract QuantillonVault is
         if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
         totalMinted -= qeuroAmount;
 
-        if (externalWithdrawalAmount > 0) {
-            _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
-        }
-        
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
         emit QEURORedeemed(redeemer, qeuroAmount, netUsdcToReturn);
 
@@ -1322,7 +1323,11 @@ contract QuantillonVault is
      * @custom:oracle No direct oracle reads (uses precomputed inputs)
      */
     function _redeemLiquidationCommit(LiquidationCommitParams memory params) internal {
-        uint256 projectedHeld = totalUsdcHeld + params.externalWithdrawalAmount;
+        uint256 externalWithdrawn;
+        if (params.externalWithdrawalAmount > 0) {
+            externalWithdrawn = _withdrawUsdcFromExternalVaults(params.externalWithdrawalAmount);
+        }
+        uint256 projectedHeld = totalUsdcHeld + externalWithdrawn;
         if (projectedHeld < params.usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
 
         _commitPriceCache(params.eurUsdPrice, params.isValidPrice);
@@ -1330,10 +1335,6 @@ contract QuantillonVault is
         totalUsdcHeld = projectedHeld - params.usdcPayout;
         if (totalMinted < params.qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
         totalMinted -= params.qeuroAmount;
-
-        if (params.externalWithdrawalAmount > 0) {
-            _withdrawUsdcFromExternalVaults(params.externalWithdrawalAmount);
-        }
 
         _notifyHedgerPoolLiquidation(params.qeuroAmount, params.totalSupply);
         emit LiquidationRedeemed(
@@ -1658,11 +1659,30 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function setStakingVault(uint256 vaultId, address adapter, bool active) external onlyRole(GOVERNANCE_ROLE) {
-        if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
-        if (adapter == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        stakingVaultAdapterById[vaultId] = IExternalStakingVault(adapter);
-        stakingVaultActiveById[vaultId] = active;
-        emit StakingVaultConfigured(vaultId, adapter, active);
+        StakingYieldLibrary.configureAdapter(
+            stakingVaultAdapterById, stakingVaultActiveById, principalUsdcByVaultId,
+            vaultId, adapter, active, paused()
+        );
+    }
+
+    /**
+     * @notice Records a loss of externally deployed principal.
+     * @dev The loss is socialised through the vault collateral account; hedger margin is
+     *      untouched and the existing collateralization/liquidation rules apply.
+     * @param vaultId External vault identifier.
+     * @custom:security Governance-only accounting correction.
+     * @custom:validation Requires a configured adapter and a lower reported underlying value.
+     * @custom:state-changes Reduces tracked external principal and aggregate external collateral.
+     * @custom:events Emits `ExternalVaultLossRealized`.
+     * @custom:errors InvalidVault, ZeroAddress, or InvalidCondition.
+     * @custom:reentrancy Adapter read is view-only.
+     * @custom:access Governance role.
+     * @custom:oracle No oracle dependency.
+     */
+    function realizeExternalLoss(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE) {
+        totalUsdcInExternalVaults -= StakingYieldLibrary.realizeLoss(
+            stakingVaultAdapterById, principalUsdcByVaultId, vaultId
+        );
     }
 
     /**
@@ -1702,21 +1722,9 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE) {
-        delete redemptionPriorityVaultIds;
-        for (uint256 i = 0; i < vaultIds.length; ++i) {
-            uint256 vaultId = vaultIds[i];
-            if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
-            if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-            // Reject duplicates: a repeated id would make
-            // _getExternalVaultCollateralBalance double-count that vault's principal,
-            // inflating the collateralization ratio and permitting minting below the
-            // 105% floor against phantom collateral.
-            for (uint256 j = 0; j < i; ++j) {
-                if (vaultIds[j] == vaultId) revert CommonErrorLibrary.InvalidVault();
-            }
-            redemptionPriorityVaultIds.push(vaultId);
-        }
-        emit RedemptionPriorityUpdated(vaultIds);
+        StakingYieldLibrary.setPriority(
+            stakingVaultAdapterById, stakingVaultActiveById, redemptionPriorityVaultIds, vaultIds
+        );
     }
 
     /**
@@ -1744,15 +1752,8 @@ contract QuantillonVault is
         if (factory == address(0)) revert CommonErrorLibrary.InvalidToken();
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
         if (stQEUROTokenByVaultId[vaultId] != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
-
-        token = IStQEUROFactory(factory).previewVaultToken(address(this), vaultId, vaultName);
-        if (token == address(0)) revert CommonErrorLibrary.InvalidAddress();
-
         stQEUROFactory = factory;
-        stQEUROTokenByVaultId[vaultId] = token;
-
-        address registeredToken = IStQEUROFactory(factory).registerVault(vaultId, vaultName);
-        if (registeredToken != token) revert CommonErrorLibrary.InvalidAddress();
+        token = StakingYieldLibrary.registerToken(stQEUROTokenByVaultId, factory, vaultId, vaultName);
 
         emit StQEURORegistered(factory, vaultId, token, vaultName);
     }
@@ -1817,7 +1818,9 @@ contract QuantillonVault is
         if (IstQEURO(stToken).totalSupply() == 0) revert CommonErrorLibrary.NotInitialized();
 
         (uint256 eurUsdPrice, bool isValidPrice) = _getValidatedMintPrices();
-        _enforceMintEligibility(eurUsdPrice);
+        ExecutionPricingLibrary.enforceYieldEligibility(
+            IERC20(address(qeuro)), hedgerPool, lastValidEurUsdPrice, eurUsdPrice, criticalCollateralizationRatio
+        );
         _enforcePriceDeviation(eurUsdPrice);
 
         // The yield fee is in basis points; the shared mint calculation takes an
@@ -2052,19 +2055,11 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function _withdrawUsdcFromExternalVaults(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
-        if (usdcAmount == 0) return 0;
-
-        uint256 remaining = usdcAmount;
-        uint256[] memory priority = _resolveWithdrawalPriority();
-
-        for (uint256 i = 0; i < priority.length && remaining > 0; ++i) {
-            uint256 withdrawn = _withdrawFromExternalVault(priority[i], remaining);
-            if (withdrawn == 0) continue;
-            usdcWithdrawn += withdrawn;
-            remaining -= withdrawn;
-        }
-
-        if (remaining > 0) revert CommonErrorLibrary.InsufficientBalance();
+        usdcWithdrawn = StakingYieldLibrary.withdrawPrincipal(
+            stakingVaultAdapterById, stakingVaultActiveById, principalUsdcByVaultId,
+            _resolveWithdrawalPriority(), usdcAmount, usdc
+        );
+        totalUsdcInExternalVaults -= usdcWithdrawn;
     }
 
     /**
@@ -2091,40 +2086,7 @@ contract QuantillonVault is
         priority[0] = defaultVaultId;
     }
 
-    /**
-     * @notice Withdraws up to `remaining` USDC principal from one external vault id.
-     * @dev Caps withdrawal at locally tracked principal and requires adapter to return exact requested amount.
-     * @param vaultId Vault id to withdraw from.
-     * @param remaining Remaining aggregate withdrawal amount required.
-     * @return withdrawnAmount Amount withdrawn from this vault id (0 when skipped/ineligible).
-     * @custom:security Internal helper used by controlled redemption liquidity flow.
-     * @custom:validation Skips inactive/unconfigured/zero-principal vaults; reverts on adapter mismatch.
-     * @custom:state-changes Decreases per-vault and global principal trackers before adapter withdrawal.
-     * @custom:events Emits `UsdcWithdrawnFromExternalVault` on successful withdrawal.
-     * @custom:errors Reverts with `InvalidAmount` if adapter withdrawal result mismatches request.
-     * @custom:reentrancy Internal helper; adapter interaction occurs after accounting updates.
-     * @custom:access Internal helper.
-     * @custom:oracle No oracle dependencies.
-     */
-    function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount) {
-        if (!stakingVaultActiveById[vaultId]) return 0;
 
-        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
-        if (address(adapter) == address(0)) return 0;
-
-        uint256 principalTracked = principalUsdcByVaultId[vaultId];
-        if (principalTracked == 0) return 0;
-
-        uint256 requested = remaining > principalTracked ? principalTracked : remaining;
-        principalUsdcByVaultId[vaultId] = principalTracked - requested;
-        totalUsdcInExternalVaults -= requested;
-
-        uint256 withdrawn = adapter.withdrawUnderlying(requested);
-        if (withdrawn != requested) revert CommonErrorLibrary.InvalidAmount();
-
-        emit UsdcWithdrawnFromExternalVault(vaultId, requested, principalUsdcByVaultId[vaultId]);
-        return requested;
-    }
     
 
     /**
@@ -2210,13 +2172,13 @@ contract QuantillonVault is
         if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
 
         uint256 externalWithdrawalAmount = _planExternalVaultWithdrawal(usdcAmount);
-        uint256 projectedHeld = totalUsdcHeld + externalWithdrawalAmount;
+        uint256 externalWithdrawn;
+        if (externalWithdrawalAmount > 0) {
+            externalWithdrawn = _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
+        }
+        uint256 projectedHeld = totalUsdcHeld + externalWithdrawn;
         if (projectedHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
         totalUsdcHeld = projectedHeld - usdcAmount;
-
-        if (externalWithdrawalAmount > 0) {
-            _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
-        }
 
         // INTERACTIONS
         usdc.safeTransfer(hedger, usdcAmount);

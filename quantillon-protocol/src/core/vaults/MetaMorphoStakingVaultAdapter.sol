@@ -8,13 +8,14 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {IExternalStakingVault} from "../../interfaces/IExternalStakingVault.sol";
+import {IVersioned} from "../../interfaces/IVersioned.sol";
 import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
 
 /**
  * @title MetaMorphoStakingVaultAdapter
  * @notice Adapter for MetaMorpho ERC-4626 vaults such as 0xBEEFE94c8aD530842bfE7d8B397938fFc1cb83b2.
  */
-contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalStakingVault {
+contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalStakingVault, IVersioned {
     using SafeERC20 for IERC20;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
@@ -23,6 +24,22 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
     IERC4626 public metaMorphoVault;
     uint256 public principalDeposited;
 
+    /**
+     * @notice Semantic version of this non-upgradeable adapter.
+     * @dev Version changes accompany adapter behavior changes.
+     * @return Semantic version string.
+     * @custom:security Read-only metadata.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy None.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
+    function version() external pure override returns (string memory) { return "2.1.1"; }
+
+    event PrincipalWrittenDown(uint256 previousPrincipal, uint256 currentPrincipal);
     event MetaMorphoVaultUpdated(address indexed oldVault, address indexed newVault);
 
     /**
@@ -115,15 +132,23 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         if (principalDeposited == 0) revert CommonErrorLibrary.InsufficientBalance();
 
         uint256 requested = usdcAmount > principalDeposited ? principalDeposited : usdcAmount;
-        if (metaMorphoVault.maxWithdraw(address(this)) < requested) revert CommonErrorLibrary.InsufficientBalance();
-
+        uint256 available = metaMorphoVault.maxWithdraw(address(this));
+        uint256 fromVault = requested;
+        if (available < requested) {
+            uint256 shortfall = requested - available;
+            if (shortfall > 1 || USDC.balanceOf(address(this)) < shortfall) {
+                revert CommonErrorLibrary.InsufficientBalance();
+            }
+            fromVault = available;
+        }
         principalDeposited -= requested;
-        uint256 balanceBefore = USDC.balanceOf(address(this));
-        uint256 sharesBurned = metaMorphoVault.withdraw(requested, address(this), address(this));
-        if (sharesBurned == 0) revert CommonErrorLibrary.InvalidAmount();
-
-        uint256 received = USDC.balanceOf(address(this)) - balanceBefore;
-        if (received < requested) revert CommonErrorLibrary.InvalidAmount();
+        if (fromVault != 0) {
+            uint256 balanceBefore = USDC.balanceOf(address(this));
+            uint256 sharesBurned = metaMorphoVault.withdraw(fromVault, address(this), address(this));
+            if (sharesBurned == 0 || USDC.balanceOf(address(this)) - balanceBefore != fromVault) {
+                revert CommonErrorLibrary.InvalidAmount();
+            }
+        }
 
         USDC.safeTransfer(msg.sender, requested);
         return requested;
@@ -155,22 +180,45 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         if (currentUnderlying <= principalDeposited) return 0;
 
         uint256 availableYield = currentUnderlying - principalDeposited;
-        uint256 liquidAssets = metaMorphoVault.maxWithdraw(address(this));
+        uint256 idle = USDC.balanceOf(address(this));
+        uint256 liquidAssets = metaMorphoVault.maxWithdraw(address(this)) + idle;
         realizedYield = availableYield < liquidAssets ? availableYield : liquidAssets;
         if (realizedYield == 0) return 0;
-
-        uint256 balanceBefore = USDC.balanceOf(address(this));
-        uint256 sharesBurned = metaMorphoVault.withdraw(realizedYield, address(this), address(this));
-        if (sharesBurned == 0) revert CommonErrorLibrary.InvalidAmount();
-
-        uint256 received = USDC.balanceOf(address(this)) - balanceBefore;
-        if (received < realizedYield) revert CommonErrorLibrary.InvalidAmount();
-
+        if (realizedYield > idle) {
+            uint256 fromVault = realizedYield - idle;
+            uint256 balanceBefore = USDC.balanceOf(address(this));
+            uint256 sharesBurned = metaMorphoVault.withdraw(fromVault, address(this), address(this));
+            if (sharesBurned == 0 || USDC.balanceOf(address(this)) - balanceBefore != fromVault) {
+                revert CommonErrorLibrary.InvalidAmount();
+            }
+        }
         USDC.safeTransfer(msg.sender, realizedYield);
     }
 
     /**
-     * @notice Returns the USDC value of this adapter's MetaMorpho shares.
+     * @notice Writes down tracked principal to the current ERC-4626 underlying value.
+     * @dev This records an externally observed loss so future withdrawals cannot rely on
+     *      unavailable principal. It never transfers funds or changes share ownership.
+     * @return writtenDown Amount removed from tracked principal.
+     * @custom:security Governance-only loss recognition.
+     * @custom:validation Requires current underlying to be below tracked principal.
+     * @custom:state-changes Decreases `principalDeposited`.
+     * @custom:events PrincipalWrittenDown.
+     * @custom:errors InvalidCondition when no loss is present.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access GOVERNANCE_ROLE.
+     * @custom:oracle No oracle dependency.
+     */
+    function writeDownPrincipal() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 writtenDown) {
+        uint256 currentUnderlying = _totalUnderlying();
+        if (currentUnderlying >= principalDeposited) revert CommonErrorLibrary.InvalidCondition();
+        emit PrincipalWrittenDown(principalDeposited, currentUnderlying);
+        writtenDown = principalDeposited - currentUnderlying;
+        principalDeposited = currentUnderlying;
+    }
+
+    /**
+     * @notice Returns the USDC value of MetaMorpho shares plus idle USDC.
      * @dev Read helper used by QuantillonVault for exposure accounting; delegates to `_totalUnderlying`.
      * @return underlyingBalance Underlying USDC-equivalent balance held via ERC-4626 shares.
      * @custom:security Read-only helper.
@@ -202,6 +250,7 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
     function setMetaMorphoVault(address newMetaMorphoVault) external onlyRole(GOVERNANCE_ROLE) {
         if (newMetaMorphoVault == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (IERC4626(newMetaMorphoVault).asset() != address(USDC)) revert CommonErrorLibrary.InvalidAddress();
+        if (metaMorphoVault.balanceOf(address(this)) != 0) revert CommonErrorLibrary.InvalidCondition();
 
         address oldVault = address(metaMorphoVault);
         metaMorphoVault = IERC4626(newMetaMorphoVault);
@@ -210,7 +259,7 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
 
     /**
      * @notice Returns the USDC-equivalent value of this adapter's MetaMorpho shares.
-     * @dev Converts the adapter's ERC-4626 share balance to assets via `convertToAssets`.
+     * @dev Converts the adapter's ERC-4626 shares and adds idle USDC, including any rounding buffer.
      * @return Underlying USDC-equivalent amount held via ERC-4626 shares.
      * @custom:security Internal read-only helper.
      * @custom:validation No input validation required.
@@ -222,6 +271,6 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
      * @custom:oracle No oracle dependencies.
      */
     function _totalUnderlying() internal view returns (uint256) {
-        return metaMorphoVault.convertToAssets(metaMorphoVault.balanceOf(address(this)));
+        return metaMorphoVault.convertToAssets(metaMorphoVault.balanceOf(address(this))) + USDC.balanceOf(address(this));
     }
 }

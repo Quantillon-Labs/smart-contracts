@@ -24,11 +24,25 @@ contract MockUSDCForMetaMorphoAdapter is ERC20 {
 
 contract MockMetaMorphoVault is ERC4626 {
     using SafeERC20 for IERC20;
+    uint256 public forcedMaxWithdraw = type(uint256).max;
 
     constructor(IERC20 asset_) ERC20("MetaMorpho USDC", "mmUSDC") ERC4626(asset_) {}
 
     function injectYield(uint256 amount) external {
         IERC20(asset()).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function setForcedMaxWithdraw(uint256 amount) external {
+        forcedMaxWithdraw = amount;
+    }
+
+    function drainAssets(address to, uint256 amount) external {
+        IERC20(asset()).safeTransfer(to, amount);
+    }
+
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        uint256 available = super.maxWithdraw(owner);
+        return available < forcedMaxWithdraw ? available : forcedMaxWithdraw;
     }
 }
 
@@ -144,6 +158,60 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
         uint256 harvested = adapter.harvestYieldToVault();
 
         assertEq(harvested, 0);
+    }
+
+    function test_WithdrawUnderlying_UsesIdleDustBufferWhenVaultIsOneUnitShort() public {
+        vm.prank(vaultMgr);
+        adapter.depositUnderlying(DEPOSIT_AMT);
+
+        // Simulate one unit temporarily unavailable from the ERC-4626 source while
+        // the adapter retains a matching idle buffer.
+        metaMorphoVault.setForcedMaxWithdraw(DEPOSIT_AMT - 1);
+        usdc.mint(address(adapter), 1);
+
+        uint256 before = usdc.balanceOf(vaultMgr);
+        vm.prank(vaultMgr);
+        uint256 withdrawn = adapter.withdrawUnderlying(DEPOSIT_AMT);
+
+        assertEq(withdrawn, DEPOSIT_AMT);
+        assertEq(usdc.balanceOf(vaultMgr) - before, DEPOSIT_AMT);
+        assertEq(adapter.principalDeposited(), 0);
+    }
+
+    function test_WriteDownPrincipal_TracksObservedExternalLoss() public {
+        vm.prank(vaultMgr);
+        adapter.depositUnderlying(DEPOSIT_AMT);
+
+        // Remove value from the ERC-4626 asset pool without changing adapter shares.
+        metaMorphoVault.drainAssets(address(this), 10e6);
+
+        uint256 before = adapter.totalUnderlying();
+        assertLt(before, DEPOSIT_AMT);
+
+        vm.prank(admin);
+        uint256 writtenDown = adapter.writeDownPrincipal();
+
+        assertEq(writtenDown, DEPOSIT_AMT - before);
+        assertEq(adapter.principalDeposited(), before);
+    }
+
+    function test_WriteDownPrincipal_NoLoss_Reverts() public {
+        vm.prank(vaultMgr);
+        adapter.depositUnderlying(DEPOSIT_AMT);
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        adapter.writeDownPrincipal();
+    }
+
+    function test_SetMetaMorphoVault_FundedPosition_Reverts() public {
+        vm.prank(vaultMgr);
+        adapter.depositUnderlying(DEPOSIT_AMT);
+        MockMetaMorphoVault newVault = new MockMetaMorphoVault(IERC20(address(usdc)));
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        adapter.setMetaMorphoVault(address(newVault));
     }
 
     function test_SetMetaMorphoVault_RequiresMatchingAsset() public {

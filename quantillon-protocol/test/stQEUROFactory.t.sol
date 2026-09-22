@@ -148,7 +148,7 @@ contract stQEUROFactoryTest is Test {
     // ---- config setters (governance) + zero-address reverts ----
 
     function test_cov_version() public view {
-        assertEq(factory.version(), "1.0.2");
+        assertEq(factory.version(), "1.0.4");
     }
 
     function test_cov_updateYieldShift() public {

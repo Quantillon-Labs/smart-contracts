@@ -58,7 +58,7 @@ library HedgerPoolMigrationLibrary {
      * @custom:access Linked library helper.
      * @custom:oracle No oracle lookup.
      */
-    function version() external pure returns (string memory) { return "1.0.0"; }
+    function version() external pure returns (string memory) { return "1.0.1"; }
 
     /**
      * @notice Returns the current migration proposal, or an empty proposal after completion/cancellation.

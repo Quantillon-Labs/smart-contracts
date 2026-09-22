@@ -229,3 +229,6 @@ For comprehensive documentation, setup instructions, and development guides, ple
 ---
 
 **Built with ❤️ by the Quantillon Labs team**
+
+
+Yield crediting uses an independent solvency gate above `max(101%, criticalCollateralizationRatio)` and a projected 100% floor; public minting continues to use the live configured mint floor.

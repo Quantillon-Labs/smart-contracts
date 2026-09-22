@@ -40,10 +40,18 @@ contract ReportPublicationBatcher is IVersioned {
 
     /**
      * @notice Set permanent publisher and target addresses.
+     * @dev Constructor wiring is immutable and rejects overlapping publisher and destination addresses.
      * @param publisher Publisher account, distinct from both destinations.
      * @param price Deployed price storage.
      * @param depth Deployed execution pricing contract.
      * @custom:security No role grants or arbitrary targets are exposed.
+     * @custom:validation Rejects zero, non-contract, or overlapping addresses.
+     * @custom:state-changes Stores immutable writer and destination addresses.
+     * @custom:events None.
+     * @custom:errors InvalidAddress for invalid wiring.
+     * @custom:reentrancy No external calls.
+     * @custom:access Deployment only.
+     * @custom:oracle None.
      */
     constructor(address publisher, address price, address depth) {
         if (publisher == address(0) || price.code.length == 0 || depth.code.length == 0 ||
@@ -61,6 +69,13 @@ contract ReportPublicationBatcher is IVersioned {
      *      Capacity never resets consumed depth; a later fresh book applies the target's rules.
      * @custom:security Rejects invalid selectors before any effects. Reverting reports do not
      *      undo valid reports. All-failed batches revert so preflight estimation rejects them.
+     * @custom:validation Requires at least one supported call and enough gas for the selected reports.
+     * @custom:state-changes Updates successful target reports and the publication timestamp.
+     * @custom:events Emits ReportsPublished and ReportRejected for failed subcalls.
+     * @custom:errors NotAuthorized, InvalidParameter, InsufficientReportGas, or NoSuccessfulReports.
+     * @custom:reentrancy Uses bounded low-level calls to immutable targets.
+     * @custom:access Restricted to the immutable writer.
+     * @custom:oracle Reads no oracle directly; forwards validated report calls.
      */
     function publishReports(bytes calldata priceCall, bytes calldata depthCall, bytes calldata capacityCall)
         external returns (uint8 succeeded)
@@ -102,6 +117,18 @@ contract ReportPublicationBatcher is IVersioned {
         if (!ok) emit ReportRejected(report, reason);
     }
 
-    /// @notice Semantic version of this separately deployed, non-upgradeable contract.
+    /**
+     * @notice Semantic version of this separately deployed, non-upgradeable contract.
+     * @dev The value is embedded in bytecode for release traceability.
+     * @return Semantic version string.
+     * @custom:security No security implications; this is a pure constant getter.
+     * @custom:validation No input validation.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
     function version() external pure override returns (string memory) { return "1.0.0"; }
 }

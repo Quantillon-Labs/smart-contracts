@@ -36,7 +36,7 @@ contract YieldShiftOptimizationLibraryTest is Test {
 
     // ---- version ----
     function test_version() public pure {
-        assertEq(L.version(), "1.0.0");
+        assertEq(L.version(), "1.0.1");
     }
 
     // ---- getCurrentPoolMetrics ----

@@ -33,9 +33,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
       - name: Install Foundry
+        id: foundry
+        continue-on-error: true
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.7.1
+      - name: Retry Foundry installation
+        if: steps.foundry.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.foundry/bin:$PATH"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          foundryup_bin="$HOME/.foundry/bin/foundryup"
+          test -x "$foundryup_bin"
+          for attempt in 1 2 3 4 5; do
+            if "$foundryup_bin" --install v1.7.1; then
+              exit 0
+            fi
+            sleep $((attempt * 15))
+          done
+          exit 1
       - name: Run test shard
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: bash scripts/ci-test-shard.sh ${{ matrix.shard }} 4
@@ -76,9 +93,26 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Foundry
+        id: foundry
+        continue-on-error: true
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.7.1
+      - name: Retry Foundry installation
+        if: steps.foundry.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.foundry/bin:$PATH"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          foundryup_bin="$HOME/.foundry/bin/foundryup"
+          test -x "$foundryup_bin"
+          for attempt in 1 2 3 4 5; do
+            if "$foundryup_bin" --install v1.7.1; then
+              exit 0
+            fi
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       - name: Build contracts
         run: make build
@@ -111,9 +145,26 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Foundry
+        id: foundry
+        continue-on-error: true
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.7.1
+      - name: Retry Foundry installation
+        if: steps.foundry.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.foundry/bin:$PATH"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          foundryup_bin="$HOME/.foundry/bin/foundryup"
+          test -x "$foundryup_bin"
+          for attempt in 1 2 3 4 5; do
+            if "$foundryup_bin" --install v1.7.1; then
+              exit 0
+            fi
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       - name: Set up Python
         uses: actions/setup-python@v7

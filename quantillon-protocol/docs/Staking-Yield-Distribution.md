@@ -13,19 +13,23 @@ the source implementation; check the deployed vault's `version()` to determine w
 
 ## 1. How stakers accrue yield
 
-`stQEUROToken` is a standard **OpenZeppelin ERC-4626** vault whose underlying asset is **QEURO**,
-deployed once per staking vault id by `stQEUROFactory` (e.g. `stQEUROMORPHO1` for `vaultId = 2`).
-It does **not** override `totalAssets()`, so:
+`stQEUROToken` is a yield-bearing **OpenZeppelin ERC-4626** vault whose underlying asset is
+**QEURO**, deployed once per staking vault id by `stQEUROFactory` (e.g. `stQEUROMORPHO1` for
+`vaultId = 2`). Newly credited or donated QEURO is linearly vested (24 hours by default), so
+`totalAssets()` exposes principal plus only the vested portion. The first `syncVesting()` call on
+an upgraded legacy proxy snapshots its existing balance as principal and must be performed while
+the vault is paused before user activity resumes:
 
 ```
 sharePrice = totalAssets() / totalSupply()
-           = (QEURO held by the stQEURO contract) / (stQEURO shares outstanding)
+           = (accounted principal + vested yield) / (stQEURO shares outstanding)
 ```
 
 There is **no rebasing and no claim call**. Stakers earn purely through **share-price appreciation**:
 the share price rises whenever QEURO is added to the stQEURO contract **without** minting new shares.
-The only function that does this is `QuantillonVault.creditVaultYield`, which mints fresh QEURO
-directly to the stQEURO contract. A staker's redeemable QEURO is always `previewRedeem(shares)`.
+The main credit path is `QuantillonVault.creditVaultYield`, which mints fresh QEURO directly to the
+stQEURO contract. Keepers may call `syncVesting()` to advance the linear schedule. A staker's
+redeemable QEURO is always `previewRedeem(shares)`.
 
 ```
 Day 0   stake 1,000 QEURO            -> 1,000 stQEURO   (sharePrice 1.000)
@@ -208,3 +212,6 @@ Verify after a run:
 - `test/StQEUROYieldDistribution.t.sol` — distribution at 0.5% funding (hedger-first, share-price rise, treasury split, conservation, access control).
 - `test/security/MintExecutionBoundaryAudit.t.sol` — yield/public admission sharing, execution costs, fee isolation, and atomic rollback.
 - `test/security/MintExecutionLiveForkAudit.t.sol` — deployed v1.2.0 reproduction and v1.2.1 upgrade regressions on the pinned Base fork.
+## Harvest retry and mint gates
+
+Harvest, fee routing, execution-book admission, price-cache updates, hedger synchronization, and QEURO minting are one atomic operation. If any token, oracle, execution, or hedger condition fails, the transaction rolls back and the adapter yield can be retried. Public minting and yield crediting use different collateralization gates; the live on-chain mint floor is authoritative.

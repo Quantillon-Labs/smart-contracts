@@ -145,7 +145,8 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Key Features**:
 - Automatic yield distribution via exchange rate
-- Exchange rate = `totalAssets() / totalSupply()` (standard ERC-4626 share price; it rises when `QuantillonVault.creditVaultYield` mints QEURO into the token without minting shares)
+- Exchange rate = `totalAssets() / totalSupply()`; `totalAssets()` includes principal plus linearly vested
+  QEURO yield, while newly credited yield remains excluded until `syncVesting()` advances the schedule
 - No lock-up period — unstake at any time
 - Virtual protection against donation attacks
 

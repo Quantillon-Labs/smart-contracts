@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {FeeCollector} from "../core/FeeCollector.sol";
 import {HedgerPool} from "../core/HedgerPool.sol";
+import {HedgerPoolRedeemMathLibrary} from "./HedgerPoolRedeemMathLibrary.sol";
 import {HedgerPoolLogicLibrary} from "./HedgerPoolLogicLibrary.sol";
 import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
 import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
@@ -28,6 +31,36 @@ library HedgerPoolAccountingLibrary {
     error LegacyCorrectionAlreadyApplied();
     event LegacyMarginCorrected(bytes32 indexed correctionId, address indexed hedger, uint256 amount);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
+    event RewardReserveFunded(address indexed funder, uint256 amount);
+
+    /**
+     * @notice Routes collected fees between the reward reserve and collector.
+     * @dev Reserve amounts remain in the calling pool.
+     * @param usdc Collateral token.
+     * @param collector Fee collector address.
+     * @param split Reserve fraction scaled by 1e18.
+     * @param funder Account credited with funding the reserve.
+     * @param fee Collected fee in USDC units.
+     * @param sourceType Collector accounting category.
+     * @custom:security Caller validates the configured split and recipient.
+     * @custom:validation A zero fee is a no-op.
+     * @custom:state-changes Transfers the collector portion and updates allowance.
+     * @custom:events RewardReserveFunded and collector events.
+     * @custom:errors Propagates token and collector failures.
+     * @custom:reentrancy Calling pool holds its reentrancy guard.
+     * @custom:access Linked library.
+     * @custom:oracle None.
+     */
+    function routeFee(IERC20 usdc, address collector, uint256 split, address funder, uint256 fee, string memory sourceType) external {
+        if (fee == 0) return;
+        uint256 reserveShare = Math.mulDiv(fee, split, 1e18);
+        uint256 collectorShare = fee - reserveShare;
+        if (reserveShare != 0) emit RewardReserveFunded(funder, reserveShare);
+        if (collectorShare != 0 && collector != address(0)) {
+            usdc.safeIncreaseAllowance(collector, collectorShare);
+            FeeCollector(collector).collectFees(address(usdc), collectorShare, sourceType);
+        }
+    }
 
     /**
      * @notice Assigns the configured owner with the existing inactive-position restriction.
@@ -131,6 +164,7 @@ library HedgerPoolAccountingLibrary {
      * @dev Scalar settings outside CoreParams remain assigned by the pool.
      * @param params Pool core parameters in storage.
      * @param cfg Requested complete risk and fee configuration.
+     * @param position Active position used to bound the margin-ratio setting.
      * @custom:security Pool wrappers enforce caller authority and storage references.
      * @custom:validation Uses the pool's existing validation rules.
      * @custom:state-changes Updates only the explicitly supplied accounting storage.
@@ -140,7 +174,10 @@ library HedgerPoolAccountingLibrary {
      * @custom:access Linked library invoked by HedgerPool through delegatecall.
      * @custom:oracle No oracle lookup; prices, where present, are supplied by the caller.
      */
-    function configure(HedgerPool.CoreParams storage params, HedgerPool.HedgerRiskConfig calldata cfg) external {
+    function configure(HedgerPool.CoreParams storage params, HedgerPool.HedgerRiskConfig calldata cfg, HedgerPool.HedgePosition storage position) external {
+        if (position.isActive && (position.leverage == 0 || cfg.minMarginRatio > 10_000 / position.leverage)) {
+            revert CommonErrorLibrary.ConfigValueTooHigh();
+        }
         if (cfg.minMarginRatio < 250) revert CommonErrorLibrary.ConfigValueTooLow();
         if (cfg.minMarginRatio > type(uint64).max) revert CommonErrorLibrary.ConfigValueTooHigh();
         if (cfg.maxLeverage > 40) revert CommonErrorLibrary.ConfigValueTooHigh();
@@ -203,7 +240,49 @@ library HedgerPoolAccountingLibrary {
      * @custom:access Linked library helper.
      * @custom:oracle No oracle lookup.
      */
-    function version() external pure returns (string memory) { return "1.1.0"; }
+    function version() external pure returns (string memory) { return "1.3.0"; }
+
+    /**
+     * @notice Books interest earned up to the current exposure change.
+     * @dev Checkpointing before every exposure mutation prevents a later, larger
+     *      exposure from being applied retroactively to an earlier accrual period.
+     * @param rewardState Hedger reward state.
+     * @param rewardTimes Per-hedger accrual clocks.
+     * @param params Pool interest-rate configuration.
+     * @param totalExposure Exposure that was active during the elapsed period.
+     * @param currentTime Canonical protocol time.
+     * @param maxRewardPeriod Maximum accrual duration.
+     * @param hedger Hedger whose clock is being checkpointed.
+     * @return pendingRewards Updated pending interest reward.
+     * @custom:security Uses only explicitly supplied storage and accounting inputs.
+     * @custom:validation Rejects reward overflow through the shared error library.
+     * @custom:state-changes Updates the hedger's pending reward and accrual clock.
+     * @custom:events None.
+     * @custom:errors RewardOverflow on uint128 overflow.
+     * @custom:reentrancy No external calls.
+     * @custom:access Linked library invoked by HedgerPool.
+     * @custom:oracle No oracle dependency.
+     */
+    function checkpoint(
+        HedgerPool.HedgerRewardState storage rewardState,
+        mapping(address => uint256) storage rewardTimes,
+        HedgerPool.CoreParams storage params,
+        uint256 totalExposure,
+        uint256 currentTime,
+        uint256 maxRewardPeriod,
+        address hedger
+    ) external returns (uint256 pendingRewards) {
+        uint256 lastRewardTime = rewardTimes[hedger];
+        if (lastRewardTime > 0 && lastRewardTime < 1_000_000_000) lastRewardTime = currentTime;
+        (uint256 pending, uint256 last) = HedgerPoolLogicLibrary.calculateRewardUpdate(
+            totalExposure, params.eurInterestRate, params.usdInterestRate,
+            lastRewardTime, currentTime, maxRewardPeriod, uint256(rewardState.pendingRewards)
+        );
+        if (pending > type(uint128).max) revert HedgerPoolErrorLibrary.RewardOverflow();
+        rewardState.pendingRewards = uint128(pending);
+        rewardTimes[hedger] = last;
+        pendingRewards = pending;
+    }
 
     /**
      * @notice Accrues interest into withdrawal escrow and claims external yield.
@@ -287,5 +366,48 @@ library HedgerPoolAccountingLibrary {
         if (payout == 0) revert CommonErrorLibrary.InsufficientBalance();
         pendingWithdrawals[msg.sender] = amount - payout;
         usdc.safeTransfer(recipient, payout);
+    }
+
+    /**
+     * @notice Applies realized profit or loss to margin and notional exposure.
+     * @dev Keeps aggregate exposure aligned with the resulting position size.
+     * @param pos Position to update.
+     * @param totalMargin Aggregate margin before the transition.
+     * @param totalExposure Aggregate exposure before the transition.
+     * @param realizedDelta Realized USDC profit or loss.
+     * @return nextMargin Aggregate margin after settlement.
+     * @return nextExposure Aggregate exposure after settlement.
+     * @custom:security Caller checkpoints rewards before changing exposure.
+     * @custom:validation Shared math validates position bounds.
+     * @custom:state-changes Updates position margin and size.
+     * @custom:events None.
+     * @custom:errors Propagates checked arithmetic errors.
+     * @custom:reentrancy No external state-changing calls.
+     * @custom:access Linked library.
+     * @custom:oracle Caller supplies settled profit or loss.
+     */
+    function applyMarginTransition(
+        HedgerPool.HedgePosition storage pos, uint256 totalMargin, uint256 totalExposure, int256 realizedDelta
+    ) external returns (uint256 nextMargin, uint256 nextExposure) {
+        uint256 oldPositionSize = uint256(pos.positionSize);
+        HedgerPoolRedeemMathLibrary.MarginTransition memory transition = HedgerPoolRedeemMathLibrary.computeMarginTransition(
+            totalMargin,
+            uint256(pos.margin),
+            uint256(pos.leverage),
+            realizedDelta
+        );
+
+        nextMargin = transition.totalMarginAfter;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        pos.margin = uint96(transition.nextMargin);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        pos.positionSize = uint96(transition.nextPositionSize);
+
+        if (transition.nextPositionSize >= oldPositionSize) {
+            nextExposure = totalExposure + transition.nextPositionSize - oldPositionSize;
+        } else {
+            uint256 exposureDrop = oldPositionSize - transition.nextPositionSize;
+            nextExposure = totalExposure - (exposureDrop > totalExposure ? totalExposure : exposureDrop);
+        }
     }
 }

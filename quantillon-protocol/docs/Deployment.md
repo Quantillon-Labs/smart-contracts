@@ -106,9 +106,9 @@ governance activation call.
 
 ### Coordinated core implementation release
 
-Deploy the seven core implementations together: QuantillonVault v1.2.0,
-HedgerPool v1.1.0, QEUROToken v1.0.7, QTIToken v1.0.3, UserPool v1.0.4,
-stQEUROFactory v1.0.2, and each registered stQEUROToken proxy at v1.0.4.
+Deploy the coordinated core implementations from the release manifest. Read
+target versions from `version-baseline/` and live `versions.json`; do not reuse
+the historical version list in older runbooks.
 Link the vault to ExecutionPricingLibrary v1.0.1 and the pool to the two
 HedgerPool libraries listed above. Preserve each implementation's existing
 TimeProvider constructor argument. Check the factory registry for all token
@@ -120,12 +120,15 @@ ensure no emergency-disable proposal spans a change of clock.
 
 For the Base controller, schedule all implementation upgrades with
 `TimelockController.scheduleBatch` from the governance Safe. Read `getMinDelay()`
-and wait for readiness. The Safe's execution batch must then pause vault and pool,
-call `TimelockController.executeBatch`, call `HedgerPool.initializeCostBasisAccounting()`
-directly as governance, update the factory's `tokenImplementation` to the new
-stQEUROToken implementation, and unpause pool and vault. Use an atomic Safe batch
-so failure of activation also rolls back the implementation upgrades. Settlement
-must satisfy the activation conditions at execution time.
+and wait for readiness. The Safe's execution batch must pause vault and pool, execute the timelocked
+implementation upgrades, perform explicitly listed governance activation, and
+unpause only after post-upgrade checks pass. For every existing stQEURO proxy,
+keep the vault paused and call `syncVesting()` immediately after the
+implementation upgrade. Verify the `YieldVestingSynced` event,
+`totalAssets() <= asset balance`, and the expected accounted/unvested balances
+from the implementation state before allowing deposits or unpausing. A plain `upgradeToAndCall(newImpl, "")`
+does not run the token initializer, so omitting this sync exposes historical
+donations through the first read path.
 
 Installing QuantillonVault v1.2.0 leaves `executionPricing()` at zero on an existing
 proxy. This installs pricing support while retaining reference-price settlement.

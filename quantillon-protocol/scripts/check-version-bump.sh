@@ -4,15 +4,14 @@
 #
 # RULE: any change to a deployed contract/library — correction, bug fix, update, or upgrade —
 # MUST be traced through a semver bump of its on-chain version() (or, for linked libraries, the
-# version() / VERSION constant). This gate enforces that: it hashes each unit's SOURCE FILE and
-# fails CI if the source changed while its version string did not.
+# version() / VERSION constant). This gate enforces that: it hashes each unit's local IMPORT
+# CLOSURE and fails CI if source dependencies change while its version string did not.
 #
 # Why source (not bytecode): compiled bytecode is not reproducible here — `forge inspect` re-links
 # libraries at ephemeral addresses, and the build profile (default optimizer 0 vs test optimizer
 # 200) that last wrote out/ changes the artifact. Hashing the committed source file is fully
-# deterministic and build-independent. A change to a linked library trips that library's own gate;
-# every versioned unit gates on its own source. (Per the rule above, comment/NatSpec edits are also
-# "changes" and require a bump.)
+# deterministic and build-independent. Relative and remapped imports are included so changes to
+# inlined libraries force a bump in every consuming deployed unit.
 #
 # Usage:
 #   scripts/check-version-bump.sh           # check against committed baseline (CI)
@@ -29,6 +28,7 @@ UPDATE=0
 # standalone bytecode; their changes alter the consuming contract's bytecode and are caught there.
 TARGETS=(
   "src/libraries/HedgerPoolMigrationLibrary.sol:HedgerPoolMigrationLibrary"
+  "src/libraries/SecureUpgradeLibrary.sol:SecureUpgradeLibrary"
   "src/libraries/HedgerPoolAccountingLibrary.sol:HedgerPoolAccountingLibrary"
   "src/automation/QuantillonRebalancerModule.sol:QuantillonRebalancerModule"
   "src/core/QEUROToken.sol:QEUROToken"
@@ -58,6 +58,7 @@ TARGETS=(
   "src/libraries/VaultMath.sol:VaultMath"
   "src/libraries/ExecutionPricingLibrary.sol:ExecutionPricingLibrary"
   "src/oracle/ExecutionPricing.sol:ExecutionPricing"
+  "src/core/vaults/MetaMorphoStakingVaultAdapter.sol:MetaMorphoStakingVaultAdapter"
   "src/libraries/YieldShiftCalculationLibrary.sol:YieldShiftCalculationLibrary"
   "src/libraries/YieldShiftOptimizationLibrary.sol:YieldShiftOptimizationLibrary"
 )
@@ -71,6 +72,11 @@ extract_version() {
     | head -1 | grep -oE '"[^"]*"' | tr -d '"'
 }
 
+# Canonical paths terminate cyclic imports; dependency content and relative names are hashed.
+closure_hash() {
+  python3 scripts/source-closure-hash.py "$1"
+}
+
 fail=0
 for t in "${TARGETS[@]}"; do
   path="${t%%:*}"; name="${t##*:}"
@@ -81,7 +87,7 @@ for t in "${TARGETS[@]}"; do
     echo "ERROR: source not found for $t at $path"
     fail=1; continue
   fi
-  new_hash="$(sha256sum "$path" | cut -d' ' -f1)"
+  new_hash="$(closure_hash "$path")"
   new_ver="$(extract_version "$path")"
   if [[ -z "$new_ver" ]]; then
     echo "ERROR: $name has no semver version() literal in $path"
@@ -105,9 +111,9 @@ for t in "${TARGETS[@]}"; do
   if [[ "$new_hash" == "$base_hash" ]]; then
     echo "ok   $name ($new_ver, unchanged)"
   elif [[ "$new_ver" != "$base_ver" ]]; then
-    echo "ok   $name (bytecode changed; version bumped $base_ver -> $new_ver)"
+    echo "ok   $name (source closure changed; version bumped $base_ver -> $new_ver)"
   else
-    echo "VERSION VIOLATION in $name: bytecode changed but version() is still $base_ver"
+    echo "VERSION VIOLATION in $name: source closure changed but version() is still $base_ver"
     echo "    -> bump the semver in $path (PATCH=fix/internal, MINOR=new behavior) per the"
     echo "       'every change is traced through a version bump' rule."
     fail=1

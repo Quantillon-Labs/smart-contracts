@@ -747,7 +747,7 @@ contract StorkOracleTest is Test {
     }
 
     function test_cov_version() public view {
-        assertEq(storkOracle.version(), "1.0.1");
+        assertEq(storkOracle.version(), "1.0.2");
     }
 
     function test_cov_updateTreasury_successAndZero() public {
@@ -827,7 +827,7 @@ contract StorkOracleTest is Test {
         StorkOracle newImpl = new StorkOracle(timeProvider);
         vm.prank(admin);
         storkOracle.upgradeToAndCall(address(newImpl), "");
-        assertEq(storkOracle.version(), "1.0.1");
+        assertEq(storkOracle.version(), "1.0.2");
     }
 
     /// @notice An out-of-bounds price makes validation fail during _updatePrices, auto-tripping the breaker.

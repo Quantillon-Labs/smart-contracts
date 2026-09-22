@@ -143,6 +143,8 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     uint256 public bufferBps;
     /// @notice Governance ceiling on admitted unacknowledged EUR exposure.
     uint256 public maxOutstanding;
+    /// @notice Haircut applied to reference-priced redemptions when execution data is unavailable.
+    uint256 public degradedHaircutBps = 25;
     /// @notice Governance-update timestamp; subsequent reports must be observed after this time.
     uint256 public riskLimitsUpdatedAt;
 
@@ -186,6 +188,9 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     event HedgeAcknowledged(uint256 admittedBuy, uint256 admittedSell, uint256 capacity, uint256 observedAt);
     event ReserveWithdrawn(address indexed recipient, uint256 amount);
     event RiskLimitsUpdated(uint256 maxAge, uint256 maxImpactBps, uint256 bufferBps, uint256 maxOutstanding);
+    event AdmissionReconciled(uint256 admittedBuy, uint256 admittedSell);
+    event DegradedHaircutUpdated(uint256 previousBps, uint256 newBps);
+    event DegradedRedemption(uint256 quantity, uint256 referencePrice, uint256 payout, uint256 haircutBps);
 
     /**
      * @notice Deploy a vault-bound pricing module with explicit initial risk ceilings.
@@ -224,7 +229,27 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
      * @custom:access Public read access.
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
-    function version() external pure returns (string memory) { return "1.1.0"; }
+    function version() external pure returns (string memory) { return "1.3.2"; }
+
+    /**
+     * @notice Sets the bounded haircut used by the redemption liveness fallback.
+     * @dev The setting applies only when a fresh coherent execution book cannot settle a redemption.
+     * @param haircutBps Haircut in basis points, at most 1000 (10%).
+     * @custom:security Governance-only and only while the vault is paused.
+     * @custom:validation Rejects haircuts above the hard safety cap.
+     * @custom:state-changes Updates the fallback payout parameter.
+     * @custom:events Emits `DegradedHaircutUpdated`.
+     * @custom:errors InvalidCondition or InvalidParameter.
+     * @custom:reentrancy Only a read-only vault pause check.
+     * @custom:access DEFAULT_ADMIN_ROLE.
+     * @custom:oracle No oracle dependency.
+     */
+    function setDegradedHaircutBps(uint256 haircutBps) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!IExecutionVault(vault).paused()) revert Errors.InvalidCondition();
+        if (haircutBps > 1000) revert Errors.InvalidParameter();
+        emit DegradedHaircutUpdated(degradedHaircutBps, haircutBps);
+        degradedHaircutBps = haircutBps;
+    }
 
     /**
      * @notice Update pricing limits on a paused vault after all admitted hedges are acknowledged.
@@ -277,7 +302,7 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     /// @custom:access Internal.
     /// @custom:oracle None.
     function _validateRiskLimits(uint256 age, uint256 impact, uint256 buffer, uint256 outstandingLimit) private pure {
-        if (age == 0 || age > 300 || impact == 0 || impact > 500 || buffer > impact || outstandingLimit == 0) {
+        if (age == 0 || age > 300 || impact == 0 || impact > 500 || buffer > impact || outstandingLimit == 0 || outstandingLimit > type(uint256).max / 2) {
             revert Errors.InvalidParameter();
         }
     }
@@ -326,12 +351,65 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
     function acknowledge(uint256 buy, uint256 sell, uint256 capacity, uint256 sourceTime) external onlyRole(REPORTER_ROLE) {
-        if (buy != admittedBuy || sell != admittedSell) revert Errors.InvalidAmount();
+        if (buy < acknowledgedBuy || buy > admittedBuy || sell < acknowledgedSell || sell > admittedSell) {
+            revert Errors.InvalidAmount();
+        }
         if (sourceTime <= riskLimitsUpdatedAt || sourceTime > block.timestamp || sourceTime < capacityObservedAt || block.timestamp - sourceTime > maxAge) revert Errors.InvalidTime();
         if (buy != acknowledgedBuy || sell != acknowledgedSell) acknowledgedAt = block.timestamp;
         acknowledgedBuy = buy; acknowledgedSell = sell;
         marginCapacity = Math.min(capacity, maxOutstanding); capacityObservedAt = sourceTime;
         emit HedgeAcknowledged(buy, sell, marginCapacity, sourceTime);
+    }
+
+    /**
+     * @notice Reconcile admitted exposure during a governance-controlled pause.
+     * @dev Invalidates all reports; new depth and capacity must be observed after reconciliation.
+     * @custom:security Governance must verify venue settlement before reconciling.
+     * @custom:validation Requires the immutable vault to be paused.
+     * @custom:state-changes Advances cursors and clears depth and capacity.
+     * @custom:events AdmissionReconciled.
+     * @custom:errors InvalidCondition if settlement is not paused.
+     * @custom:reentrancy Only a view call to the vault.
+     * @custom:access DEFAULT_ADMIN_ROLE.
+     * @custom:oracle Fresh reports required before further admission.
+     */
+    function reconcileAdmission() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!IExecutionVault(vault).paused()) revert Errors.InvalidCondition();
+        acknowledgedBuy = admittedBuy;
+        acknowledgedSell = admittedSell;
+        acknowledgedAt = block.timestamp;
+        riskLimitsUpdatedAt = block.timestamp;
+        observedAt = 0;
+        capacityObservedAt = 0;
+        marginCapacity = 0;
+        usedBuy = 0;
+        usedSell = 0;
+        delete asks;
+        delete bids;
+        emit AdmissionReconciled(admittedBuy, admittedSell);
+    }
+
+    /**
+     * @notice Pending buy, sell, gross and absolute net exposure in QEURO units.
+     * @dev Net exposure is informational; opposite admissions do not release gross capacity.
+     * @return buy Unacknowledged buy quantity.
+     * @return sell Unacknowledged sell quantity.
+     * @return gross Sum of pending quantities.
+     * @return net Absolute difference of pending quantities.
+     * @custom:security Read only.
+     * @custom:validation Cursors cannot exceed admission totals.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy None.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
+    function pendingExposure() public view returns (uint256 buy, uint256 sell, uint256 gross, uint256 net) {
+        buy = admittedBuy - acknowledgedBuy;
+        sell = admittedSell - acknowledgedSell;
+        gross = buy + sell;
+        net = buy > sell ? buy - sell : sell - buy;
     }
 
     /**
@@ -408,10 +486,11 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
      */
     function previewRedeem(uint256 qeuroInput) external view returns (Quote memory quote) {
         uint256 ref = _reference();
-        uint256 payout = _redeem(qeuroInput, ref);
+        bool executable = _bookCanExecuteRedeem(qeuroInput, ref);
+        uint256 payout = executable ? _redeem(qeuroInput, ref) : _degradedPayout(qeuroInput, ref);
         uint256 fee = Math.mulDiv(Math.mulDiv(qeuroInput, ref, SCALE), IExecutionVault(vault).redemptionFee(), 1e18);
         if (payout <= fee) revert Errors.InvalidAmount();
-        quote = Quote(payout - fee, Math.mulDiv(payout, SCALE, qeuroInput), ref, _capacity(false, ref), observedAt, sequence);
+        quote = Quote(payout - fee, Math.mulDiv(payout, SCALE, qeuroInput), ref, executable ? _capacity(false, ref) : qeuroInput, observedAt, sequence);
     }
 
     /**
@@ -456,8 +535,15 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
      */
     function consumeRedeem(uint256 q, uint256 ref) external override returns (uint256 payout) {
         if (msg.sender != vault) revert Errors.NotAuthorized();
-        payout = _redeem(q, ref);
-        usedSell += q; admittedSell += q; lastConsumptionBlock = block.number;
+        if (q == 0 || ref == 0) revert Errors.InvalidAmount();
+        if (_bookCanExecuteRedeem(q, ref)) {
+            payout = _redeem(q, ref);
+            usedSell += q;
+        } else {
+            payout = _degradedPayout(q, ref);
+            emit DegradedRedemption(q, ref, payout, _degradedHaircut());
+        }
+        admittedSell += q; lastConsumptionBlock = block.number;
         emit LiquidityConsumed(false, q, ref, payout, admittedBuy, admittedSell);
     }
 
@@ -542,6 +628,73 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     }
 
     /**
+     * @notice Checks whether published depth can price this redemption.
+     * @dev Missing capacity allows reference fallback; coherent fresh venue books must stay in bounds.
+     * @param q Requested QEURO quantity.
+     * @param ref Validated reference price.
+     * @return Whether the normal book path can execute.
+     * @custom:security Fresh divergent venue prices fail closed.
+     * @custom:validation Requires nonzero reference and quantity.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors InvalidAmount or InvalidPrice.
+     * @custom:reentrancy Read-only router calls.
+     * @custom:access Private.
+     * @custom:oracle Uses the validated reference supplied by the vault.
+     */
+    function _bookCanExecuteRedeem(uint256 q, uint256 ref) private view returns (bool) {
+        if (q == 0 || ref == 0) revert Errors.InvalidAmount();
+        if (asks.length == 0 || bids.length == 0 || observedAt == 0) return false;
+        if (block.timestamp < observedAt || block.timestamp - observedAt > maxAge) return false;
+        try IExecutionRouter(IExecutionVault(vault).oracle()).activeOracle() returns (uint8 active) {
+            if (active != 1) return false;
+        } catch { return false; }
+        try IExecutionRouter(IExecutionVault(vault).oracle()).marketOracle() returns (address market) {
+            if (market != venueOracle) return false;
+        } catch { return false; }
+        uint256 mid = (uint256(asks[0].price) + uint256(bids[0].price)) / 2;
+        if (Math.mulDiv(mid > ref ? mid - ref : ref - mid, BPS, ref, Math.Rounding.Ceil) > maxImpactBps) revert Errors.InvalidPrice();
+        if (capacityObservedAt == 0 || block.timestamp < capacityObservedAt || block.timestamp - capacityObservedAt > maxAge) return false;
+        return _capacity(false, ref) >= q;
+    }
+
+    /**
+     * @notice Applies the configured haircut to a reference redemption.
+     * @dev Rounds the payout down in USDC units.
+     * @param q QEURO input.
+     * @param ref Validated EUR/USD price.
+     * @return payout Payout before protocol fees.
+     * @custom:security Cannot pay more than reference backing.
+     * @custom:validation Rejects zero payout.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors InvalidAmount.
+     * @custom:reentrancy None.
+     * @custom:access Private.
+     * @custom:oracle Caller validates reference.
+     */
+    function _degradedPayout(uint256 q, uint256 ref) private view returns (uint256 payout) {
+        payout = Math.mulDiv(Math.mulDiv(q, ref, SCALE), BPS - _degradedHaircut(), BPS);
+        if (payout == 0) revert Errors.InvalidAmount();
+    }
+
+    /// @notice Returns the fallback haircut for the current observation state.
+    /// @dev Fresh depth exhaustion uses at least the maximum book impact, preventing a better fallback quote.
+    /// @return Haircut in basis points.
+    /// @custom:security A fresh book cannot be bypassed for a better execution rate.
+    /// @custom:validation None.
+    /// @custom:state-changes None.
+    /// @custom:events None.
+    /// @custom:errors None.
+    /// @custom:reentrancy None.
+    /// @custom:access Private.
+    /// @custom:oracle Uses publication age only.
+    function _degradedHaircut() private view returns (uint256) {
+        return observedAt != 0 && block.timestamp >= observedAt && block.timestamp - observedAt <= maxAge
+            ? Math.max(degradedHaircutBps, maxImpactBps) : degradedHaircutBps;
+    }
+
+    /**
      * @notice Calculate a conservative per-level execution rate.
      * @dev Uses the documented units and preserves reference-price accounting.
      * @param price USD per EUR price in 18 decimals.
@@ -589,8 +742,15 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
             capacity += quantity - skip; skip = 0;
         }
         uint256 limit = Math.min(maxOutstanding, marginCapacity);
-        uint256 pending = outstanding();
-        return Math.min(capacity, pending >= limit ? 0 : limit - pending);
+        (uint256 pendingBuy, uint256 pendingSell, uint256 gross,) = pendingExposure();
+        uint256 pending = buy ? pendingBuy : pendingSell;
+        uint256 opposite = buy ? pendingSell : pendingBuy;
+        uint256 sideRoom = pending >= opposite
+            ? (pending - opposite >= limit ? 0 : limit - (pending - opposite))
+            : limit + (opposite - pending);
+        uint256 grossLimit = maxOutstanding * 2;
+        uint256 grossRoom = gross >= grossLimit ? 0 : grossLimit - gross;
+        return Math.min(capacity, buy ? Math.min(sideRoom, grossRoom) : sideRoom);
     }
 
     /**

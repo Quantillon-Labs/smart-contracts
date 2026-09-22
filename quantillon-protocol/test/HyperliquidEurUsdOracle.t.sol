@@ -55,6 +55,10 @@ contract MockUsdcOracle is IOracle {
         return (price, valid);
     }
 
+    function peekEurUsdPrice() external view returns (uint256, uint256, bool) {
+        return (price, block.timestamp, valid);
+    }
+
     function getOracleHealth() external pure returns (bool, bool, bool) {
         return (true, true, true);
     }
@@ -282,6 +286,17 @@ contract HyperliquidEurUsdOracleTest is Test {
         (uint256 cur2,,, bool isStale2,) = oracle.getEurUsdDetails();
         assertTrue(isStale2);
         assertEq(cur2, INITIAL_MID); // fallback to last valid
+    }
+
+    function test_GetEurUsdDetails_InvalidReferenceDoesNotReportFallbackAsValid() public {
+        vm.prank(admin);
+        oracle.setReferenceCheck(100, 100, 1 hours);
+        usdc.setUsdc(1.30e18, true);
+
+        (uint256 current,, , bool stale, bool withinBounds) = oracle.getEurUsdDetails();
+        assertEq(current, INITIAL_MID, "invalid source falls back to last valid price");
+        assertFalse(stale);
+        assertFalse(withinBounds, "fallback must not look like a fresh validated price");
     }
 
     function test_GetOracleHealth() public {
@@ -577,7 +592,7 @@ contract HyperliquidEurUsdOracleTest is Test {
     // -- additional branch coverage --
 
     function test_version_returnsSemver() public view {
-        assertEq(oracle.version(), "1.0.2");
+        assertEq(oracle.version(), "1.0.5");
     }
 
     /// @notice A reverting USDC source does not block the EUR/USD commit: the event read
@@ -655,7 +670,7 @@ contract HyperliquidEurUsdOracleTest is Test {
         HyperliquidEurUsdOracle newImpl = new HyperliquidEurUsdOracle(timeProvider);
         vm.prank(admin);
         oracle.upgradeToAndCall(address(newImpl), "");
-        assertEq(oracle.version(), "1.0.2");
+        assertEq(oracle.version(), "1.0.5");
     }
 
 }

@@ -36,7 +36,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     
     // ============ Constants ============

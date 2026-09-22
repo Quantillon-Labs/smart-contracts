@@ -875,7 +875,7 @@ contract OracleRouterTest is Test {
     // =============================================================================
 
     function test_version_returnsSemver() public view {
-        assertEq(router.version(), "1.1.1");
+        assertEq(router.version(), "1.1.2");
     }
 
     /// @notice updateUsdcTolerance delegates to the active oracle on both slots.
@@ -935,6 +935,6 @@ contract OracleRouterTest is Test {
         OracleRouter newImpl = new OracleRouter();
         vm.prank(admin);
         router.upgradeToAndCall(address(newImpl), "");
-        assertEq(router.version(), "1.1.1");
+        assertEq(router.version(), "1.1.2");
     }
 }

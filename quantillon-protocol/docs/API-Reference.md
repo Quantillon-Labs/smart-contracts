@@ -735,7 +735,7 @@ event FactoryConfigUpdated(string indexed key, address oldValue, address newValu
 **Interface**: `IstQEURO.sol`
 **Inherits**: `ERC4626Upgradeable`, `AccessControlUpgradeable`, `PausableUpgradeable`, `ReentrancyGuardUpgradeable`, `SecureUpgradeable`
 
-Per-vault, yield-bearing **ERC-4626** vault whose underlying `asset()` is QEURO. One proxy is deployed per staking vault by `stQEUROFactory` (live: `stQEUROMORPHO1`, `vaultId = 2`). There is **no rebasing and no claim call**: the share price `totalAssets() / totalSupply()` rises when `QuantillonVault.creditVaultYield` mints QEURO into the token without minting shares (see the [Staking Yield Distribution](./Staking-Yield-Distribution.md) guide). Roles are `GOVERNANCE_ROLE` and `EMERGENCY_ROLE` (plus `DEFAULT_ADMIN_ROLE` and the `SecureUpgradeable` upgrade gate); there is no yield-manager role on this contract.
+Per-vault, yield-bearing **ERC-4626** vault whose underlying `asset()` is QEURO. One proxy is deployed per staking vault by `stQEUROFactory` (live: `stQEUROMORPHO1`, `vaultId = 2`). There is **no rebasing and no claim call**: the share price `totalAssets() / totalSupply()` rises as credited QEURO yield vests (see the [Staking Yield Distribution](./Staking-Yield-Distribution.md) guide). Roles are `GOVERNANCE_ROLE` and `EMERGENCY_ROLE` (plus `DEFAULT_ADMIN_ROLE` and the `SecureUpgradeable` upgrade gate); there is no yield-manager role on this contract.
 
 ### Function Signatures
 
@@ -746,17 +746,21 @@ function deposit(uint256 assets, address receiver) external returns (uint256 sha
 function mint(uint256 shares, address receiver) external returns (uint256 assets);
 function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
 function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets); // unstake
-function totalAssets() external view returns (uint256);                                             // QEURO held by the token
+function totalAssets() external view returns (uint256);                                             // principal + vested QEURO
 function convertToAssets(uint256 shares) external view returns (uint256);
 function convertToShares(uint256 assets) external view returns (uint256);
 function previewDeposit(uint256 assets) / previewMint(uint256 shares) / previewWithdraw(uint256 assets) / previewRedeem(uint256 shares)
 function maxDeposit(address) / maxMint(address) / maxWithdraw(address owner) / maxRedeem(address owner)
 function asset() external view returns (address);                                                   // QEURO
+function syncVesting() external;                                                                      // advance lazy yield vesting
 ```
 
 Notes:
 - `deposit` needs a prior QEURO approval to the stQEURO proxy; `withdraw` / `redeem` by a third party need share allowance from `owner`.
 - Redeeming the last outstanding shares also sweeps the rounding residual left by ERC-4626 round-down to that final exiter (`ResidualSwept`).
+- `totalAssets()` excludes unvested QEURO yield and includes principal plus the linearly vested
+  portion. `syncVesting()` advances the schedule; it is permissionless while unpaused and may be
+  called by governance while the token is paused for a post-upgrade initialization snapshot.
 - Current share price: `convertToAssets(1e18)`. A holder's redeemable QEURO: `previewRedeem(balanceOf(holder))`.
 
 #### `yieldFee()` / `updateYieldParameters(uint256 _yieldFee)`
@@ -1451,3 +1455,6 @@ For technical support and questions:
 ---
 
 *This technical reference is maintained by Quantillon Labs and updated with each protocol version.*
+### Yield and collateralization gates
+
+The public mint floor remains the governance value read from `minCollateralizationRatioForMinting`; clients must read this value on-chain rather than use a frontend default. Yield crediting uses a separate gate: current collateralization must be strictly greater than `max(101%, criticalCollateralizationRatio)`, projected collateralization must remain at least 100%, and the cached oracle, active hedger, execution book, QEURO token state, and hedger capacity must all pass. A failed harvest reverts the entire transaction so adapter yield remains available for a later retry.

@@ -36,17 +36,16 @@ contract ExecutionPricingSequenceAuditTest is ExecutionPricingTest {
         pricing.consumeRedeem(1000e18,ref);
         assertEq(pricing.outstanding(),2000e18);
         (uint256 buy,uint256 sell)=pricing.availableCapacity();
-        assertEq(buy,0);
-        assertEq(sell,0);
+        assertGt(buy, 0);
+        assertGt(sell, 0);
     }
 
-    function test_Audit_AcknowledgmentPreparedBeforeAnotherMintReverts() public {
+    function test_AcknowledgmentPreparedBeforeAnotherMintPreservesNewAdmission() public {
         pricing.consumeMint(1001e6,ref);
         uint256 observedBuy=pricing.admittedBuy();
         pricing.consumeMint(1001e6,ref);
-        vm.expectRevert(Errors.InvalidAmount.selector);
         pricing.acknowledge(observedBuy,0,1000e18,block.timestamp);
-        assertEq(pricing.acknowledgedBuy(),0);
-        assertEq(pricing.outstanding(),2000e18);
+        assertEq(pricing.acknowledgedBuy(),observedBuy);
+        assertEq(pricing.outstanding(),1000e18);
     }
 }

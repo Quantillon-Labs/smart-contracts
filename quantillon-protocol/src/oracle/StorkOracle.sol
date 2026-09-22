@@ -152,7 +152,7 @@ contract StorkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;

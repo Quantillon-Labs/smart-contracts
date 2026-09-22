@@ -52,6 +52,25 @@ interface ISlippageMidSource {
         returns (ISlippageStorage.SlippageSnapshot memory snapshot);
 }
 
+interface IReferencePriceSource {
+    /**
+     * @notice Reads an independent EUR/USD reference without cached-baseline substitution.
+     * @dev Returns validity, freshness timestamp, and scaled price.
+     * @return price EUR/USD price in 18 decimals.
+     * @return updatedAt Feed timestamp.
+     * @return isValid Whether the independent feed passed its checks.
+     * @custom:security Read-only reference check.
+     * @custom:validation Implementations fail closed on stale or invalid rounds.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Implementations may revert on feed failure.
+     * @custom:reentrancy None.
+     * @custom:access Public view.
+     * @custom:oracle Chainlink EUR/USD.
+     */
+    function peekEurUsdPrice() external view returns (uint256 price, uint256 updatedAt, bool isValid);
+}
+
 /**
  * @title HyperliquidEurUsdOracle
  * @notice EUR/USD oracle for Quantillon that mirrors the Hyperliquid xyz:EUR perp mid used to
@@ -99,7 +118,7 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.5";
     }
 
     // =============================================================================
@@ -167,6 +186,13 @@ contract HyperliquidEurUsdOracle is
     /// @notice Maximum accepted staleness of the published mid, in seconds
     uint256 public maxPriceStaleness;
 
+    /// @notice Normal-hours divergence bound against the independent reference.
+    uint16 public maxReferenceDivergenceBps;
+    /// @notice FX-closed-hours divergence bound against the independent reference.
+    uint16 public maxReferenceDivergenceOffHoursBps;
+    /// @notice Maximum age of the independent reference in seconds.
+    uint32 public maxReferenceAge;
+
     // =============================================================================
     // EVENTS
     // =============================================================================
@@ -191,6 +217,9 @@ contract HyperliquidEurUsdOracle is
 
     /// @notice Emitted when the maximum staleness window is updated
     event MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness);
+
+    /// @notice Emitted when independent reference validation is configured
+    event PriceReferenceCheckUpdated(uint16 normalBps, uint16 offHoursBps, uint32 referenceAge);
 
     /// @notice Emitted when the treasury address is updated
     event TreasuryUpdated(address indexed newTreasury);
@@ -382,6 +411,44 @@ contract HyperliquidEurUsdOracle is
                 isValid = false;
             }
         }
+        if (isValid && !_referenceWithinBounds(price)) isValid = false;
+    }
+
+    /**
+     * @notice Checks market price against the independent Chainlink reference.
+     * @dev Applies freshness and FX-hours divergence bounds; feed failures fail closed.
+     * @param price Market EUR/USD price in 18 decimals.
+     * @return True when the reference is fresh and within the configured bound.
+     * @custom:security Prevents an unbounded market publisher from setting protocol price.
+     * @custom:validation Rejects stale, invalid, or divergent references.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None; returns false on reference failure.
+     * @custom:reentrancy Read-only external probe.
+     * @custom:access Internal.
+     * @custom:oracle Chainlink EUR/USD.
+     */
+    function _referenceWithinBounds(uint256 price) internal view returns (bool) {
+        if (maxReferenceDivergenceBps == 0) return true;
+        try IReferencePriceSource(address(usdcSource)).peekEurUsdPrice() returns (
+            uint256 referencePrice,
+            uint256 updatedAt,
+            bool referenceValid
+        ) {
+            uint256 nowTime = TIME_PROVIDER.currentTime();
+            if (!referenceValid || referencePrice == 0 || updatedAt > nowTime ||
+                nowTime - updatedAt > maxReferenceAge) return false;
+            uint256 daysSinceEpoch = nowTime / 1 days;
+            uint256 dayOfWeek = (daysSinceEpoch + 4) % 7;
+            bool offHours = (dayOfWeek == 5 && nowTime % 1 days >= 21 hours) ||
+                dayOfWeek == 6 || (dayOfWeek == 0 && nowTime % 1 days <= 21 hours);
+            uint256 bound = offHours ? maxReferenceDivergenceOffHoursBps : maxReferenceDivergenceBps;
+            if (bound == 0) return false;
+            uint256 diff = price > referencePrice ? price - referencePrice : referencePrice - price;
+            return diff * BASIS_POINTS <= referencePrice * bound;
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -557,7 +624,8 @@ contract HyperliquidEurUsdOracle is
      * @return lastValidPrice Last validated price stored
      * @return lastUpdate Snapshot timestamp reported by SlippageStorage
      * @return isStale True if the published mid is stale
-     * @return withinBounds True if currentPrice is within configured bounds
+     * @return withinBounds True only when the published price itself passed all
+     *         freshness, configured-bound, deviation, and reference checks
      * @custom:security Detailed view for debugging and monitoring
      * @custom:validation Checks freshness, bounds and deviation
      * @custom:state-changes No state changes - view function
@@ -579,6 +647,7 @@ contract HyperliquidEurUsdOracle is
             bool withinBounds
         )
     {
+        bool accepted;
         try slippageStorage.getSlippageBySource(sourceId) returns (
             ISlippageStorage.SlippageSnapshot memory snap
         ) {
@@ -591,6 +660,7 @@ contract HyperliquidEurUsdOracle is
             } else {
                 (, bool isValid) = _validateEurUsd(price, lastUpdate);
                 currentPrice = isValid ? price : lastValidEurUsdPrice;
+                accepted = isValid;
             }
         } catch {
             lastUpdate = 0;
@@ -599,7 +669,7 @@ contract HyperliquidEurUsdOracle is
         }
 
         lastValidPrice = lastValidEurUsdPrice;
-        withinBounds = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
+        withinBounds = accepted && currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
     }
 
     /**
@@ -781,6 +851,30 @@ contract HyperliquidEurUsdOracle is
     }
 
     /**
+     * @notice Reseeds the deviation baseline from a fresh, independently bounded market mid.
+     * @dev Skips only the previous-baseline deviation check; freshness, absolute bounds, and the
+     * independent reference check remain mandatory.
+     * @custom:security Restricted to EMERGENCY_ROLE and requires an enabled reference check.
+     * @custom:validation Reverts when the market mid or reference is stale, invalid, or divergent.
+     * @custom:state-changes Updates the baseline and clears the circuit breaker.
+     * @custom:events Emits PriceUpdated and CircuitBreakerReset.
+     * @custom:errors Reverts with InvalidPrice or InvalidOraclePrice when recovery data is unsafe.
+     * @custom:reentrancy Read-only source calls before one local state update.
+     * @custom:access EMERGENCY_ROLE.
+     * @custom:oracle Uses SlippageStorage and the independent Chainlink reference.
+     */
+    function forceReseedBaseline() external onlyRole(EMERGENCY_ROLE) {
+        if (maxReferenceDivergenceBps == 0 || maxReferenceAge == 0) revert CommonErrorLibrary.NotAuthorized();
+        (uint256 mid, uint256 ts) = _readMid();
+        if (!_validateTimestamp(ts) || mid < minEurUsdPrice || mid > maxEurUsdPrice || !_referenceWithinBounds(mid)) {
+            revert CommonErrorLibrary.InvalidOraclePrice();
+        }
+        circuitBreakerTriggered = false;
+        _commitEurUsdPrice(mid);
+        emit CircuitBreakerReset(msg.sender);
+    }
+
+    /**
      * @notice Manually triggers the circuit breaker (use last valid price)
      * @dev Forces reads onto the last valid price until reset.
      * @custom:security Forces fallback pricing during incidents
@@ -824,6 +918,34 @@ contract HyperliquidEurUsdOracle is
         uint256 old = maxPriceStaleness;
         maxPriceStaleness = newMaxStaleness;
         emit MaxStalenessUpdated(old, newMaxStaleness);
+    }
+
+    /**
+     * @notice Configures the independent EUR/USD reference check.
+     * @dev A zero normal-hours bound disables the cross-check.
+     * @param normalBps Maximum normal-hours divergence in basis points.
+     * @param offHoursBps Maximum FX-closed-hours divergence in basis points.
+     * @param referenceAge Maximum accepted reference age in seconds.
+     * @custom:security Restricted to ORACLE_MANAGER_ROLE and bounded to conservative limits.
+     * @custom:validation Zero disables the check; enabled values require a nonzero age.
+     * @custom:state-changes Updates reference divergence and age settings.
+     * @custom:events Emits PriceReferenceCheckUpdated.
+     * @custom:errors Reverts on invalid configuration.
+     * @custom:reentrancy No external calls.
+     * @custom:access ORACLE_MANAGER_ROLE.
+     * @custom:oracle No oracle reads.
+     */
+    function setReferenceCheck(uint16 normalBps, uint16 offHoursBps, uint32 referenceAge)
+        external
+        onlyRole(ORACLE_MANAGER_ROLE)
+    {
+        if (normalBps > 1000 || offHoursBps > 1500 || (normalBps != 0 && referenceAge == 0)) {
+            revert CommonErrorLibrary.ConfigValueTooHigh();
+        }
+        maxReferenceDivergenceBps = normalBps;
+        maxReferenceDivergenceOffHoursBps = offHoursBps;
+        maxReferenceAge = referenceAge;
+        emit PriceReferenceCheckUpdated(normalBps, offHoursBps, referenceAge);
     }
 
     /**

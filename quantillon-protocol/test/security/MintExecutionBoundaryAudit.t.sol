@@ -221,7 +221,7 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         uint256 credited = vault.creditVaultYield(VAULT_ID, 109e6);
         assertEq(credited, 100e18);
         assertEq(qeuro.totalSupply() - supply, credited);
-        assertEq(stToken.totalAssets() - assets, credited);
+        assertEq(stToken.totalAssets() - assets, 0);
         assertEq(vault.totalUsdcHeld() - held, 108e6);
         assertEq(usdc.balanceOf(address(vault)) - backingBalance, 108e6);
         assertEq(usdc.balanceOf(address(pricing)), 1e6);
@@ -234,6 +234,10 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         vault.mintQEUROToVault(110e6, 0, 0);
         assertEq(qeuro.balanceOf(outsider), 100e18);
         assertEq(pricing.outstanding(), 200e18);
+        stToken.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        stToken.syncVesting();
+        assertEq(stToken.totalAssets() - assets, credited);
     }
 
     function test_Audit_YieldUsesRemainingDepthAfterPublicMint() public {
@@ -311,6 +315,10 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         vm.prank(admin);
         vault.harvestAndDistributeVaultYield(VAULT_ID);
         assertEq(qeuro.totalSupply() - supply, 100e18);
+        assertEq(stToken.totalAssets() - assets, 0);
+        stToken.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        stToken.syncVesting();
         assertEq(stToken.totalAssets() - assets, 100e18);
         assertEq(pricing.admittedBuy(), 100e18);
         assertEq(usdc.balanceOf(address(pricing)), 1e6);
@@ -338,4 +346,63 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
 
     function test_Audit_YieldAdmissionCannotReenterVault() public { _probeYieldReentry(false); }
     function test_Audit_HarvestAdmissionCannotReenterVault() public { _probeYieldReentry(true); }
+    function _setRatio(uint256 ratio) internal {
+        uint256 backing = qeuro.totalSupply() * 1.08e18 / 1e30;
+        uint256 wanted = backing * ratio / 100e18;
+        uint256 current = vault.getTotalUsdcAvailable();
+        assertGe(current, wanted);
+        vm.prank(address(hedgerPool));
+        vault.withdrawHedgerDeposit(admin, current - wanted);
+        assertEq(vault.getProtocolCollateralizationRatio(), ratio);
+    }
+
+    function test_YieldCreditsBelowPublicFloorAndPublicMintStaysBlocked() public {
+        _prepare(200e18);
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(102.5e18, 101e18);
+        _setRatio(102e18);
+        vm.prank(outsider);
+        vm.expectRevert(Errors.InsufficientCollateralization.selector);
+        vault.mintQEURO(1e6, 0);
+        _fundYield(109e6);
+        vm.prank(admin);
+        assertEq(vault.creditVaultYield(VAULT_ID, 109e6), 100e18);
+        assertEq(vault.minCollateralizationRatioForMinting(), 102.5e18);
+    }
+
+    function test_YieldRejectsExactPolicyFloorWhenCriticalIsLower() public {
+        _prepare(200e18);
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(102.5e18, 100e18);
+        _setRatio(101e18);
+        _assertCreditReverts(109e6, Errors.InsufficientCollateralization.selector);
+    }
+
+    function test_YieldRejectsExactHigherLiquidationFloor() public {
+        _prepare(200e18);
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(103e18, 102e18);
+        _setRatio(102e18);
+        _assertCreditReverts(109e6, Errors.InsufficientCollateralization.selector);
+    }
+
+    function test_YieldRejectsPausedTokenAtomically() public {
+        _prepare(200e18);
+        vm.prank(admin);
+        qeuro.pause();
+        _assertCreditReverts(109e6, bytes4(keccak256("EnforcedPause()")));
+    }
+
+    function test_YieldRejectsHedgerFailureAtomically() public {
+        _prepare(200e18);
+        vm.mockCallRevert(address(hedgerPool), abi.encodeWithSignature("recordUserMint(uint256,uint256,uint256)", 108e6, uint256(1.08e18), 100e18), abi.encodeWithSelector(Errors.InsufficientBalance.selector));
+        _fundYield(109e6);
+        uint256 supply = qeuro.totalSupply();
+        vm.prank(admin);
+        vm.expectRevert();
+        vault.creditVaultYield(VAULT_ID, 109e6);
+        assertEq(qeuro.totalSupply(), supply);
+        assertEq(pricing.outstanding(), 0);
+        assertEq(usdc.balanceOf(admin), 109e6);
+    }
 }

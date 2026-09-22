@@ -50,7 +50,7 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.2.4";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -63,6 +63,14 @@ contract stQEUROToken is
     string public vaultName;
     uint256 public yieldFee;
 
+    // Appended storage for lazy linear vesting of unsolicited/harvested QEURO yield.
+    uint256 private accountedBalance;
+    uint256 private unvestedBalance;
+    uint64 private vestingEnd;
+    uint64 private lastVestingUpdate;
+    uint32 public vestingPeriod;
+    bool private vestingInitialized;
+
     TimeProvider public immutable TIME_PROVIDER;
 
     event YieldParametersUpdated(uint256 yieldFee);
@@ -70,6 +78,8 @@ contract stQEUROToken is
     event ETHRecovered(address indexed to, uint256 indexed amount);
     /// @notice Emitted when the rounding residue left by the final exit is swept to its receiver
     event ResidualSwept(address indexed receiver, uint256 amount);
+    event VestingPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
+    event YieldVestingSynced(uint256 vested, uint256 unvested, uint256 accounted);
 
     /**
      * @notice Constructs the implementation contract with its immutable time provider.
@@ -210,6 +220,9 @@ contract stQEUROToken is
         qeuro = IQEUROToken(qeuroAddress);
         treasury = treasuryAddress;
         yieldFee = 0;
+        vestingPeriod = 1 days;
+        vestingInitialized = true;
+        lastVestingUpdate = uint64(_protocolTime());
     }
 
     /**
@@ -289,6 +302,27 @@ contract stQEUROToken is
     }
 
     /**
+     * @notice Returns only principal and the currently vested portion of yield.
+     * @dev Unvested underlying remains excluded from ERC-4626 share pricing.
+     * @return assets Accounted assets available to share holders.
+     * @custom:security Prevents a new depositor from immediately capturing harvested yield.
+     * @custom:validation None; the raw underlying balance caps the result.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependency.
+     */
+    function totalAssets() public view override returns (uint256 assets) {
+        uint256 rawBalance = IERC20(asset()).balanceOf(address(this));
+        if (!vestingInitialized) return rawBalance;
+        uint256 vested = _vestedBalanceView();
+        uint256 accounted = accountedBalance + vested;
+        assets = accounted < rawBalance ? accounted : rawBalance;
+    }
+
+    /**
      * @notice Deposits QEURO into the vault and mints stQEURO shares to a receiver.
      * @dev Wraps the ERC-4626 deposit flow with pause and reentrancy protection.
      * @param assets Amount of QEURO assets to deposit.
@@ -310,11 +344,12 @@ contract stQEUROToken is
         whenNotPaused
         returns (uint256 shares)
     {
+        _syncVestingAccounting();
         shares = super.deposit(assets, receiver);
-        // A deposit must never mint zero shares. Before the first staker an attacker can
-        // donate QEURO directly to this vault, inflating totalAssets so a subsequent small deposit
-        // rounds to 0 shares and forfeits the assets. Reverting undoes the asset transfer.
-        if (shares == 0) revert CommonErrorLibrary.InvalidAmount();
+        accountedBalance += assets;
+        if (shares == 0 || previewRedeem(shares) < assets - assets / 10_000) {
+            revert CommonErrorLibrary.InvalidAmount();
+        }
     }
 
     /**
@@ -339,7 +374,12 @@ contract stQEUROToken is
         whenNotPaused
         returns (uint256 assets)
     {
+        _syncVestingAccounting();
         assets = super.mint(shares, receiver);
+        accountedBalance += assets;
+        if (shares == 0 || previewRedeem(shares) < assets - assets / 10_000) {
+            revert CommonErrorLibrary.InvalidAmount();
+        }
     }
 
     /**
@@ -365,7 +405,10 @@ contract stQEUROToken is
         whenNotPaused
         returns (uint256 shares)
     {
+        _syncVestingAccounting();
         shares = super.withdraw(assets, receiver, owner);
+        if (assets > accountedBalance) revert CommonErrorLibrary.InvalidAmount();
+        accountedBalance -= assets;
         _sweepResidualOnEmpty(receiver);
     }
 
@@ -392,23 +435,21 @@ contract stQEUROToken is
         whenNotPaused
         returns (uint256 assets)
     {
+        _syncVestingAccounting();
         assets = super.redeem(shares, receiver, owner);
+        if (assets > accountedBalance) revert CommonErrorLibrary.InvalidAmount();
+        accountedBalance -= assets;
         assets += _sweepResidualOnEmpty(receiver);
     }
 
     /**
-     * @notice Sweeps the vault's remaining QEURO to the final exiter once no shares are left.
-     * @dev ERC-4626 round-down (after yield mints raise the share price) strands a few wei of
-     *      QEURO on the last exit. With `totalSupply() == 0` no share can ever claim them, and
-     *      the stranded wei keep `QuantillonVault.totalMinted()` above zero — which dead-locked
-     *      the sole hedger's exit on 2026-07-15 (see `HedgerPool.QEURO_DUST_THRESHOLD` for the
-     *      tolerance layer). Sweeping returns the vault to an exact-zero state after every full
-     *      exit; the receiver can then redeem the full amount through the protocol.
+     * @notice Clears remaining QEURO after the final share exit.
+     * @dev Returns up to 1e12 wei of rounding dust to the receiver and sends excess to treasury.
      * @param receiver Address that receives the swept residue (same receiver as the exit).
      * @return residual Amount of QEURO swept (0 when shares remain or nothing is left).
      * @custom:security Only reachable from `nonReentrant` exit paths; QEURO has no transfer hooks.
      * @custom:validation No-op unless the share supply is exactly zero.
-     * @custom:state-changes Transfers the vault's full remaining QEURO balance to `receiver`.
+     * @custom:state-changes Transfers bounded dust to receiver and excess to treasury.
      * @custom:events Emits `ResidualSwept` when a nonzero residue is transferred.
      * @custom:errors Reverts only if the underlying QEURO transfer fails.
      * @custom:reentrancy Callers hold the `nonReentrant` guard.
@@ -418,10 +459,114 @@ contract stQEUROToken is
     function _sweepResidualOnEmpty(address receiver) private returns (uint256 residual) {
         if (totalSupply() != 0) return 0;
         IERC20 assetToken = IERC20(asset());
-        residual = assetToken.balanceOf(address(this));
-        if (residual == 0) return 0;
-        assetToken.safeTransfer(receiver, residual);
-        emit ResidualSwept(receiver, residual);
+        uint256 balance = assetToken.balanceOf(address(this));
+        uint256 vestedResidual = balance > unvestedBalance ? balance - unvestedBalance : 0;
+        residual = vestedResidual > 1e12 ? 1e12 : vestedResidual;
+        if (residual > 0) {
+            assetToken.safeTransfer(receiver, residual);
+            emit ResidualSwept(receiver, residual);
+        }
+        if (balance > residual) {
+            assetToken.safeTransfer(treasury, balance - residual);
+            emit ResidualSwept(treasury, balance - residual);
+        }
+        accountedBalance = 0;
+        unvestedBalance = 0;
+        vestingEnd = 0;
+        lastVestingUpdate = uint64(_protocolTime());
+    }
+
+    /**
+     * @notice Records a new governance-selected vesting period.
+     * @dev Synchronizes already-observed yield before changing the period used for future surplus.
+     * @param newPeriod Seconds over which newly observed yield vests (1 day to 30 days).
+     * @custom:security Restricted to governance.
+     * @custom:validation Rejects periods outside the bounded safety range.
+     * @custom:state-changes Updates the future yield vesting period.
+     * @custom:events Emits `VestingPeriodUpdated`.
+     * @custom:errors ConfigValueTooLow or ConfigValueTooHigh.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Governance role.
+     * @custom:oracle No oracle dependency.
+     */
+    function setVestingPeriod(uint256 newPeriod) external onlyRole(GOVERNANCE_ROLE) {
+        if (newPeriod < 1 days) revert CommonErrorLibrary.ConfigValueTooLow();
+        if (newPeriod > 30 days) revert CommonErrorLibrary.ConfigValueTooHigh();
+        _syncVestingAccounting();
+        uint256 oldPeriod = vestingPeriod;
+        vestingPeriod = uint32(newPeriod);
+        emit VestingPeriodUpdated(oldPeriod, newPeriod);
+    }
+
+    /**
+     * @notice Materializes currently vested yield and records newly observed surplus.
+     * @dev Permissionless during normal operation; governance may also sync during paused upgrades.
+     * @custom:security Paused maintenance requires governance authorization.
+     * @custom:validation Underlying balance deltas are bounded by the token balance.
+     * @custom:state-changes Updates principal, unvested yield, and vesting timestamps.
+     * @custom:events Emits `YieldVestingSynced`.
+     * @custom:errors AccessControlUnauthorizedAccount for non-governance callers while paused.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public when unpaused; GOVERNANCE_ROLE while paused.
+     * @custom:oracle No oracle dependency.
+     */
+    function syncVesting() external nonReentrant {
+        if (paused()) _checkRole(GOVERNANCE_ROLE);
+        _syncVestingAccounting();
+    }
+
+    function _syncVestingAccounting() private {
+        uint256 nowTime = _protocolTime();
+        uint256 rawBalance = IERC20(asset()).balanceOf(address(this));
+        if (!vestingInitialized) {
+            vestingInitialized = true;
+            if (vestingPeriod == 0) vestingPeriod = 1 days;
+            accountedBalance = rawBalance;
+            lastVestingUpdate = uint64(nowTime);
+            emit YieldVestingSynced(0, 0, rawBalance);
+            return;
+        }
+
+        uint256 vested = _vestedBalanceView();
+        if (vested > 0) {
+            accountedBalance += vested;
+            unvestedBalance -= vested;
+        }
+        lastVestingUpdate = uint64(nowTime);
+        if (unvestedBalance == 0) vestingEnd = 0;
+
+        uint256 tracked = accountedBalance + unvestedBalance;
+        if (rawBalance > tracked) {
+            uint256 surplus = rawBalance - tracked;
+            uint256 newEnd = nowTime + vestingPeriod;
+            if (unvestedBalance == 0) {
+                unvestedBalance = surplus;
+                vestingEnd = uint64(newEnd);
+            } else {
+                uint256 weightedEnd = (unvestedBalance * uint256(vestingEnd) + surplus * newEnd)
+                    / (unvestedBalance + surplus);
+                unvestedBalance += surplus;
+                vestingEnd = uint64(weightedEnd);
+            }
+        } else if (rawBalance < tracked) {
+            uint256 shortfall = tracked - rawBalance;
+            if (shortfall >= unvestedBalance) {
+                shortfall -= unvestedBalance;
+                unvestedBalance = 0;
+                vestingEnd = 0;
+                accountedBalance = shortfall >= accountedBalance ? 0 : accountedBalance - shortfall;
+            } else {
+                unvestedBalance -= shortfall;
+            }
+        }
+        emit YieldVestingSynced(vested, unvestedBalance, accountedBalance);
+    }
+
+    function _vestedBalanceView() private view returns (uint256 vested) {
+        if (unvestedBalance == 0) return 0;
+        uint256 nowTime = _protocolTime();
+        if (nowTime >= vestingEnd || vestingEnd <= lastVestingUpdate) return unvestedBalance;
+        vested = unvestedBalance * (nowTime - lastVestingUpdate) / (uint256(vestingEnd) - lastVestingUpdate);
     }
 
     /**
@@ -560,10 +705,11 @@ contract stQEUROToken is
         uint256 shares = balanceOf(user);
         if (shares == 0) return;
 
+        _syncVestingAccounting();
         uint256 assets = previewRedeem(shares);
+        accountedBalance -= assets;
         _burn(user, shares);
         IERC20(asset()).safeTransfer(user, assets);
-
         emit Withdraw(msg.sender, user, user, assets, shares);
         _sweepResidualOnEmpty(user);
     }

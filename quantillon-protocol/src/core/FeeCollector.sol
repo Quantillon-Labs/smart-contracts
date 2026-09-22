@@ -59,7 +59,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -462,7 +462,7 @@ contract FeeCollector is
      * @param amount Amount of ETH to transfer
      * @custom:security Multiple validation layers prevent arbitrary sends:
      *                  - Recipient must be one of three pre-authorized fund addresses
-     *                  - Addresses are validated to be non-zero and non-contract
+     *                  - Addresses are validated to be non-zero; contract wallets are supported
      *                  - Only GOVERNANCE_ROLE can update these addresses
      *                  - This is NOT an arbitrary send as recipient is strictly controlled
      * @custom:validation Ensures recipient is valid and amount is positive
@@ -477,12 +477,6 @@ contract FeeCollector is
         if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
         if (!authorizedETHRecipients[recipient]) revert CommonErrorLibrary.InvalidAddress();
         if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
-
-        uint256 codeSize;
-        assembly {
-            codeSize := extcodesize(recipient)
-        }
-        if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
 
         payable(recipient).sendValue(amount);
     }

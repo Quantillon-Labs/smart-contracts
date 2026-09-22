@@ -75,7 +75,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.0.5";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -777,6 +777,59 @@ contract ChainlinkOracle is
         
         // Bounds check
         withinBounds = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
+    }
+
+    /**
+     * @notice Reads an independent EUR/USD reference without using the cached baseline.
+     * @dev Used by market-price validation and degraded redemption. The result is view-only and
+     * applies feed integrity, sequencer, freshness, positivity, and absolute-bound checks.
+     * @return price Fresh normalized EUR/USD price, or zero when invalid.
+     * @return updatedAt Feed timestamp.
+     * @return isValid Whether the reference is independently valid.
+     * @custom:security Does not substitute cached prices or bypass sequencer checks.
+     * @custom:validation Rejects stale, future, malformed, nonpositive, and out-of-range data.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Returns false on feed failure.
+     * @custom:reentrancy Read-only feed calls.
+     * @custom:access Public.
+     * @custom:oracle Reads the configured Chainlink EUR/USD and sequencer feeds.
+     */
+    function peekEurUsdPrice() external view returns (uint256 price, uint256 updatedAt, bool isValid) {
+        try eurUsdPriceFeed.latestRoundData() returns (
+            uint80 roundId,
+            int256 rawPrice,
+            uint256 startedAt,
+            uint256 feedUpdatedAt,
+            uint80 answeredInRound
+        ) {
+            updatedAt = feedUpdatedAt;
+            if (address(sequencerUptimeFeed) != address(0)) {
+                try sequencerUptimeFeed.latestRoundData() returns (
+                    uint80 seqRoundId,
+                    int256 seqAnswer,
+                    uint256 seqStartedAt,
+                    uint256 seqUpdatedAt,
+                    uint80 seqAnsweredInRound
+                ) {
+                    uint256 nowT = TIME_PROVIDER.currentTime();
+                    if (seqRoundId == 0 || seqAnsweredInRound < seqRoundId || seqUpdatedAt < seqStartedAt ||
+                        seqAnswer != 0 || nowT < seqStartedAt || nowT - seqStartedAt < sequencerGracePeriod) {
+                        return (0, updatedAt, false);
+                    }
+                } catch {
+                    return (0, updatedAt, false);
+                }
+            }
+            if (roundId != answeredInRound || startedAt > feedUpdatedAt || rawPrice <= 0 || !_validateTimestamp(feedUpdatedAt)) {
+                return (0, updatedAt, false);
+            }
+            uint8 feedDecimals = eurUsdPriceFeed.decimals();
+            price = _scalePrice(rawPrice, feedDecimals);
+            isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
+        } catch {
+            return (0, 0, false);
+        }
     }
 
     /**

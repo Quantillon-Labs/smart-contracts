@@ -7,6 +7,10 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 
+contract PayableFundRecipient {
+    receive() external payable {}
+}
+
 /**
  * @title FeeCollectorTest
  * @notice Comprehensive test suite for FeeCollector contract
@@ -473,6 +477,17 @@ contract FeeCollectorTest is Test {
      * @custom:oracle No oracle dependencies
      * /
      */
+    function test_DistributesEthToAuthorizedContractWallets() public {
+        PayableFundRecipient recipient = new PayableFundRecipient();
+        vm.startPrank(admin);
+        feeCollector.updateFundAddresses(address(recipient), devFund, communityFund);
+        vm.stopPrank();
+        vm.deal(address(feeCollector), 1 ether);
+        vm.prank(treasury);
+        feeCollector.distributeFees(address(0));
+        assertEq(address(recipient).balance, 0.6 ether);
+    }
+
     function test_DistributeETHFees_Success() public {
         uint256 totalFees = 1 ether;
         

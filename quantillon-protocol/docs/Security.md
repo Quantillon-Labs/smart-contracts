@@ -523,3 +523,14 @@ make security
 ---
 
 *This security guide is maintained by Quantillon Labs and updated regularly.*
+## Operational invariants for minting and yield
+
+Public minting continues to use the configured mint floor. Yield conversion is independent and is permitted only when current collateralization is strictly above `max(101%, criticalCollateralizationRatio)` and projected collateralization is at least 100%. The final QEURO token mint remains authoritative for pause, killswitch, cap, whitelist, blacklist, and rate-limit checks; failed token or hedger checks revert atomically, preserving the harvest for retry.
+
+### Accepted operational-scope risks
+
+This remediation release preserves the current publisher and Safe Roles assignments, including the
+existing shared publisher/reporting identity, operational FeeCollector recipients, and Zodiac Roles
+module permissions. It does not rotate the publisher key, split those identities, replace recipients,
+or remove the existing Zodiac permissions. These remain separately governed operational risks; the
+contract safeguards and monitoring in this release do not change those assignments.

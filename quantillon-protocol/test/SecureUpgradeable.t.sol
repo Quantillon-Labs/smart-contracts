@@ -212,10 +212,17 @@ contract SecureUpgradeableTest is Test {
     // SET TIMELOCK TESTS
     // =============================================================================
 
+    function test_AdminCannotReplaceAnExistingTimelock() public {
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
+        secureContract.setTimelock(address(0x999));
+        assertEq(address(secureContract.timelock()), address(timelock));
+    }
+
     function test_SetTimelock_Success() public {
         address newTimelock = address(0x999);
 
-        vm.prank(admin);
+        vm.prank(address(timelock));
         vm.expectEmit(true, false, false, false);
         emit TimelockSet(newTimelock);
         secureContract.setTimelock(newTimelock);
@@ -224,7 +231,7 @@ contract SecureUpgradeableTest is Test {
     }
 
     function test_SetTimelock_RevertZeroAddress() public {
-        vm.prank(admin);
+        vm.prank(address(timelock));
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         secureContract.setTimelock(address(0));
     }
@@ -766,7 +773,7 @@ contract SecureUpgradeableTest is Test {
      */
     function test_ProtocolTime_StockTimelockIsNotProbed() public {
         MockTimelockWithoutCurrentTime stockTimelock = new MockTimelockWithoutCurrentTime();
-        vm.prank(admin);
+        vm.prank(address(timelock));
         secureContract.setTimelock(address(stockTimelock));
 
         vm.startStateDiffRecording();
@@ -795,7 +802,7 @@ contract SecureUpgradeableTest is Test {
      */
     function test_ProtocolTime_DoesNotReadTheTimelock() public {
         MockLyingTimelock lyingTimelock = new MockLyingTimelock();
-        vm.prank(admin);
+        vm.prank(address(timelock));
         secureContract.setTimelock(address(lyingTimelock));
 
         vm.prank(admin);
@@ -893,4 +900,6 @@ contract MockSecureUpgradeableWithTimeProvider is SecureUpgradeable {
     function _protocolTime() internal view override returns (uint256) {
         return TIME_PROVIDER.currentTime();
     }
+
+
 }

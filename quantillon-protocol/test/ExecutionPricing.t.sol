@@ -62,8 +62,8 @@ contract ExecutionPricingTest is Test {
         _publish();
         assertEq(pricing.usedBuy(),10_000e18);
         assertEq(pricing.previewMint(10_100e6).amountOut,10_000e18);
-        vm.expectRevert(Errors.InvalidAmount.selector);
         pricing.acknowledge(0,0,1_000_000e18,block.timestamp);
+        assertEq(pricing.outstanding(),10_000e18);
         pricing.acknowledge(10_000e18,0,1_000_000e18,block.timestamp);
         assertEq(pricing.usedBuy(),10_000e18);
         vm.warp(10_002);
@@ -79,8 +79,7 @@ contract ExecutionPricingTest is Test {
     function test_InsufficientDepthAndStaleObservationsRevert() public {
         vm.expectRevert(Errors.InsufficientBalance.selector);
         pricing.previewMint(31_000e6);
-        vm.expectRevert(Errors.InsufficientBalance.selector);
-        pricing.previewRedeem(30_001e18);
+        assertEq(pricing.previewRedeem(30_001e18).amountOut, 30_001e6 * 9500 / 10_000);
         vm.warp(block.timestamp+61);
         vm.expectRevert(Errors.InvalidOraclePrice.selector);
         pricing.previewMint(100e6);
@@ -189,5 +188,95 @@ contract ExecutionPricingTest is Test {
         pricing.updateRiskLimits(60,25,26,1000e18);
         vm.expectRevert(Errors.InvalidParameter.selector);
         pricing.updateRiskLimits(60,25,10,0);
+    }
+
+    function test_PartialAcknowledgementSurvivesNewAdmissions() public {
+        pricing.consumeMint(1001e6, ref);
+        pricing.consumeMint(1001e6, ref);
+        pricing.acknowledge(1000e18, 0, 10000e18, block.timestamp);
+        assertEq(pricing.outstanding(), 1000e18);
+        vm.expectRevert(Errors.InvalidAmount.selector);
+        pricing.acknowledge(999e18, 0, 10000e18, block.timestamp);
+        vm.expectRevert(Errors.InvalidAmount.selector);
+        pricing.acknowledge(2001e18, 0, 10000e18, block.timestamp);
+    }
+
+    function test_OppositeSideRetainsCapacityAndGrossIsBounded() public {
+        pricing.acknowledge(0, 0, 1000e18, block.timestamp);
+        pricing.consumeMint(1001e6, ref);
+        (uint256 buy, uint256 sell) = pricing.availableCapacity();
+        assertEq(buy, 0);
+        assertEq(sell, 2000e18);
+        pricing.consumeRedeem(1000e18, ref);
+        (buy, sell) = pricing.availableCapacity();
+        assertEq(buy, 1000e18);
+        assertEq(sell, 1000e18);
+        (uint256 pendingBuy, uint256 pendingSell, uint256 gross, uint256 net) = pricing.pendingExposure();
+        assertEq(pendingBuy, 1000e18);
+        assertEq(pendingSell, 1000e18);
+        assertEq(gross, 2000e18);
+        assertEq(net, 0);
+    }
+
+    function test_ReconciliationRequiresPauseAndInvalidatesReports() public {
+        pricing.consumeMint(1001e6, ref);
+        vm.expectRevert(Errors.InvalidCondition.selector);
+        pricing.reconcileAdmission();
+        paused = true;
+        vm.prank(address(0xBAD));
+        vm.expectRevert();
+        pricing.reconcileAdmission();
+        pricing.reconcileAdmission();
+        assertEq(pricing.outstanding(), 0);
+        assertEq(pricing.admittedBuy(), 1000e18);
+        assertEq(pricing.marginCapacity(), 0);
+        assertEq(pricing.previewRedeem(1e18).amountOut, 997500);
+        vm.expectRevert(Errors.InvalidTime.selector);
+        pricing.acknowledge(1000e18, 0, 1000e18, block.timestamp);
+        vm.warp(block.timestamp + 1);
+        pricing.acknowledge(1000e18, 0, 1000e18, block.timestamp);
+        _publish();
+        assertGt(pricing.previewRedeem(1e18).amountOut, 0);
+    }
+
+    function test_StaleBookRedemptionMatchesPreviewAndTracksExposure() public {
+        vm.warp(block.timestamp + 61);
+        uint256 quote = pricing.previewRedeem(1000e18).amountOut;
+        assertEq(quote, 997_500_000);
+        assertEq(pricing.consumeRedeem(1000e18, ref), quote);
+        assertEq(pricing.admittedSell(), 1000e18);
+        assertEq(pricing.usedSell(), 0);
+        vm.expectRevert(Errors.InvalidOraclePrice.selector);
+        pricing.consumeMint(1000e6, ref);
+    }
+
+    function test_RouterFallbackRedemptionPreservesBookUsage() public {
+        activeOracle = 0;
+        uint256 quote = pricing.previewRedeem(1000e18).amountOut;
+        assertEq(pricing.consumeRedeem(1000e18, ref), quote);
+        assertEq(pricing.usedSell(), 0);
+        vm.expectRevert(Errors.InvalidOracle.selector);
+        pricing.consumeMint(1000e6, ref);
+    }
+
+    function test_FreshDivergentBookCannotUseFallback() public {
+        ref = 1.2e18;
+        vm.expectRevert(Errors.InvalidPrice.selector);
+        pricing.previewRedeem(1000e18);
+        vm.expectRevert(Errors.InvalidPrice.selector);
+        pricing.consumeRedeem(1000e18, ref);
+    }
+
+    function test_ExhaustedGrossMintLimitDoesNotBlockRedemption() public {
+        paused = true;
+        pricing.updateRiskLimits(60, 500, 0, 1000e18);
+        vm.warp(block.timestamp + 1);
+        pricing.acknowledge(0, 0, 1000e18, block.timestamp);
+        _publish();
+        pricing.consumeMint(1001e6, ref);
+        pricing.consumeRedeem(1000e18, ref);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.consumeMint(100e6, ref);
+        assertGt(pricing.consumeRedeem(1000e18, ref), 0);
     }
 }

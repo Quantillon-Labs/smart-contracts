@@ -131,3 +131,6 @@ Verification (forge 1.7.1 + Etherscan v2) needs the chainid in the verifier URL:
 Every failure mode is fail-safe: a stale/invalid/out-of-band read returns `isValid=false` (vault
 reverts), the off-server watchdog pauses the vault on staleness / circuit-break / a basis blow-out vs
 Chainlink, and governance can fall back to Chainlink with one `switchOracle(0)`.
+## Independent reference checks
+
+The active market oracle can compare its publication with a fresh Chainlink EUR/USD probe. Reference age, normal-hours divergence, and the Friday 21:00 UTC through Sunday 21:00 UTC off-hours bound are governance parameters; invalid or stale references fail closed. Emergency baseline reseeding requires a fresh reference that passes the same checks and emits an on-chain event.

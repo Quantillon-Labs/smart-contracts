@@ -49,7 +49,7 @@ library ExecutionPricingLibrary {
      * @custom:access Public read access.
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
-    function version() external pure returns (string memory) { return "1.0.1"; }
+    function version() external pure returns (string memory) { return "1.1.1"; }
 
     /**
      * @notice Calculate and consume a mint quote, reverting below the user's floor.
@@ -232,6 +232,29 @@ library ExecutionPricingLibrary {
         uint256 backing = Math.mulDiv(supply, price, 1e30);
         if (backing == 0) return 0;
         return (IExecutionCollateralView(address(this)).getTotalUsdcAvailable() * 1e20) / backing;
+    }
+
+    /**
+     * @notice Validates yield conversion independently of the public mint gate.
+     * @dev No dust-supply bootstrap exemption applies to yield conversion.
+     * @param token QEURO token.
+     * @param hedger Active hedger pool.
+     * @param cached Initialized cached price.
+     * @param price Validated current price.
+     * @param critical Liquidation threshold in percentage scaled by 1e18.
+     * @custom:security Requires CR strictly above max(101%, critical).
+     * @custom:validation Requires initialized pricing and an active hedger.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors NotInitialized, NoActiveHedgerLiquidity, InsufficientCollateralization.
+     * @custom:reentrancy Static reads only.
+     * @custom:access Linked vault library.
+     * @custom:oracle Uses the validated price supplied by the vault.
+     */
+    function enforceYieldEligibility(IERC20 token, IHedgerPool hedger, uint256 cached, uint256 price, uint256 critical) external view {
+        if (cached == 0) revert Errors.NotInitialized();
+        if (address(hedger) == address(0) || !hedger.hasActiveHedger()) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        if (collateralizationRatio(token, price) <= Math.max(101e18, critical)) revert Errors.InsufficientCollateralization();
     }
 
     /**

@@ -124,7 +124,7 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.5";
+        return "1.1.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -159,6 +159,8 @@ contract YieldShift is
     uint256 public constant MIN_HOLDING_PERIOD = 7 days;
     uint256 public constant TWAP_PERIOD = 24 hours;
     uint256 public constant MAX_TIME_ELAPSED = 365 days;
+    /// @notice Minimum interval between permissionless distribution recalculations.
+    uint256 public constant MIN_UPDATE_INTERVAL = 1 hours;
     
     uint256 public currentYieldShift;
     uint256 public lastUpdateTime;
@@ -376,10 +378,28 @@ contract YieldShift is
       * @custom:oracle Not applicable - no oracle dependency
      */
     function updateYieldDistribution() external nonReentrant whenNotPaused {
-        // Apply holding period requirements to current pool metrics
+        if (TIME_PROVIDER.currentTime() < lastUpdateTime + MIN_UPDATE_INTERVAL) return;
+        _updateYieldDistribution();
+    }
+
+    /**
+     * @notice Recalculates distribution from current aggregate pool sizes.
+     * @dev Called after the public cadence gate or governance force-update guard.
+     * @custom:security Does not assert per-holder stake-age eligibility.
+     * @custom:validation Pool integrations must return valid metrics.
+     * @custom:state-changes Updates shift, timestamp, and history.
+     * @custom:events YieldDistributionUpdated.
+     * @custom:errors Propagates pool integration failures.
+     * @custom:reentrancy Caller holds nonReentrant.
+     * @custom:access Internal.
+     * @custom:oracle None.
+     */
+    function _updateYieldDistribution() internal {
+        uint256 nowTime = TIME_PROVIDER.currentTime();
+        // Read current aggregate pool metrics
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
         
-        // Use eligible pool sizes for ratio calculation to prevent manipulation
+        // Calculate allocation from aggregate pool sizes
         uint256 poolRatio = eligibleHedgerPoolSize == 0 ? type(uint256).max : 
                            eligibleUserPoolSize.mulDiv(10000, eligibleHedgerPoolSize);
         
@@ -387,9 +407,9 @@ contract YieldShift is
         uint256 newYieldShift = _applyGradualAdjustment(optimalShift);
         
         currentYieldShift = newYieldShift;
-        lastUpdateTime = TIME_PROVIDER.currentTime();
+        lastUpdateTime = nowTime;
         
-        // Record snapshot using eligible pool sizes to prevent future manipulation
+        // Record aggregate pool metrics at the accepted update time
         _recordPoolSnapshotWithEligibleSizes(eligibleUserPoolSize, eligibleHedgerPoolSize);
         
         emit YieldDistributionUpdated(
@@ -570,10 +590,10 @@ contract YieldShift is
     }
     
     /**
-     * @notice Get eligible pool metrics that only count deposits meeting holding period requirements
-     * @dev SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations
-     * @return userPoolSize Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)
-     * @return hedgerPoolSize Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)
+     * @notice Get current aggregate pool metrics used for allocation
+     * @dev Allocation uses aggregate balances and does not claim per-holder stake-age filtering
+     * @return userPoolSize Current aggregate user pool size
+     * @return hedgerPoolSize Current aggregate hedger pool size
      * @return poolRatio Ratio of eligible pool sizes
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -589,12 +609,7 @@ contract YieldShift is
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        (userPoolSize, hedgerPoolSize, poolRatio) = YieldShiftOptimizationLibrary.getEligiblePoolMetrics(
-            address(userPool),
-            address(hedgerPool),
-            TIME_PROVIDER.currentTime(),
-            lastUpdateTime
-        );
+        (userPoolSize, hedgerPoolSize, poolRatio) = YieldShiftOptimizationLibrary.getCurrentPoolMetrics(address(userPool), address(hedgerPool));
     }
     
     /**
@@ -1198,9 +1213,9 @@ contract YieldShift is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Not applicable - no oracle dependency
      */
-    function forceUpdateYieldDistribution() external {
+    function forceUpdateYieldDistribution() external nonReentrant whenNotPaused {
         AccessControlLibrary.onlyGovernance(this);
-        this.updateYieldDistribution();
+        _updateYieldDistribution();
     }
 
     /**

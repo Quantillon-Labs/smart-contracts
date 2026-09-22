@@ -31,7 +31,7 @@ library VaultMath {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
 
     /// @notice Precision for percentage calculations (10000 = 100%)

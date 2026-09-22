@@ -27,7 +27,7 @@ library UserPoolStakingLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     using VaultMath for uint256;

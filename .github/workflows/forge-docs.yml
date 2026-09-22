@@ -24,9 +24,30 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Foundry
+        id: foundry
+        continue-on-error: true
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.7.1
+
+      # GitHub's release CDN occasionally returns a transient 504 while
+      # foundryup downloads the pinned toolchain. Retry the same installation
+      # before allowing the build to fail.
+      - name: Retry Foundry installation
+        if: steps.foundry.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.foundry/bin:$PATH"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          foundryup_bin="$HOME/.foundry/bin/foundryup"
+          test -x "$foundryup_bin"
+          for attempt in 1 2 3 4 5; do
+            if "$foundryup_bin" --install v1.7.1; then
+              exit 0
+            fi
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       - name: Build production contracts
         run: |

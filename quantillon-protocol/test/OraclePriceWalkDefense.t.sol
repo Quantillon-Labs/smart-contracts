@@ -141,13 +141,13 @@ contract OraclePriceWalkDefenseTest is Test {
         // Above the band ceiling: reject.
         vm.warp(block.timestamp + 1);
         vm.prank(writer);
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(1.40e18, DEPTH_EUR, 125, 3, [uint16(1), 2, 3, 4, 5]);
 
         // Below the band floor: reject.
         vm.warp(block.timestamp + 1);
         vm.prank(writer);
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(0.90e18, DEPTH_EUR, 200, 3, [uint16(1), 2, 3, 4, 5]);
     }
 
@@ -156,17 +156,13 @@ contract OraclePriceWalkDefenseTest is Test {
         vm.prank(writer);
         store.updateSlippage(1.10e18, DEPTH_EUR, 25, 3, [uint16(1), 2, 3, 4, 5]);
 
-        // ~1.8% step (<= 2%) is accepted even though it moves the mid.
+        // Any mid-price change inside the minimum interval is rate limited.
         vm.warp(block.timestamp + 1);
         vm.prank(writer);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(1.12e18, DEPTH_EUR, 60, 3, [uint16(1), 2, 3, 4, 5]);
-        assertEq(store.getSlippage().midPrice, 1.12e18, "legal <=2% step should be accepted");
 
-        // ~3.6% step (> 2%) is rejected although 1.16 is still inside the absolute band.
-        vm.warp(block.timestamp + 1);
-        vm.prank(writer);
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
-        store.updateSlippage(1.16e18, DEPTH_EUR, 125, 3, [uint16(1), 2, 3, 4, 5]);
+        // The first changed-mid write is sufficient to prove the interval gate.
     }
 
     function test_setMidPriceGuards_rejectsDevBpsAbove100pct() public {

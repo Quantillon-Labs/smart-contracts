@@ -63,7 +63,7 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.2";
+        return "1.0.3";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -126,6 +126,20 @@ contract SlippageStorage is
     uint128 public maxMidPrice;
     /// @notice Max per-write deviation (bps) vs the source's last stored mid. 0 = deviation check disabled.
     uint16 public maxMidDeviationBps;
+
+    /// @notice Maximum cumulative mid-price drift allowed during one rolling window.
+    uint16 public maxMidDriftBps;
+    /// @notice Rolling window for cumulative mid-price drift in seconds.
+    uint32 public midDriftWindow;
+
+    /// @notice Per-source cumulative drift anchor.
+    struct MidDriftAnchor {
+        uint128 anchorMid;
+        uint48 windowStart;
+    }
+
+    /// @notice Cumulative drift anchors by source id.
+    mapping(uint8 sourceId => MidDriftAnchor) private _midDriftAnchors;
 
     /// @notice Shared time provider for deterministic timestamp reads
     TimeProvider public immutable TIME_PROVIDER;
@@ -247,6 +261,7 @@ contract SlippageStorage is
         // Rate limit check (skip for first-ever update when lastTs < 1)
         if (lastTs >= 1) {
             if (nowTs <= lastTs || nowTs - lastTs < minUpdateInterval) {
+                if (midPrice != _snapshot.midPrice) revert CommonErrorLibrary.RateLimitTooHigh();
                 uint16 lastBps = _snapshot.worstCaseBps;
                 uint16 diff = worstCaseBps > lastBps
                     ? worstCaseBps - lastBps
@@ -260,6 +275,9 @@ contract SlippageStorage is
         // Writer-side midPrice guard. Revert on the single-source path
         // so the writer sees the rejection; the batch path skips instead.
         if (!_midWithinGuards(_snapshot.midPrice, midPrice)) {
+            revert CommonErrorLibrary.InvalidPrice();
+        }
+        if (!_midWithinDriftGuard(SOURCE_LIGHTER, _snapshot.midPrice, midPrice, nowTs)) {
             revert CommonErrorLibrary.InvalidPrice();
         }
 
@@ -280,6 +298,7 @@ contract SlippageStorage is
             bps250k: bucketBps[3],
             bps1M:   bucketBps[4]
         });
+        _recordMidDrift(SOURCE_LIGHTER, midPrice, nowTs);
 
         emit SlippageUpdated(midPrice, worstCaseBps, spreadBps, depthEur, ts);
     }
@@ -323,6 +342,7 @@ contract SlippageStorage is
             uint48 lastTs = snap.timestamp;
             if (lastTs >= 1) {
                 if (nowTs <= lastTs || nowTs - lastTs < minUpdateInterval) {
+                    if (u.midPrice != snap.midPrice) continue;
                     uint16 diff = u.worstCaseBps > snap.worstCaseBps
                         ? u.worstCaseBps - snap.worstCaseBps
                         : snap.worstCaseBps - u.worstCaseBps;
@@ -334,6 +354,7 @@ contract SlippageStorage is
             // out of band or deviates too far from its last value, rather than write
             // a value we don't trust (the downstream staleness freeze is the fail-safe).
             if (!_midWithinGuards(snap.midPrice, u.midPrice)) continue;
+            if (!_midWithinDriftGuard(u.sourceId, snap.midPrice, u.midPrice, nowTs)) continue;
 
             snap.midPrice     = u.midPrice;
             snap.depthEur     = u.depthEur;
@@ -346,6 +367,7 @@ contract SlippageStorage is
             snap.bps100k      = u.bucketBps[2];
             snap.bps250k      = u.bucketBps[3];
             snap.bps1M        = u.bucketBps[4];
+            _recordMidDrift(u.sourceId, u.midPrice, nowTs);
 
             emit SlippageSourceUpdated(u.sourceId, u.midPrice, u.worstCaseBps, u.spreadBps, u.depthEur, nowTs);
         }
@@ -459,6 +481,62 @@ contract SlippageStorage is
     }
 
     /**
+     * @notice Configures cumulative mid-price drift protection.
+     * @dev Applies the same rolling-window semantics to single and batch updates.
+     * @param maxDriftBps Maximum drift from the rolling anchor in basis points.
+     * @param windowSeconds Rolling window in seconds.
+     * @custom:security Restricted to MANAGER_ROLE and bounded by protocol limits.
+     * @custom:validation Zero disables the guard; nonzero windows must be within one hour.
+     * @custom:state-changes Updates cumulative drift configuration.
+     * @custom:events Emits ConfigUpdated for both values.
+     * @custom:errors Reverts with ConfigValueTooHigh for invalid values.
+     * @custom:reentrancy No external calls.
+     * @custom:access MANAGER_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
+    function setMidDriftGuard(uint16 maxDriftBps, uint32 windowSeconds) external onlyRole(MANAGER_ROLE) {
+        if (maxDriftBps > 1000 || windowSeconds > MAX_UPDATE_INTERVAL) {
+            revert CommonErrorLibrary.ConfigValueTooHigh();
+        }
+        maxMidDriftBps = maxDriftBps;
+        midDriftWindow = windowSeconds;
+        emit ConfigUpdated("maxMidDriftBps", 0, uint256(maxDriftBps));
+        emit ConfigUpdated("midDriftWindow", 0, uint256(windowSeconds));
+    }
+
+    /**
+     * @notice Checks cumulative movement against the active rolling anchor.
+     * @dev Returns true when the guard is disabled or the source window has expired.
+     * @param sourceId Price source identifier.
+     * @param lastMid Previously stored mid price.
+     * @param newMid Candidate mid price.
+     * @param nowTs Current timestamp.
+     * @return True when cumulative drift remains within the configured bound.
+     * @custom:security Limits repeated same-block and short-window price walks.
+     * @custom:validation Uses checked arithmetic and source-specific anchors.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy None.
+     * @custom:access Internal.
+     * @custom:oracle None.
+     */
+
+    function _midWithinDriftGuard(uint8 sourceId, uint128 lastMid, uint128 newMid, uint48 nowTs)
+        internal
+        view
+        returns (bool)
+    {
+        if (maxMidDriftBps == 0 || midDriftWindow == 0 || lastMid == 0 || newMid == 0) return true;
+        MidDriftAnchor memory anchor = _midDriftAnchors[sourceId];
+        if (anchor.windowStart == 0 || nowTs < anchor.windowStart || nowTs - anchor.windowStart >= midDriftWindow) {
+            return true;
+        }
+        uint256 diff = newMid > anchor.anchorMid ? uint256(newMid - anchor.anchorMid) : uint256(anchor.anchorMid - newMid);
+        return diff * 10000 <= uint256(anchor.anchorMid) * uint256(maxMidDriftBps);
+    }
+
+    /**
      * @notice Whether a candidate midPrice passes the configured writer-side guards.
      * @dev Returns true when guards are disabled (default). Enforces the absolute band
      *      (when maxMidPrice != 0) and the per-write deviation vs `lastMid` (when
@@ -484,6 +562,30 @@ contract SlippageStorage is
             if (diff * 10000 > uint256(lastMid) * uint256(maxMidDeviationBps)) return false;
         }
         return true;
+    }
+
+    /**
+     * @notice Records a new rolling drift anchor when the current window expires.
+     * @dev Disabled when either drift configuration value is zero.
+     * @param sourceId Price source identifier.
+     * @param newMid Accepted mid price.
+     * @param nowTs Current timestamp.
+     * @custom:security Anchors only accepted writer prices.
+     * @custom:validation Ignores zero prices and disabled guards.
+     * @custom:state-changes Updates the source anchor mapping.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy None.
+     * @custom:access Internal.
+     * @custom:oracle None.
+     */
+    function _recordMidDrift(uint8 sourceId, uint128 newMid, uint48 nowTs) internal {
+        if (maxMidDriftBps == 0 || midDriftWindow == 0 || newMid == 0) return;
+        MidDriftAnchor storage anchor = _midDriftAnchors[sourceId];
+        if (anchor.windowStart == 0 || nowTs < anchor.windowStart || nowTs - anchor.windowStart >= midDriftWindow) {
+            anchor.anchorMid = newMid;
+            anchor.windowStart = nowTs;
+        }
     }
 
     // ============ Emergency Functions ============

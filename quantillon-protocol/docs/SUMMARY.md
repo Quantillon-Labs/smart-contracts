@@ -6,6 +6,7 @@
 - [Architecture Overview](Architecture.md)
 - [Oracle Architecture](Oracle-Architecture.md)
 - [Security Guide](Security.md)
+- [Dapp Compatibility](Dapp-Compatibility.md)
 - [Deployment Guide](Deployment.md)
 - [2026-08-26 Bundle Release Runbook](Bundle-Release-2026-08-26.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)

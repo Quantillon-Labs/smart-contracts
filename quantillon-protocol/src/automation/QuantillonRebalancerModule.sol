@@ -83,7 +83,7 @@ contract QuantillonRebalancerModule is ReentrancyGuard {
 
     /// @notice Reports this standalone module's release version.
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     /// @notice Changes the operator and policy; existing usage and cooldown are preserved.

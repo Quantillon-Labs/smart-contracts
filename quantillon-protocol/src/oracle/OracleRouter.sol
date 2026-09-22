@@ -74,7 +74,7 @@ contract OracleRouter is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.1";
+        return "1.1.2";
     }
     using Address for address payable;
 

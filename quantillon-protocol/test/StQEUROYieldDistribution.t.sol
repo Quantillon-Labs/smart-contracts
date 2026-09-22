@@ -139,6 +139,9 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         assertEq(hedgerShare + userShare + treasuryShare, realized, "all realized yield distributed");
 
         // Stakers actually accrue: share price and redeemable value rise.
+        stToken.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        stToken.syncVesting();
         assertGt(stToken.convertToAssets(1e18), shareValueBefore, "share price rose");
         assertGt(stToken.previewRedeem(stShares), redeemBefore, "staker redeemable rose");
     }
@@ -269,6 +272,9 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
             "treasury receives its share plus the yield fee"
         );
         // Stakers accrue the net credit (userShare - fee), valued in QEURO via the oracle price.
+        stToken.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        stToken.syncVesting();
         assertGt(stToken.totalAssets(), stakedBefore, "stakers accrue net of fee");
     }
 }

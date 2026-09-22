@@ -100,5 +100,53 @@
     "file": "src/oracle/PublicationBatcher.sol",
     "function": "publishTogether",
     "reason": "Deliberate raw call forwarding so destination revert data propagates unchanged. Both targets are immutable, code-checked at deployment and distinct from the writer; calldata must start with the pinned updateSlippageBatch/publish selectors; no ETH or delegatecall is involved; and only the immutable writer may call, so a destination cannot reenter. The contract is deployed non-upgradeable. PublicationBatcher tests cover exact forwarding, revert propagation and rollback, reentrancy and selector restrictions."
+  },
+  {
+    "check": "reentrancy-no-eth",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "withdrawHedgerDeposit",
+    "reason": "The withdrawal entrypoint is nonReentrant and settles the external-vault principal before updating totalUsdcHeld. The only callback-capable adapter is reached through the configured staking adapter set, whose withdrawals are governed by the same guard and validated accounting path; reentry cannot observe or mutate an intermediate settlement state."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/core/HedgerPool.sol",
+    "function": "_checkpointRewards",
+    "reason": "HedgerPoolAccountingLibrary.checkpoint returns the pending amount for callers that need to expose it, while this internal checkpoint helper deliberately uses the library for its storage updates only. The reward state and accrual clock are the consumed effects, and reward accounting tests cover each exposure mutation checkpoint."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "_bookCanExecuteRedeem",
+    "reason": "Redemption capacity and oracle observations intentionally expire after the configured maximum age. These timestamp comparisons enforce freshness and reject future observations; they are not used for randomness or authorization."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/ExecutionPricing.sol",
+    "function": "_degradedHaircut",
+    "reason": "The degraded haircut is available only while the capacity observation remains fresh. The timestamp comparison intentionally bounds the fallback window and does not influence randomness or authority."
+  },
+  {
+    "check": "reentrancy-benign",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_redeemQEUROCommit",
+    "reason": "This internal redemption path is entered only through the nonReentrant redemption entrypoint. External principal withdrawal completes before the price cache and collateral totals are committed, and the adapter set is governance-controlled; the flagged ordering cannot be reentered through an externally callable path."
+  },
+  {
+    "check": "reentrancy-benign",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_redeemLiquidationCommit",
+    "reason": "Liquidation redemption is reached through the guarded liquidation flow. Principal withdrawal uses the configured adapter set and all post-call writes are settlement bookkeeping under the same nonReentrant boundary; no external caller can enter this internal helper between those writes."
+  },
+  {
+    "check": "reentrancy-benign",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_withdrawUsdcFromExternalVaults",
+    "reason": "The helper is internal and called only from nonReentrant mint, redemption and withdrawal flows. It withdraws through governance-configured adapters and then updates the aggregate principal counter; the reported cross-function path is unreachable during an external callback."
+  },
+  {
+    "check": "missing-zero-check",
+    "file": "src/core/HedgerPool.sol",
+    "function": "",
+    "reason": "setSingleHedger delegates to HedgerPoolAccountingLibrary.assignSingleHedger, which performs the governance authorization and explicit zero-address rejection before returning the assigned address. Slither cannot follow this linked-library validation from the wrapper and reports the assignment location without a function name."
   }
 ]

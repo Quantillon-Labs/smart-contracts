@@ -129,5 +129,27 @@ cast call "$YIELD_SHIFT" "enforceSourceVaultBinding()(bool)" --rpc-url "$RPC_URL
 ```
 ## Adapter withdrawal and migration invariants
 
-An adapter must report the actual USDC withdrawn. A one-unit ERC-4626 rounding shortfall is permitted only when the aggregate flow can still satisfy the payout; principal trackers follow the actual return. Adapter replacement requires the old adapter to hold zero shares, and migration must be rehearsed atomically while the vault is paused.
+An adapter must report the actual USDC withdrawn. A one-unit ERC-4626 rounding shortfall is permitted only when the aggregate flow can still satisfy the payout; principal trackers follow the actual return. Changing the ERC-4626 endpoint inside a current adapter requires zero old shares. Replacing an adapter must be rehearsed atomically while the vault is paused.
 
+### Replacing a funded MetaMorpho adapter
+
+`MetaMorphoAdapterMigration` is a one-use, Safe-called helper bound at construction
+to one vault id and one old/new adapter pair using the same USDC and MetaMorpho
+vault. It reads the current principal at execution, withdraws it, collects the
+remaining yield, deposits the principal into the replacement, and leaves yield
+as uncredited USDC at the replacement. It changes neither QEURO supply nor the
+vault's tracked principal. Redeposition may lose at most one USDC base unit to
+ERC-4626 rounding, and replacement backing must still cover all principal.
+
+In one Safe transaction: pause the vault, grant the helper temporary manager
+roles on both adapters and governance on the vault, grant the vault manager
+access to the replacement, call `migrate()`, revoke all temporary roles, retire
+the vault's manager role on the old adapter, and remove the Safe's direct manager
+role on the replacement. Verify the configured adapter and preserved accounting
+before resuming operations. Failure anywhere reverts the entire transaction.
+
+The retired legacy adapter must have zero principal and zero valued underlying.
+Its withdrawal-only interface can leave fractional ERC-4626 shares worth zero
+USDC base units; retain its address in the deployment history and record that
+residue explicitly. The migration rejects losses, unavailable liquidity and
+principal mismatches, and cannot be reused or directed to another destination.

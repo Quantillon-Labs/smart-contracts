@@ -27,6 +27,7 @@ UPDATE=0
 # Deployed contracts (16) + linked libraries (10). Inlined/internal-only libraries have no
 # standalone bytecode; their changes alter the consuming contract's bytecode and are caught there.
 TARGETS=(
+  "src/automation/MetaMorphoAdapterMigration.sol:MetaMorphoAdapterMigration"
   "src/libraries/HedgerPoolMigrationLibrary.sol:HedgerPoolMigrationLibrary"
   "src/libraries/SecureUpgradeLibrary.sol:SecureUpgradeLibrary"
   "src/libraries/HedgerPoolAccountingLibrary.sol:HedgerPoolAccountingLibrary"

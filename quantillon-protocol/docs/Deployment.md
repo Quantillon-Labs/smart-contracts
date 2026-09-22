@@ -16,7 +16,7 @@ Every core contract implements `IVersioned.version()` — a `pure` semver getter
 - **MINOR** (`1.0.0 → 1.1.0`): new function or externally-observable behavior (ABI-additive).
 - **MAJOR**: reserved — storage-layout / ABI breaks are disallowed by the upgrade-safety gates.
 
-This is enforced in CI by `make check-version-bump`: it hashes each versioned unit's **source file** (deterministic, build-independent) and **fails** if the source changed without a `version()` bump — comment and NatSpec edits count as changes. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
+This is enforced in CI by `make check-version-bump`: it hashes each versioned unit's **import closure** (deterministic, build-independent) and **fails** if a source dependency changed without a `version()` bump — comment and NatSpec edits count as changes. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
 
 **Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
 
@@ -148,6 +148,30 @@ all reports were accepted. If the watchdog owns a pause, let its configured
 recovery checks complete before resuming operation.
 
 ### Coordinated core implementation release
+
+Treat a coordinated release as one reviewed package with two mandatory governance
+steps: schedule the complete timelocked batch, then activate all components in one
+atomic Safe transaction after the controller's live minimum delay. Direct-Safe
+oracle and fee upgrades can share that activation transaction with the timelock
+execution, configuration calls and adapter migration. Scheduling must not change
+runtime addresses or pause production. Execution time is measured from the
+confirmed scheduling block, not proposal submission.
+
+Inventory factory implementation templates and every registered staking series
+separately from the factory proxy. Update the template even when existing series
+already use the desired token implementation. Include funded non-upgradeable
+adapters using the [atomic migration procedure](./External-Vault-Onboarding-Runbook.md#replacing-a-funded-metamorpho-adapter).
+The retired Stork proxy, standalone production time provider and OpenZeppelin
+controller are not automatically upgrade targets for similarly named source
+contracts; verify their actual deployment type and active consumers first.
+
+Rehearse the exact Safe hashes, all implementation slots and runtime hashes,
+library links, temporary role revocation, retained yield and unchanged supply,
+collateral and hedger accounting. Test the dapp's mint, redeem, stake and withdrawal
+paths plus keeper harvesting against the upgraded state. An isolated time-warped
+governance rehearsal proves delay enforcement; it cannot certify live report
+freshness. Repeat fresh-price integration checks separately and recheck production
+readiness before executing the queued package.
 
 Deploy the coordinated core implementations from the release manifest. Read
 target versions from `version-baseline/` and live `versions.json`; do not reuse

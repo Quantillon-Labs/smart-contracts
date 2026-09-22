@@ -46,6 +46,27 @@ Price, depth and reconciled capacity are independently accepted; check each targ
 events and timestamps. Depth/capacity have a 60-second maximum age, separate from
 the market oracle's price-staleness limit. See [Deployment](./Deployment.md#current-base-release-22-september-2026).
 
+### Independent reference configuration
+
+Hyperliquid remains the live EUR/USD pricing source. `setReferenceCheck` adds an
+independent Chainlink divergence bound; it does not switch execution pricing to
+Chainlink and does not impose a calendar-based weekend shutdown. The off-hours
+setting selects a divergence limit, not an open/closed flag. The reference must
+still pass round, sequencer, timestamp and absolute-price checks.
+
+Configure the reference only after the Chainlink implementation exposes
+`peekEurUsdPrice()`. Read `maxReferenceDivergenceBps`,
+`maxReferenceDivergenceOffHoursBps`, and `maxReferenceAge` on chain: zero normal
+divergence disables the check. Chainlink's independent probe also enforces its
+own freshness ceiling, so increasing the market adapter's age limit cannot
+bypass it. Validate the actual configured feed across weekday and weekend
+observations before activation. Historical continuity does not guarantee future
+feed availability; invalid reference data must not silently disable the bound.
+
+Likewise, SlippageStorage's `setMidDriftGuard` requires both a nonzero basis-point
+limit and a nonzero window to activate cumulative drift protection. Test accepted
+price events through the real report batcher after changing either configuration.
+
 ## Data flow
 
 ```

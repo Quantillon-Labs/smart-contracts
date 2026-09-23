@@ -104,15 +104,20 @@ alone leaves mint/redeem accounting, margin changes, normal exits, and effective
 queries blocked until activation. The generic upgrade script does not perform this
 governance activation call.
 
-### Current Base release (22 September 2026)
+<a id="current-base-release-22-september-2026"></a>
+
+### Current Base release (23 September 2026)
 
 The live versions and runtime hashes are recorded in `deployments/8453/versions.json`.
-Proxy addresses are unchanged. This record describes activated contracts; it does not
-mean every contract in the source tree is deployed at its latest version. Run
-`make check-deployed-versions` to identify other components needing a separate
-release. The active contracts in this release are QuantillonVault **1.3.4**,
-per-vault stQEUROToken **1.2.4**, HyperliquidEurUsdOracle **1.0.5**, and
-ExecutionPricing **1.3.2**. The vault links ExecutionPricingLibrary **1.1.1**,
+Proxy addresses are unchanged. The coordinated activation completed on Base at
+block **51,685,734** on **23 September 2026, 10:53:35 UTC**. The controller operation
+is complete. Live versions are QEUROToken **1.0.9**, QTIToken **1.0.5**, UserPool
+**1.0.6**, HedgerPool **1.4.1**, stQEUROFactory **1.0.4**, YieldShift **1.1.1**,
+ChainlinkOracle **1.0.5**, OracleRouter **1.1.2**, SlippageStorage **1.0.3**,
+LighterEurUsdOracle **1.0.2** (inert), and FeeCollector **1.0.3**. QuantillonVault
+**1.3.4**, per-vault stQEUROToken **1.2.4**, HyperliquidEurUsdOracle **1.0.5**, and
+ExecutionPricing **1.3.2** retain their existing implementations. The factory now
+uses the **1.2.4** staking-token template for future series. The vault links ExecutionPricingLibrary **1.1.1**,
 StakingYieldLibrary **1.3.2**, TreasuryRecoveryLibrary **1.0.1**, and
 SecureUpgradeLibrary **1.0.1**.
 
@@ -121,6 +126,16 @@ SecureUpgradeLibrary **1.0.1**.
 | ExecutionPricing | `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897` |
 | PublicationBatcher (price/depth) | `0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE` |
 | ReportPublicationBatcher (active publisher route) | `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB` |
+
+VaultId 2 now uses MetaMorphoStakingVaultAdapter **2.1.1** at
+`0x4c9B8b09214d37D5310b8E6768cF28E0dDcEDC30`; principal and uncredited yield
+were transferred atomically, and temporary migration permissions were revoked.
+The eight existing secure proxies have controller default-admin authority with
+Safe operational roles preserved. Strict reference limits are **200/300 bps**
+with **8,100 seconds** maximum age; cumulative price drift is **100 bps / 3,600
+seconds**. The public mint floor remains **102.5%**. Yield conversion has its own
+CR gate and still requires token eligibility, execution liquidity and hedger
+capacity; an unsuccessful harvest rolls back for retry.
 
 `QuantillonVault.executionPricing()` is authoritative for the active module.
 The local, gitignored `deployments/8453/addresses.json` and dapp
@@ -157,7 +172,7 @@ execution, configuration calls and adapter migration. Scheduling must not change
 runtime addresses or pause production. Execution time is measured from the
 confirmed scheduling block, not proposal submission.
 
-The approved release includes the strict Chainlink EUR/USD cross-check:
+The active release includes the strict Chainlink EUR/USD cross-check:
 `setReferenceCheck(200, 300, 8100)`, after upgrading the independent reference
 probe. Verify all three values after execution and test that stale, unavailable
 and divergent references reject minting and normal redemption. This applies on
@@ -279,7 +294,7 @@ hedge tolerance are service configuration, separate from the four contract limit
 
 ### LighterEurUsdOracle (historical — venue not adopted)
 
-`LighterEurUsdOracle` was deployed on 2026-07-17 as the candidate market oracle for a second hedge venue and upgraded to 1.0.1 in the 2026-08-26 bundle; on 2026-09-01 the Lighter venue was ruled out for good, so the proxy stays deployed and **inert** (no router slot, no consumer) as a historical record and no activation is planned. Like the other oracle proxies it is plain UUPS controlled by `UPGRADER_ROLE` (Safe direct, no timelock), and its upgrade script (`scripts/deployment/UpgradeLighterOracle.s.sol`, `UPGRADE_ACTION=deploy-only` then `record`) follows the pattern described above — kept only so the inert deployment can be maintained if ever required.
+`LighterEurUsdOracle` was deployed on 2026-07-17 as the candidate market oracle for a second hedge venue and most recently upgraded to 1.0.2 on 2026-09-23; on 2026-09-01 the Lighter venue was ruled out for good, so the proxy stays deployed and **inert** (no router slot, no consumer) as a historical record and no activation is planned. Like the other oracle proxies it is plain UUPS controlled by `UPGRADER_ROLE` (Safe direct, no timelock), and its upgrade script (`scripts/deployment/UpgradeLighterOracle.s.sol`, `UPGRADE_ACTION=deploy-only` then `record`) follows the pattern described above — kept only so the inert deployment can be maintained if ever required.
 
 ---
 

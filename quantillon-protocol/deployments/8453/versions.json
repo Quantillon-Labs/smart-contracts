@@ -1,31 +1,59 @@
 {
   "ChainlinkOracle": {
+    "implementation": "0x0c5aE6393E0010610E5a167E009DB2A61Def26BA",
+    "version": "1.0.5",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x5de16772d56b3b28834ccd1d196ced7a73d46677160105d7db0ebfd34bb659c0",
+    "deployedAt": 1790110515,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
-    "implementation": "0x43F510165482221Ac892FDdb0B8AD42f5C81D618",
-    "version": "1.0.4",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementationDeployedAt": 1790110515,
+    "implementationDeploymentBlock": 51660584,
+    "implementationDeploymentTransactionHash": "0x6b5d3b610dc7d7273cb892256d4511ffbc37854b5e9010ff13062155a996bdbc",
+    "linkedLibraries": {
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "FeeCollector": {
+    "implementation": "0x0B9A1DcbE1D469e2c42809a6adDb2DA571613b49",
+    "version": "1.0.3",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xe7713eabc0b8db7e5e2fb4d116fc21ad00828b4f4a29dfd2e80cd1b62135f960",
+    "deployedAt": 1790110525,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD",
-    "implementation": "0xC8e0E9992da5D8c7e1C5F525d92e12F092c99826",
-    "version": "1.0.2",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementationDeployedAt": 1790110525,
+    "implementationDeploymentBlock": 51660589,
+    "implementationDeploymentTransactionHash": "0x520494155c1dde64e8db38a84a110b1ed453f6274ce726ed81455432492e8b88"
   },
   "HedgerPool": {
+    "implementation": "0xEFc876ebC390F11c45D82b3e01258479CAf5FA51",
+    "version": "1.4.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xa4e4c0521bb453129d1255a970ec08ece15c8f8fe63a8ebfab64d77bc9f68844",
+    "deployedAt": 1790110503,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "implementation": "0x8d83F7463CbFfd188Df7bC4302900151e273435a",
-    "version": "1.3.0",
-    "gitCommit": "37d2381fbe0ed73bc28160fa46d335f6a73de265",
-    "deployedAt": 1789886843,
-    "note": "Source commit records changes that were deployed before being committed. Reconciled on 2026-09-20: Solidity 0.8.24, via_ir, optimizer runs 0 reproduces the complete deployed runtime with live library links and constructor immutables.",
-    "runtimeCodeHash": "0xf32c548fc85913a0bf390b47b1fad6fb6b5192c4d1ced89d3dd1264860eebf0c",
-    "bytecodeVerifiedAtBlock": 51571753,
-    "implementationDeployedAt": 1789833601,
-    "implementationDeploymentBlock": 51522127,
-    "activationBlock": 51548748,
-    "activationTransactionHash": "0x5fd056f9c7f48dd36e6b158a749d6a483e0137882279e3540f1e4d778c9c41c9",
+    "implementationDeployedAt": 1790110503,
+    "implementationDeploymentBlock": 51660578,
+    "implementationDeploymentTransactionHash": "0x44a62d96f84e63a50bd71153cda121b7e00c9491dfb45c81a3e0a9857e66def8",
+    "linkedLibraries": {
+      "AdminFunctionsLibrary": "0x3a2e247279238CA83c695B77dF680efAb6739097",
+      "HedgerPoolAccountingLibrary": "0xbD997edec6C7963FDC218979B6678A463B739968",
+      "HedgerPoolLogicLibrary": "0x5483e73a4214F1D4c751cbd429dFb0DDFdbF2574",
+      "HedgerPoolMigrationLibrary": "0x4fD35f9E5d1881Bfd741D9838DeAfDf6FB68007b",
+      "HedgerPoolRedeemMathLibrary": "0x74924303FF6cBCC563BBFD9543103705C6B1A5bf",
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b"
+    },
     "legacyMarginCorrection": {
       "correctionId": "0x4d353c548ff5cedda8e117a58e6381a5d9ac9e500fda1750b12433c6012eae4c",
       "beneficiary": "0x1d7fF432a93d0085Fb69474c7E567f859829e6cd",
@@ -50,32 +78,79 @@
     "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "LighterEurUsdOracle": {
+    "implementation": "0xC361f1f12C06d37821E8DA3aE47D5B796de9A5f4",
+    "version": "1.0.2",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x9e256cf4eeea104f3fdd94c0fdde30dbfafd9561da428e817619b9748ae0a783",
+    "deployedAt": 1790110523,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0xcd53182a430d48Be0f414CCA022ABA5d05903536",
-    "implementation": "0xa3bECb5C4Ab9AED03C1789f31e86c22B9BEfF6b5",
-    "version": "1.0.1",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementationDeployedAt": 1790110523,
+    "implementationDeploymentBlock": 51660588,
+    "implementationDeploymentTransactionHash": "0x54ab3885c2016bb00943202bc0dc35170aaa5659abbcaeb24f4b520fa38fa0a4",
+    "linkedLibraries": {
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "OracleRouter": {
+    "implementation": "0x547911c522cc02B5ce5A6403492d84b4F6c2b43b",
+    "version": "1.1.2",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xe8833dcd45f070f2006a7b7e95c4faec378e88634297535b5b56c4ccdbb9d786",
+    "deployedAt": 1790110517,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
-    "implementation": "0x7a73A7275C5F34d21bE4a67E83E110dEB536051B",
-    "version": "1.1.1",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementationDeployedAt": 1790110517,
+    "implementationDeploymentBlock": 51660585,
+    "implementationDeploymentTransactionHash": "0xea26b482244c9ef04ab673b1b73e4d1e42bf88a3c7d3bd1cf10eae9fd95e2ad6",
+    "linkedLibraries": {
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "QEUROToken": {
+    "implementation": "0x8F4FEC2ebf7dDaB9A66465CC59d1566A9B0CD3B9",
+    "version": "1.0.9",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xe24799401589a6371d2c5ac532fa90e8254b2f3c6b8d674fa29832ad744f3319",
+    "deployedAt": 1790109557,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
-    "implementation": "0x179d092f392e739f3BA162e7830d87229f4151B0",
-    "version": "1.0.7",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementationDeployedAt": 1790109557,
+    "implementationDeploymentBlock": 51660105,
+    "implementationDeploymentTransactionHash": "0xafd2d7be16b4d16f7bd894dbad519b93e5158261b6f9d6cb8c194cfe2bbbb4d6",
+    "linkedLibraries": {
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "QTIToken": {
+    "implementation": "0x2a076dFF795C5aC39c24c2d4c7aDb4c8680990f1",
+    "version": "1.0.5",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xb76077ce0aac38992d222bb81f9c20c4f262aec6fd2520302c9531fd6f2b903a",
+    "deployedAt": 1790110411,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
-    "implementation": "0xdc6444D8533A41d5095793C79C9Fd3091ed5bAAf",
-    "version": "1.0.3",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementationDeployedAt": 1790110411,
+    "implementationDeploymentBlock": 51660532,
+    "implementationDeploymentTransactionHash": "0xe3abc9bb240f629e0f410064acaadb013c148a108ffd5977bf803577c41477e3",
+    "linkedLibraries": {
+      "QTITokenGovernanceLibrary": "0x1612218e4c1f548f7017a559221D7e0AE391260A",
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "QuantillonVault": {
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
@@ -98,11 +173,22 @@
     "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "SlippageStorage": {
-    "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
-    "implementation": "0x88013203762A48E35189880e1F1A850D3B9E64D7",
-    "version": "1.0.2",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementation": "0xc21711cC8340d2Cd2Dbc059F039f753a0e478d05",
+    "version": "1.0.3",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xdf6d5be3303686e64798210dfe4029d8621ef434945eb6f2d43d58e080f70b7e",
+    "deployedAt": 1790110521,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "proxy": "0x0fde0ff2566be3c24af6d654012dddb4f1da099b",
+    "implementationDeployedAt": 1790110521,
+    "implementationDeploymentBlock": 51660587,
+    "implementationDeploymentTransactionHash": "0xdda354ce97d5fb8aa1f58f45e05d4987ee744676ba361ac5b29571c0e0174068",
+    "linkedLibraries": {
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
   },
   "StorkOracle": {
     "deployedAt": 1781716808,
@@ -121,25 +207,63 @@
     "version": "0.0.0-unversioned"
   },
   "UserPool": {
+    "implementation": "0xeac613ab9f410E815D4a34a69C52aF5490A78ecB",
+    "version": "1.0.6",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x2e41546363dba098c2ef967c72ac881dd387bc9a7e6e7ceadfc83e05628e1f07",
+    "deployedAt": 1790110493,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "implementation": "0xa5e5DB9083e1fa412174278F742fd744A3543811",
-    "version": "1.0.4",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementationDeployedAt": 1790110493,
+    "implementationDeploymentBlock": 51660573,
+    "implementationDeploymentTransactionHash": "0x8d7e0888d2078188d14365b1adeed5528c249bfd8853596c9821448e5232a2fc",
+    "linkedLibraries": {
+      "AdminFunctionsLibrary": "0x3a2e247279238CA83c695B77dF680efAb6739097",
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
+      "UserPoolStakingLibrary": "0x1a39B55c5aF624809071b75d9F90689E9b24eE7f"
+    }
   },
   "YieldShift": {
+    "implementation": "0x7e08d3E01B65d026311331C8431162cE5402347c",
+    "version": "1.1.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x4ba9511f82a3159305547b91a27118718d53ba31ca9d7cc41cc0e581ef6935fa",
+    "deployedAt": 1790110513,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
-    "implementation": "0xe6130703818C1B47F796E60F831f739343d100c8",
-    "version": "1.0.5",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementationDeployedAt": 1790110513,
+    "implementationDeploymentBlock": 51660583,
+    "implementationDeploymentTransactionHash": "0x8b45e8ae60690f454e0a98654b2a420440f3e0434e121b06ed9ea43da9e22f42",
+    "linkedLibraries": {
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c",
+      "YieldShiftCalculationLibrary": "0x2d3639C5876B60A8899Db9Dc566d3Ec4A761d3f1",
+      "YieldShiftOptimizationLibrary": "0xBe840BD8851de0CE7E32D718c4e4Fec9A1f0df50"
+    }
   },
   "stQEUROFactory": {
+    "implementation": "0x8F6865f269C55071864168fb404f2709e0087DB3",
+    "version": "1.0.4",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x3383a2ba8169ef96e75e81b9461eecb70811d7a5e898363b15abe7fe1234c5c2",
+    "deployedAt": 1790110505,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
     "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
-    "implementation": "0x2Ea4fD4082d8EA7Fd3f7EeF6B658728428Af7e6f",
-    "version": "1.0.2",
-    "gitCommit": "7eac8a8ca265a870632188c5babfae2586275d28",
-    "deployedAt": 1789109671
+    "implementationDeployedAt": 1790110505,
+    "implementationDeploymentBlock": 51660579,
+    "implementationDeploymentTransactionHash": "0x44bfd25233f8792400fd8cab6c977e071d53431bdc3d45edc766896f121de124",
+    "linkedLibraries": {
+      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b"
+    }
   },
   "stQEUROToken": {
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
@@ -156,10 +280,18 @@
     "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "YieldShiftCalculationLibrary": {
-    "implementation": "0xbC559A4ADe6f5AA0Ec8bcf281BbbEd9D9B7f2847",
-    "version": "1.0.2",
-    "gitCommit": "e6ed02b2eb1ee4b67cbab922934049694b01f74d",
-    "deployedAt": 1788624961
+    "implementation": "0x2d3639C5876B60A8899Db9Dc566d3Ec4A761d3f1",
+    "version": "1.0.3",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x07b260462f91b25caeb2aef730093e21ed479b9fa5c880d6b0b2d64a2f4b4f62",
+    "deployedAt": 1790110509,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110509,
+    "implementationDeploymentBlock": 51660581,
+    "implementationDeploymentTransactionHash": "0x42a45bb794fc1b2e88c557a5643cd8c7ed347110651b1b3bb4470b2df50d7f2a"
   },
   "ExecutionPricing": {
     "implementation": "0xFA894CD2e0C8030c95925FfF3b8206F397e0D897",
@@ -189,39 +321,64 @@
     "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
   },
   "HedgerPoolLogicLibrary": {
-    "implementation": "0x767dbC308Ac204f6Ee634FD41bC34Fc8D213A6bB",
-    "version": "1.0.1",
-    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
-    "deployedAt": 1789467405,
-    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+    "implementation": "0x5483e73a4214F1D4c751cbd429dFb0DDFdbF2574",
+    "version": "1.0.2",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x85a308cfd20c9a042f1d8644c70209d27c7141cf4084b8633813288b47402c7a",
+    "deployedAt": 1790110495,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110495,
+    "implementationDeploymentBlock": 51660574,
+    "implementationDeploymentTransactionHash": "0x0d2bfd7e9b7bf34a96e8d5bce96ad5db2cccb630b576d94f06d2959480ac3170"
   },
   "HedgerPoolRedeemMathLibrary": {
-    "implementation": "0x98aDE99C5247fBeD8c2d5F99B0ffC71744713e3B",
-    "version": "1.0.1",
-    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
-    "deployedAt": 1789467405,
-    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+    "implementation": "0x74924303FF6cBCC563BBFD9543103705C6B1A5bf",
+    "version": "1.0.2",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x3c622674c6287b520dcb6935af056de7bc844a1c4f173f36d0dd71f98626d861",
+    "deployedAt": 1790110497,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110497,
+    "implementationDeploymentBlock": 51660575,
+    "implementationDeploymentTransactionHash": "0x26259013dec2c1e91c48afd0925eed9cfbb3d9df54f1b9ff64d21f38654b55dc"
   },
   "HedgerPoolAccountingLibrary": {
-    "implementation": "0x4FDA47d379f00f849808500DD52b5106825ce5f1",
-    "version": "1.1.0",
-    "gitCommit": "37d2381fbe0ed73bc28160fa46d335f6a73de265",
-    "deployedAt": 1789833601,
-    "note": "Source commit records changes that were deployed before being committed. Reconciled on 2026-09-20: Solidity 0.8.24, via_ir, optimizer runs 0 reproduces the complete deployed runtime with live library links and constructor immutables.",
-    "runtimeCodeHash": "0x69a810b84f46051ce49640acd0feb0e7f5161e1b36613120902494dd7db574d6",
-    "bytecodeVerifiedAtBlock": 51571753,
-    "implementationDeployedAt": 1789833601,
-    "implementationDeploymentBlock": 51522127,
-    "activationBlock": 51548748,
-    "activationTransactionHash": "0x5fd056f9c7f48dd36e6b158a749d6a483e0137882279e3540f1e4d778c9c41c9",
-    "activatedAt": 1789886843
+    "implementation": "0xbD997edec6C7963FDC218979B6678A463B739968",
+    "version": "1.3.0",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x24fd1118dbda68e9956ca837a419aa2989863325e7f1ab982fc42405bd8f3991",
+    "deployedAt": 1790110499,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110499,
+    "implementationDeploymentBlock": 51660576,
+    "implementationDeploymentTransactionHash": "0x50ed8e1d14f3b12b15125e94adff15fdb51f5b529b07146ac62e29c35257f735",
+    "linkedLibraries": {
+      "HedgerPoolLogicLibrary": "0x5483e73a4214F1D4c751cbd429dFb0DDFdbF2574",
+      "HedgerPoolRedeemMathLibrary": "0x74924303FF6cBCC563BBFD9543103705C6B1A5bf"
+    }
   },
   "HedgerPoolMigrationLibrary": {
-    "implementation": "0x19e7C6A93Cd5bC048A7a683220b87F55F35e6FE6",
-    "version": "1.0.0",
-    "gitCommit": "68d691e22a7086d9ea5403085c2f3fb5404c8395",
-    "deployedAt": 1789467405,
-    "note": "Activated with HedgerPool 1.2.0 on 2026-09-15. Built from reviewed local changes on this commit; commit alone does not reproduce the deployed source."
+    "implementation": "0x4fD35f9E5d1881Bfd741D9838DeAfDf6FB68007b",
+    "version": "1.0.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xdf2a890177406d0f6f16f11297e8c094fae80bc3619db7674ef9291ce434ea19",
+    "deployedAt": 1790110501,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110501,
+    "implementationDeploymentBlock": 51660577,
+    "implementationDeploymentTransactionHash": "0xb5bb0bb3e684e1f57e9e744c08b8d499b794c1ab3cfc65434b8aa3151aef4982"
   },
   "PublicationBatcher": {
     "implementation": "0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE",
@@ -289,5 +446,94 @@
     "runtimeCodeHash": "0x5dd0c18d9dd1c2f13772d5c8fa2c4f6a61d6b47c72c771e22a5f1390fd7ac153",
     "runtimeRecordedAtBlock": 51658693,
     "note": "Addresses and version verified on Base. Runtime hash records on-chain bytecode; sourceReferenceCommit is the repository snapshot at reconciliation, not a claim of bytecode reproduction."
+  },
+  "QTITokenGovernanceLibrary": {
+    "implementation": "0x1612218e4c1f548f7017a559221D7e0AE391260A",
+    "version": "1.0.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x996609f1cfe620b3f84b49ed1f48b68c0fe384ac429cf4bc53812754ad49a00f",
+    "deployedAt": 1790109559,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790109559,
+    "implementationDeploymentBlock": 51660106,
+    "implementationDeploymentTransactionHash": "0xb945530da4cdf9469592d6418ee7b02237e9e91ca995c44fb6d22344f2bb1629"
+  },
+  "AdminFunctionsLibrary": {
+    "implementation": "0x3a2e247279238CA83c695B77dF680efAb6739097",
+    "version": "1.0.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x96f665c82abd276a9ca2148c42b351d02adebe116b9f16c6f0dfe7c6b16933d5",
+    "deployedAt": 1790110485,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110485,
+    "implementationDeploymentBlock": 51660569,
+    "implementationDeploymentTransactionHash": "0x47cbd66a6b780fd6ef4eae472440739128548739fd9c74684fa163dcfb2d4741",
+    "linkedLibraries": {
+      "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
+    }
+  },
+  "UserPoolStakingLibrary": {
+    "implementation": "0x1a39B55c5aF624809071b75d9F90689E9b24eE7f",
+    "version": "1.0.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x9dbb1838c85baf12c52e456f695a21576539402fedded5fa35a61dbd26b40cf2",
+    "deployedAt": 1790110489,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110489,
+    "implementationDeploymentBlock": 51660571,
+    "implementationDeploymentTransactionHash": "0x5accee0e6cc41b3b25d07830284bcdbed72b04237bbd749ccd17d64ed769f97f"
+  },
+  "YieldShiftOptimizationLibrary": {
+    "implementation": "0xBe840BD8851de0CE7E32D718c4e4Fec9A1f0df50",
+    "version": "1.0.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0xe07efd8875036197976e8bb0a110eb31b14c07f894d99ed5574c8a97194183d9",
+    "deployedAt": 1790110511,
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161199,
+    "implementationDeployedAt": 1790110511,
+    "implementationDeploymentBlock": 51660582,
+    "implementationDeploymentTransactionHash": "0x71ff807b10374fdcea2e03222d1133d8ce9c2188178ac18f84d2baa615fbfa8a"
+  },
+  "MetaMorphoStakingVaultAdapter": {
+    "version": "2.1.1",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x31ba644a31cb319ae8e29579277a3a83bb51c4b7774ee0a86f4771e7c54e4e09",
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161389,
+    "deployedAt": 1790110527,
+    "implementationDeployedAt": 1790110527,
+    "implementationDeploymentBlock": 51660590,
+    "implementationDeploymentTransactionHash": "0x58019ca6bca100223057a9668325dea040beb82d4297f334e77280f8bcb15970",
+    "address": "0x4c9B8b09214d37D5310b8E6768cF28E0dDcEDC30",
+    "deploymentType": "direct"
+  },
+  "MetaMorphoAdapterMigration": {
+    "version": "1.0.0",
+    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
+    "runtimeCodeHash": "0x4a3df0e7cdc0e2901927bf164850c35d866939cfbe2d091842255a1e8c19051c",
+    "activatedAt": 1790160815,
+    "activationBlock": 51685734,
+    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
+    "runtimeVerifiedAt": 1790161389,
+    "deployedAt": 1790110529,
+    "implementationDeployedAt": 1790110529,
+    "implementationDeploymentBlock": 51660591,
+    "implementationDeploymentTransactionHash": "0x29c1f27cbb497bdf6da6fce17d095e8905f4383c0726ad5d180d9e24ac78820d",
+    "address": "0x248746CaF445a83Fd5351E9caf9e3661F3efCd7C",
+    "deploymentType": "direct"
   }
 }

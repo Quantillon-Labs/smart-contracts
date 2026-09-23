@@ -44,7 +44,7 @@ Its immutable writer is the existing publisher account. The batcher itself needs
 SlippageStorage `WRITER_ROLE` plus ExecutionPricing `WRITER_ROLE` and `REPORTER_ROLE`.
 Price, depth and reconciled capacity are independently accepted; check each target's
 events and timestamps. Depth/capacity have a 60-second maximum age, separate from
-the market oracle's price-staleness limit. See [Deployment](./Deployment.md#current-base-release-22-september-2026).
+the market oracle's price-staleness limit. See [Deployment](./Deployment.md#current-base-release-23-september-2026).
 
 ### Independent reference configuration
 
@@ -54,13 +54,13 @@ Chainlink and does not impose a calendar-based weekend shutdown. The off-hours
 setting selects a divergence limit, not an open/closed flag. The reference must
 still pass round, sequencer, timestamp and absolute-price checks.
 
-The approved coordinated release enables the strict reference check. A stale,
+The strict reference check has been active since 23 September 2026. A stale,
 unavailable, invalid or excessively divergent Chainlink EUR/USD reference makes
 the market oracle invalid and blocks minting and normal redemption, including on
 weekends. This availability tradeoff is intentional. Initial release settings are
 200 bps normal divergence, 300 bps off-hours divergence and 8,100 seconds maximum
-reference age; the independent probe's own checks remain authoritative. These are
-release targets until Safe execution; read live getters to determine activation.
+reference age; the independent probe's own checks remain authoritative. These settings were verified after activation; read live getters for subsequent
+governance changes.
 
 Configure the reference only after the Chainlink implementation exposes
 `peekEurUsdPrice()`. Read `maxReferenceDivergenceBps`,

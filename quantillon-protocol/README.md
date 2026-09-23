@@ -1,7 +1,7 @@
 # Quantillon Protocol Smart Contracts
 
 Base deployment addresses and active versions (22 September 2026):
-[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-22-september-2026) ·
+[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-23-september-2026) ·
 [API address reference](https://smartcontracts.quantillon.money/API-Reference.html#contract-addresses).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

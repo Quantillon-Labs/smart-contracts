@@ -36,7 +36,7 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The machine-readable 
 | SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` | on-chain price store feeding HyperliquidEurUsdOracle |
 | TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` | timestamp wrapper (deployed directly, not proxied) |
 
-> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0; the live router is v1.1.1) — switchable in one governance transaction via `switchOracle`. Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`); read it via `marketOracle()` (the pre-1.1.0 `storkOracle()` getter remains as a deprecated alias). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
+> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0; the live router is v1.1.2) — switchable in one governance transaction via `switchOracle`. Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`); read it via `marketOracle()` (the pre-1.1.0 `storkOracle()` getter remains as a deprecated alias). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
 
 ### Execution pricing and publication (Base, 22 September 2026)
 
@@ -51,7 +51,7 @@ addresses and cannot be repointed to another pricing deployment.
 | ReportPublicationBatcher | `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB` | 1.0.0; active price/depth/capacity route |
 
 The active report batcher holds `WRITER_ROLE` on SlippageStorage and ExecutionPricing,
-and `REPORTER_ROLE` on ExecutionPricing. See the [deployment guide](./Deployment.md#current-base-release-22-september-2026)
+and `REPORTER_ROLE` on ExecutionPricing. See the [deployment guide](./Deployment.md#current-base-release-23-september-2026)
 for configuration and freshness checks. Live proxy versions are QuantillonVault
 1.3.4, vaultId-2 stQEUROToken 1.2.4, and HyperliquidEurUsdOracle 1.0.5.
 
@@ -59,8 +59,8 @@ for configuration and freshness checks. Live proxy versions are QuantillonVault
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-3 governance; core admin handover uses the controller |
-| TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | OpenZeppelin `TimelockController`, 12 h delay, Safe = sole proposer/executor. Gates upgrades and, after the coordinated admin handover, default-admin operations of the eight `SecureUpgradeable` proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, per-vault stQEUROToken). FeeCollector, OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle and SlippageStorage are plain UUPS proxies whose upgrade role is held by the Safe: they upgrade in a single Safe transaction, with no timelock |
+| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-3 governance; core default-admin authority belongs to the controller |
+| TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | OpenZeppelin `TimelockController`, 12 h delay, Safe = sole proposer/executor. Gates upgrades and default-admin operations of the eight `SecureUpgradeable` proxies (QuantillonVault, QEUROToken, QTIToken, UserPool, HedgerPool, YieldShift, stQEUROFactory, per-vault stQEUROToken). FeeCollector, OracleRouter, ChainlinkOracle, HyperliquidEurUsdOracle, LighterEurUsdOracle (inert), StorkOracle and SlippageStorage are plain UUPS proxies whose upgrade role is held by the Safe: they upgrade in a single Safe transaction, with no timelock |
 
 ### External vault adapters (onboarded post-core)
 
@@ -68,9 +68,9 @@ External staking adapters are onboarded after core deployment via `setup-externa
 
 | Adapter | Address | `vaultId` |
 |---------|---------|-----------|
-| MetaMorphoStakingVaultAdapter | `0xb2f253Cd74ebfa16894339438B467396De9e8EA3` | 2 |
+| MetaMorphoStakingVaultAdapter | `0x4c9B8b09214d37D5310b8E6768cF28E0dDcEDC30` | 2 |
 
-> The previous vaultId-2 adapter (`0x103aEBD0059AAA3DcCaa9ab0cCb901382Bd48978`) was migrated to the address above on 2026-07-01. Per-vault adapter records (`deployments/8453/*-adapter.json`) are local deployment artifacts and are not tracked in this repository; the live binding is readable on-chain via `QuantillonVault.getVaultExposure(2)`.
+> The previous vaultId-2 adapter (`0xb2f253Cd74ebfa16894339438B467396De9e8EA3`) was migrated to the version-2.1.1 address above on 2026-09-23. Per-vault adapter records (`deployments/8453/*-adapter.json`) are local deployment artifacts and are not tracked in this repository; the live binding is readable on-chain via `QuantillonVault.getVaultExposure(2)`.
 
 ### Per-vault stQEURO tokens
 
@@ -944,7 +944,7 @@ event SourceVaultBindingModeUpdated(bool enabled);
 
 Single oracle entry point for the protocol. All protocol contracts read prices only through `OracleRouter`; the underlying source can be switched by governance without touching consumers.
 
-Routing slots (`enum OracleType { CHAINLINK, MARKET }`; live router version 1.1.1):
+Routing slots (`enum OracleType { CHAINLINK, MARKET }`; live router version 1.1.2):
 - Slot `0` (`CHAINLINK`) — `ChainlinkOracle`, the fallback.
 - Slot `1` (`MARKET`) — the swappable market-price oracle: `StorkOracle` historically, **currently `HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`). Named `STORK` before v1.1.0; the old `storkOracle()` getter is a deprecated alias of `marketOracle()`.
 
@@ -1236,7 +1236,7 @@ event TimeReset(address indexed resetter, uint256 timestamp);
 | `TREASURY_ROLE` / `FEE_SOURCE_ROLE` | FeeCollector | `distributeFees` / contracts allowed to push fees (`QuantillonVault`, `HedgerPool`) |
 | `YIELD_MANAGER_ROLE` | YieldShift | Initializer-granted legacy role; the public update interval applies normally, and `forceUpdateYieldDistribution` requires `GOVERNANCE_ROLE` |
 
-> On Base mainnet the governance Safe holds operational governance, upgrade, emergency and oracle-manager roles as configured per contract. The coordinated release transfers core default-admin roles to the controller while retaining Safe operational roles; direct-Safe oracle/fee administration is unchanged. Read live `hasRole` values to distinguish pending from executed handovers. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (vault CR <= 101%), not a per-position keeper action.
+> On Base mainnet the governance Safe holds operational governance, upgrade, emergency and oracle-manager roles as configured per contract. The 23 September 2026 activation transferred core default-admin roles to the controller while retaining Safe operational roles; direct-Safe oracle/fee administration is unchanged. Read live `hasRole` values to verify current authority. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (vault CR <= 101%), not a per-position keeper action.
 
 ---
 

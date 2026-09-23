@@ -110,8 +110,8 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 - Price bound validation
 - Circuit breaker mechanisms
 
-The approved coordinated release enables a strict independent Chainlink EUR/USD
-reference check. Invalid, unavailable, stale or excessively divergent reference
+The active deployment enforces a strict independent Chainlink EUR/USD reference
+check (enabled on 23 September 2026). Invalid, unavailable, stale or excessively divergent reference
 data blocks minting and normal redemption, including on weekends. The release
 must verify both successful operation with valid prices and rejection with an
 invalid reference. Configuration targets and live-state checks are documented in
@@ -214,7 +214,7 @@ Quantillon Protocol has not yet been audited by an external security firm. It go
 - **Mitigation**: Timelock controls, governance
 - **Monitoring**: Upgrade proposal tracking
 - **Version traceability**: every core contract exposes `IVersioned.version()` and any change is traced through a semver bump (CI-enforced via `make check-version-bump`); `deployments/{chainId}/versions.json` records the live implementation + commit per contract, so an auditor can confirm exactly which source version is deployed (`cast call <proxy> "version()(string)"`).
-- **Controller authority**: after bootstrap, `setTimelock` requires the current controller. The coordinated activation transfers core `DEFAULT_ADMIN_ROLE` to that controller and removes the Safe's direct default-admin role. Operational governance, pause and emergency roles remain with their existing holders. This handover is effective only after its Safe activation transaction executes; read `hasRole` to confirm current authority.
+- **Controller authority**: after bootstrap, `setTimelock` requires the current controller. The 23 September 2026 activation transferred core `DEFAULT_ADMIN_ROLE` to that controller and removed the Safe's direct default-admin role. Operational governance, pause and emergency roles remain with their existing holders. The handover is complete; read `hasRole` to confirm current authority.
 
 **Integration Risk**:
 - **Risk**: Third-party protocol failures

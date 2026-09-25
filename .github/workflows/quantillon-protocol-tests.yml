@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - main
+      - preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"
   pull_request:
     branches:
       - main
+      - preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"

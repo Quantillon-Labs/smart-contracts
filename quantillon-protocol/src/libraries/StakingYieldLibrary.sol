@@ -1,14 +1,65 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
+import {IOracle} from "../interfaces/IOracle.sol";
+import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IExternalStakingVault} from "../interfaces/IExternalStakingVault.sol";
 import {IStQEUROFactory} from "../interfaces/IStQEUROFactory.sol";
-import {IstQEURO} from "../interfaces/IstQEURO.sol";
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {VaultMath} from "./VaultMath.sol";
+
+/// @notice Vault getters used by linked distribution code to keep proxy runtime compact.
+interface IYieldDistributionVault is IQuantillonVault {
+    /**
+     * @notice Configured hedger accounting contract.
+     * @dev Read from the calling vault during library delegatecall.
+     * @return Configured address.
+     * @custom:security Read-only vault getter.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy View only.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
+    function hedgerPool() external view returns (address);
+    /**
+     * @notice Protocol treasury recipient.
+     * @dev Read from the calling vault during library delegatecall.
+     * @return Configured address.
+     * @custom:security Read-only vault getter.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy View only.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
+    function treasury() external view returns (address);
+    /**
+     * @notice Capital distribution haircut, recipient and last harvest.
+     * @dev Read from the calling vault during library delegatecall.
+     * @param vaultId Selected strategy.
+     * @return Haircut basis points.
+     * @return Hedger recipient.
+     * @return Last successful harvest timestamp.
+     * @custom:security Read-only vault getter.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy View only.
+     * @custom:access Public.
+     * @custom:oracle None.
+     */
+    function yieldDistributionConfig(uint256 vaultId) external view returns (uint256, address, uint256);
+}
 
 /**
  * @title StakingYieldLibrary
@@ -31,6 +82,8 @@ library StakingYieldLibrary {
     event ExternalVaultLossRealized(uint256 indexed vaultId, uint256 previousPrincipal, uint256 currentUnderlying);
 
     event RedemptionPriorityUpdated(uint256[] vaultIds);
+    event VaultYieldDistributed(uint256 indexed vaultId, uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare);
+    event VaultYieldBreakdown(uint256 indexed vaultId, uint256 hedgerBase, uint256 stakingYieldHaircut);
 
     /**
      * @notice Replaces the withdrawal priority with unique configured adapter ids.
@@ -157,6 +210,8 @@ library StakingYieldLibrary {
     function registerToken(mapping(uint256 => address) storage tokens, address factory, uint256 id, string calldata name)
         external returns (address token)
     {
+        address existingFactory = IYieldDistributionVault(address(this)).stQEUROFactory();
+        if (existingFactory != address(0) && existingFactory != factory) revert CommonErrorLibrary.InvalidCondition();
         if (factory == address(0)) revert CommonErrorLibrary.InvalidToken();
         if (id == 0) revert CommonErrorLibrary.InvalidVault();
         if (tokens[id] != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
@@ -224,21 +279,10 @@ library StakingYieldLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.3.2";
+        return "1.4.0";
     }
 
-    /**
-     * @notice Inputs for `harvestAndSplit`, read from vault storage by the caller.
-     * @param adapter External staking vault adapter for the vault id.
-     * @param stToken stQEURO share token for the vault id (zero if unregistered).
-     * @param qeuro QEURO token (for circulating supply).
-     * @param usdc USDC token used for hedger/treasury routing.
-     * @param treasury Protocol treasury (treasury share + hedger fallback recipient).
-     * @param hedgerRecipient Hedger funding recipient (falls back to treasury when zero).
-     * @param principalUsdc Tracked principal deployed to the vault (hedger notional, 6 decimals).
-     * @param fundingRateAnnualBps Annualized hedger funding rate in basis points.
-     * @param lastHarvest Timestamp of the previous distribution (0 = first call, no hedger accrual).
-     */
+    /// @notice Configuration and capital registries supplied by the calling vault.
     struct DistributeParams {
         address adapter;
         address stToken;
@@ -247,67 +291,188 @@ library StakingYieldLibrary {
         address treasury;
         address hedgerRecipient;
         uint256 principalUsdc;
-        uint256 fundingRateAnnualBps;
-        uint256 lastHarvest;
+        uint256 totalPrincipalUsdc;
+        uint256 haircutBps;
+        address factory;
+        address hedgerPool;
+        address oracle;
+        uint256 vaultId;
+    }
+
+    /// @notice USDC amounts before the staking token's existing yield fee and execution costs.
+    struct Split {
+        uint256 realizedYield;
+        uint256 hedgerBase;
+        uint256 haircut;
+        uint256 hedgerShare;
+        uint256 userShare;
+        uint256 treasuryShare;
+    }
+
+    /// @notice Harvest-time ownership snapshot, excluding the yield being distributed.
+    struct Capital {
+        uint256 hedger;
+        uint256 userBacking;
+        uint256 staked;
+        uint256 supply;
     }
 
     /**
-     * @notice Harvests adapter yield and splits it: hedger funding first, residual by staked ratio,
-     *         remainder to treasury; routes the hedger and treasury shares in USDC.
-     * @dev The caller (vault) credits `userShare` into stQEURO and emits the distribution event.
-     * @param p Distribution inputs read from vault storage.
-     * @return realizedYield Total USDC yield realized from the adapter (6 decimals).
-     * @return hedgerShare USDC routed to the hedger recipient (6 decimals).
-     * @return userShare USDC the vault must credit into stQEURO (6 decimals).
-     * @return treasuryShare USDC routed to the treasury (6 decimals).
-     * @custom:security Runs under the vault's `nonReentrant`/pause guards via delegatecall.
-     * @custom:validation Caller validates vault id, adapter, and access control.
-     * @custom:state-changes Moves USDC out of the vault to hedger recipient and treasury.
-     * @custom:events None; the vault emits `VaultYieldDistributed`.
-     * @custom:errors Reverts on adapter or transfer failures.
-     * @custom:reentrancy Caller-guarded.
-     * @custom:access Internal protocol use (linked library).
-     * @custom:oracle No oracle dependency in this library.
+     * @notice Calculate conserved capital-weighted allocations of realized yield.
+     * @dev Floors the hedger base and haircut; residual rounding remains in the user/treasury allocation.
+     * @param yieldUsdc Realized USDC yield.
+     * @param c Economic ownership snapshot.
+     * @param haircutBps Percentage of gross staker yield, in basis points.
+     * @return s Distribution before existing staking fees.
+     * @custom:security Never deducts principal; allocations sum to yieldUsdc.
+     * @custom:validation Haircut cannot exceed 100%.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors AboveLimit for an invalid haircut.
+     * @custom:reentrancy No external calls.
+     * @custom:access Public library calculation.
+     * @custom:oracle Uses caller-supplied economic values.
      */
-    // slither-disable-next-line timestamp
-    function harvestAndSplit(DistributeParams memory p)
-        external
-        returns (uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare)
+    // Zero selects an empty pool; positive balances always use proportional allocation.
+    // slither-disable-next-line incorrect-equality
+    function calculateSplit(uint256 yieldUsdc, Capital memory c, uint256 haircutBps)
+        public pure returns (Split memory s)
     {
-        realizedYield = IExternalStakingVault(p.adapter).harvestYieldToVault();
-        if (realizedYield == 0) return (0, 0, 0, 0);
-
-        // Hedger funding carve-out: absolute, time-prorated on the deployed notional. First call
-        // (lastHarvest == 0) only anchors the clock, so no hedger share accrues.
-        if (p.lastHarvest != 0 && p.fundingRateAnnualBps != 0 && block.timestamp > p.lastHarvest) {
-            uint256 elapsed = block.timestamp - p.lastHarvest;
-            hedgerShare = p.principalUsdc.mulDiv(p.fundingRateAnnualBps * elapsed, BPS_DENOMINATOR * 365 days);
-            // MINIMAL V1: never draw from the user pool — cap the hedger share at the realized yield.
-            if (hedgerShare > realizedYield) hedgerShare = realizedYield;
+        if (haircutBps > BPS_DENOMINATOR) revert CommonErrorLibrary.AboveLimit();
+        s.realizedYield = yieldUsdc;
+        uint256 capital = c.hedger + c.userBacking;
+        if (capital == 0) {
+            s.treasuryShare = yieldUsdc;
+            return s;
         }
+        s.hedgerBase = yieldUsdc.mulDiv(c.hedger, capital);
+        uint256 userPool = yieldUsdc - s.hedgerBase;
+        uint256 staked = c.staked > c.supply ? c.supply : c.staked;
+        uint256 gross = c.supply == 0 ? 0 : userPool.mulDiv(staked, c.supply);
+        s.haircut = gross.mulDiv(haircutBps, BPS_DENOMINATOR);
+        s.hedgerShare = s.hedgerBase + s.haircut;
+        s.userShare = gross - s.haircut;
+        s.treasuryShare = userPool - gross;
+    }
 
-        uint256 residual = realizedYield - hedgerShare;
+    /// @notice Resolve the calling vault's configuration before taking a capital snapshot.
+    /// @dev Only called by delegatecall entrypoints; external self-calls read public vault getters.
+    /// @param vaultId Selected strategy.
+    /// @return p Validated configuration.
+    function _params(uint256 vaultId) private view returns (DistributeParams memory p) {
+        IYieldDistributionVault v = IYieldDistributionVault(address(this));
+        bool active;
+        // Underlying is sampled by preview/harvest, separately from tracked principal.
+        // slither-disable-next-line unused-return
+        (p.adapter, active, p.principalUsdc,) = v.getVaultExposure(vaultId);
+        if (vaultId == 0 || !active) revert CommonErrorLibrary.InvalidVault();
+        if (p.adapter == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        // The timestamp guards keeper scheduling; it does not affect ownership weights.
+        // slither-disable-next-line unused-return
+        (p.haircutBps, p.hedgerRecipient,) = v.yieldDistributionConfig(vaultId);
+        p.stToken = v.stQEUROTokenByVaultId(vaultId);
+        p.qeuro = v.qeuro();
+        p.usdc = v.usdc();
+        p.treasury = v.treasury();
+        p.totalPrincipalUsdc = v.totalUsdcInExternalVaults();
+        p.factory = v.stQEUROFactory();
+        p.hedgerPool = v.hedgerPool();
+        p.oracle = v.oracle();
+        p.vaultId = vaultId;
+    }
 
-        // Residual split: staked users (via stQEURO share price) pro-rata to staked/circulating QEURO,
-        // remainder to treasury (the share attributable to unstaked QEURO).
-        if (residual > 0) {
-            uint256 staked = 0;
-            if (p.stToken != address(0) && IstQEURO(p.stToken).totalSupply() > 0) {
-                staked = IstQEURO(p.stToken).totalAssets();
+    /**
+     * @notice Snapshot capital and enforce the single-funded-strategy distribution boundary.
+     * @dev Registered token balances include credited unvested QEURO when shareholders exist.
+     * @param p Calling vault configuration.
+     * @return c Economic ownership before harvest and minting.
+     * @custom:security Fails closed on unsupported strategies or invalid oracle/accounting reads.
+     * @custom:validation All external principal and all outstanding staking shares must belong to this series.
+     * @custom:state-changes Oracle may refresh its price cache.
+     * @custom:events Oracle events only.
+     * @custom:errors InvalidCondition, InvalidVault, InvalidOraclePrice, or propagated external errors.
+     * @custom:reentrancy Caller holds its reentrancy guard.
+     * @custom:access Internal library helper.
+     * @custom:oracle Fresh validated EUR/USD reference price.
+     */
+    function _snapshot(DistributeParams memory p) private returns (Capital memory c) {
+        if (p.totalPrincipalUsdc != p.principalUsdc) revert CommonErrorLibrary.InvalidCondition();
+        if (p.factory != address(0)) {
+            uint256[] memory ids = IStQEUROFactory(p.factory).getVaultIdsByVault(address(this));
+            for (uint256 i; i < ids.length; ++i) {
+                if (ids[i] == p.vaultId) continue;
+                // Reject funds in other strategies regardless of their active flag or adapter address.
+                // slither-disable-next-line unused-return
+                (,, uint256 otherPrincipal, uint256 otherUnderlying) = IYieldDistributionVault(address(this)).getVaultExposure(ids[i]);
+                if (otherPrincipal != 0 || otherUnderlying != 0) revert CommonErrorLibrary.InvalidCondition();
+                address other = IStQEUROFactory(p.factory).getStQEUROByVaultId(ids[i]);
+                if (other != address(0) && IERC20(other).totalSupply() != 0) {
+                    revert CommonErrorLibrary.InvalidCondition();
+                }
             }
-            uint256 circulating = IERC20(p.qeuro).totalSupply();
-            if (staked > circulating) staked = circulating;
-            userShare = (staked == 0 || circulating == 0) ? 0 : residual.mulDiv(staked, circulating);
-            treasuryShare = residual - userShare;
         }
+        (uint256 price, bool valid) = IOracle(p.oracle).getEurUsdPrice();
+        if (!valid || price == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        c.supply = IERC20(p.qeuro).totalSupply();
+        c.userBacking = c.supply.mulDiv(price, 1e30);
+        if (p.hedgerPool != address(0)) {
+            c.hedger = IHedgerPool(p.hedgerPool).getTotalEffectiveHedgerCollateral(price);
+        }
+        if (p.stToken != address(0) && IERC20(p.stToken).totalSupply() > 0) {
+            c.staked = IERC20(p.qeuro).balanceOf(p.stToken);
+        }
+    }
 
-        // Route the hedger and treasury shares from the realized USDC now held by the vault.
-        if (hedgerShare > 0) {
-            address hedgerSink = p.hedgerRecipient == address(0) ? p.treasury : p.hedgerRecipient;
-            IERC20(p.usdc).safeTransfer(hedgerSink, hedgerShare);
+    /**
+     * @notice Preview the next distribution with the same ownership calculation as execution.
+     * @dev Call through eth_call: the oracle interface can refresh state. Actual realized yield may differ.
+     * @param vaultId Selected strategy.
+     * @return s Estimated USDC allocations before existing staking fees.
+     * @custom:security Shares execution validation and requires a recipient for nonzero hedger payments.
+     * @custom:validation Validates capital, strategy boundary, oracle and recipient.
+     * @custom:state-changes Oracle cache only; eth_call persists nothing.
+     * @custom:events Oracle events only.
+     * @custom:errors Propagates snapshot errors; ZeroAddress for a missing hedger recipient.
+     * @custom:reentrancy Caller holds its reentrancy guard.
+     * @custom:access Linked library.
+     * @custom:oracle Fresh EUR/USD reference price.
+     */
+    function previewSplit(uint256 vaultId) external returns (Split memory s) {
+        DistributeParams memory p = _params(vaultId);
+        Capital memory c = _snapshot(p);
+        uint256 underlying = IExternalStakingVault(p.adapter).totalUnderlying();
+        s = calculateSplit(underlying > p.principalUsdc ? underlying - p.principalUsdc : 0, c, p.haircutBps);
+        if (s.hedgerShare > 0 && p.hedgerRecipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+    }
+
+    /**
+     * @notice Harvest and allocate yield by economic capital, with a haircut on gross staking yield.
+     * @dev The vault credits userShare via its existing QEURO mint path. Failure rolls back the whole harvest.
+     * @param vaultId Selected strategy.
+     * @param lastHarvest Keeper timestamps updated atomically with distribution.
+     * @return userShare USDC allocation to credit through the existing QEURO mint path.
+     * @custom:security Principal is untouched; no fallback recipient silently captures hedger yield.
+     * @custom:validation Same capital validation as preview; nonzero hedger payout requires a recipient.
+     * @custom:state-changes Harvests adapter yield and transfers hedger/treasury USDC.
+     * @custom:events Adapter/token/oracle events; the vault emits distribution events.
+     * @custom:errors Propagates snapshot/adapter/token errors; ZeroAddress for missing recipient.
+     * @custom:reentrancy Caller holds its reentrancy guard.
+     * @custom:access Linked library.
+     * @custom:oracle Snapshot taken before harvesting and yield minting.
+     */
+    function harvestAndSplit(uint256 vaultId, mapping(uint256 => uint256) storage lastHarvest) external returns (uint256 userShare) {
+        Split memory s;
+        DistributeParams memory p = _params(vaultId);
+        Capital memory c = _snapshot(p);
+        s = calculateSplit(IExternalStakingVault(p.adapter).harvestYieldToVault(), c, p.haircutBps);
+        if (s.hedgerShare > 0) {
+            if (p.hedgerRecipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+            IERC20(p.usdc).safeTransfer(p.hedgerRecipient, s.hedgerShare);
         }
-        if (treasuryShare > 0) {
-            IERC20(p.usdc).safeTransfer(p.treasury, treasuryShare);
-        }
+        if (s.treasuryShare > 0) IERC20(p.usdc).safeTransfer(p.treasury, s.treasuryShare);
+        lastHarvest[vaultId] = block.timestamp;
+        emit VaultYieldDistributed(vaultId, s.realizedYield, s.hedgerShare, s.userShare, s.treasuryShare);
+        emit VaultYieldBreakdown(vaultId, s.hedgerBase, s.haircut);
+        return s.userShare;
     }
 }

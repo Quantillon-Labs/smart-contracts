@@ -3,6 +3,9 @@ pragma solidity 0.8.24;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import {StakingYieldLibrary} from "../src/libraries/StakingYieldLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {MockAaveVault} from "./AaveIntegration.t.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 import {AaveIntegrationTest} from "./AaveIntegration.t.sol";
@@ -10,20 +13,12 @@ import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {stQEUROFactory} from "../src/core/stQEUROFactory.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 
-/**
- * @title StQEUROYieldDistributionTest
- * @notice Tests the §2a yield-distribution model implemented by
- *         `QuantillonVault.harvestAndDistributeVaultYield`: the hedger funding share is carved out
- *         first (absolute, time-prorated funding rate), the residual is credited to stQEURO holders
- *         pro-rata to staked/circulating QEURO (rising share price), and the remainder goes to treasury.
- *         Funding is configured at 0.5% (the agreed test value; commercial launch uses 0).
- */
+/// @notice Capital ownership, haircut, settlement and upgrade-compatibility regressions.
 contract StQEUROYieldDistributionTest is AaveIntegrationTest {
     stQEUROFactory internal factory;
     stQEUROToken internal stToken;
 
     uint256 internal constant VAULT_ID = 1; // the Aave-mock staking vault wired in AaveIntegrationTest.setUp
-    uint256 internal constant FUNDING_RATE_BPS = 50; // 0.5% annualized
     address internal hedgerSink = address(0xBEEF);
 
     /// @notice Deploys an stQEURO series for VAULT_ID and configures the distribution parameters.
@@ -53,7 +48,7 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         stToken = stQEUROToken(vault.selfRegisterStQEURO(address(factory), VAULT_ID, "AAVE"));
 
         vault.grantRole(vault.YIELD_DISTRIBUTOR_ROLE(), admin);
-        vault.setFundingRateAnnualBps(FUNDING_RATE_BPS);
+        vault.setHedgerStakingYieldHaircutBps(0);
         vault.setHedgerYieldRecipient(hedgerSink);
 
         usdc.mint(user, 200_000e6); // extra USDC for mint + stake below
@@ -95,186 +90,224 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         revert("VaultYieldDistributed not emitted");
     }
 
-    // -------------------------------------------------------------------------
 
-    /// @notice At 0.5% funding the hedger is paid first (exact formula), stakers' share price rises,
-    ///         and the unstaked remainder goes to treasury; all realized yield is fully distributed.
-    function test_harvestAndDistribute_paysHedgerFirstAndRaisesSharePrice() public {
+    function _example(uint256 haircut) internal {
         _setUpStaking();
-        uint256 stShares = _seedPositions(20_000e6, 10_000e6);
-        _prime();
+        oracle.setPrice(1e18);
+        vm.startPrank(admin);
+        vault.updatePriceCache();
+        vault.setHedgerStakingYieldHaircutBps(haircut);
+        vm.stopPrank();
+        vm.mockCall(address(hedgerPool), abi.encodeWithSignature("getTotalEffectiveHedgerCollateral(uint256)", 1e18), abi.encode(1000e6));
+        _seedPositions(50e6, 50e6);
+        mockAaveVault.setAccruedYield(110e6);
+    }
 
-        (, , uint256 notional, ) = vault.getVaultExposure(VAULT_ID);
-        assertGt(notional, 0, "principal deployed to adapter");
-
-        uint256 yieldUsdc = 2_000e6;
-        vm.warp(block.timestamp + 365 days);
-        mockAaveVault.setAccruedYield(yieldUsdc);
-
-        uint256 shareValueBefore = stToken.convertToAssets(1e18);
-        uint256 redeemBefore = stToken.previewRedeem(stShares);
-        uint256 hedgerBefore = usdc.balanceOf(hedgerSink);
-        uint256 treasuryBefore = usdc.balanceOf(treasury);
-        uint256 circulating = qeuro.totalSupply();
-        uint256 staked = stToken.totalAssets();
-
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
-
-        // Hedger first, exactly 0.5% annualized of the deployed notional over one year.
-        uint256 expectedHedger = (notional * FUNDING_RATE_BPS) / 10000;
-        assertEq(realized, yieldUsdc, "realized == accrued yield harvested");
-        assertEq(hedgerShare, expectedHedger, "hedger share == 0.5% annualized of notional");
-        assertLt(hedgerShare, realized, "funding stays below yield (no user ponction)");
-        assertEq(usdc.balanceOf(hedgerSink) - hedgerBefore, hedgerShare, "hedger recipient funded");
-
-        // Residual split staked/circulating; remainder to treasury.
-        uint256 residual = realized - hedgerShare;
-        uint256 expectedUser = (residual * staked) / circulating;
-        assertEq(userShare, expectedUser, "user share == residual * staked / circulating");
-        assertGt(treasuryShare, 0, "treasury receives the unstaked remainder");
-        assertEq(treasuryShare, residual - expectedUser, "treasury == residual - userShare");
-        assertEq(usdc.balanceOf(treasury) - treasuryBefore, treasuryShare, "treasury funded");
-
-        // Conservation: every realized USDC is routed.
-        assertEq(hedgerShare + userShare + treasuryShare, realized, "all realized yield distributed");
-
-        // Stakers actually accrue: share price and redeemable value rise.
+    function _checkExample(uint256 haircut, uint256 expectedHaircut) internal {
+        _example(haircut);
+        StakingYieldLibrary.Split memory preview = vault.previewVaultYieldDistribution(VAULT_ID);
+        assertEq(preview.hedgerBase, 100e6);
+        assertEq(preview.haircut, expectedHaircut);
+        uint256 beforeAssets = qeuro.balanceOf(address(stToken));
+        uint256 beforeRedeemable = stToken.totalAssets();
+        uint256 beforeHeld = vault.totalUsdcHeld();
+        (uint256 realized, uint256 h, uint256 u, uint256 t) = _distribute();
+        assertEq(realized, 110e6);
+        assertEq(h, 100e6 + expectedHaircut);
+        assertEq(u, 5e6 - expectedHaircut);
+        assertEq(t, 5e6);
+        assertEq(h + u + t, realized);
+        assertEq(usdc.balanceOf(hedgerSink), h);
+        assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, u * 1e12);
+        assertEq(vault.totalUsdcHeld() - beforeHeld, u);
         stToken.syncVesting();
-        vm.warp(block.timestamp + 1 days);
+        assertEq(stToken.totalAssets(), beforeRedeemable, "vesting does not unlock immediately");
+        vm.warp(block.timestamp + stToken.vestingPeriod());
+        assertEq(stToken.totalAssets(), beforeRedeemable + u * 1e12);
+        (uint256 legacyRate,, uint256 last) = vault.harvestConfig(VAULT_ID);
+        assertEq(legacyRate, 0);
+        assertGt(last, 0);
+    }
+
+    function test_exampleZero() public { _checkExample(0, 0); }
+    function test_exampleOnePercent() public { _checkExample(100, 50_000); }
+    function test_exampleTwoPercent() public { _checkExample(200, 100_000); }
+    function test_exampleHundredPercent() public { _checkExample(10000, 5e6); }
+
+    function test_feeAfterHaircut() public {
+        _example(200);
+        vm.prank(admin);
+        stToken.updateYieldParameters(1000);
+        uint256 beforeTreasury = usdc.balanceOf(treasury);
+        uint256 beforeAssets = qeuro.balanceOf(address(stToken));
+        _distribute();
+        assertEq(usdc.balanceOf(treasury) - beforeTreasury, 5e6 + 490_000);
+        assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, 4.41e18);
+    }
+
+    function test_unvestedYieldRemainsStakerOwned() public {
+        _example(0);
+        _distribute();
         stToken.syncVesting();
-        assertGt(stToken.convertToAssets(1e18), shareValueBefore, "share price rose");
-        assertGt(stToken.previewRedeem(stShares), redeemBefore, "staker redeemable rose");
+        assertEq(stToken.totalAssets(), 50e18);
+        assertEq(qeuro.balanceOf(address(stToken)), 55e18);
+        mockAaveVault.setAccruedYield(110e6);
+        StakingYieldLibrary.Split memory s = vault.previewVaultYieldDistribution(VAULT_ID);
+        uint256 residual = 110e6 - uint256(110e6) * 1000e6 / 1105e6;
+        assertEq(s.userShare, residual * 55 / 105);
     }
 
-    /// @notice With funding at 0 (commercial launch), the hedger gets nothing and the full yield is
-    ///         split between stakers (share price) and treasury.
-    function test_harvestAndDistribute_zeroFunding_noHedgerCut() public {
-        _setUpStaking();
-        vm.prank(admin);
-        vault.setFundingRateAnnualBps(0);
-
-        _seedPositions(20_000e6, 10_000e6);
-        _prime();
-
-        uint256 hedgerBefore = usdc.balanceOf(hedgerSink);
-        vm.warp(block.timestamp + 365 days);
-        mockAaveVault.setAccruedYield(1_000e6);
-
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
-
-        assertEq(hedgerShare, 0, "no funding carve-out at 0 bps");
-        assertEq(usdc.balanceOf(hedgerSink), hedgerBefore, "hedger recipient untouched");
-        assertEq(userShare + treasuryShare, realized, "entire yield split between users and treasury");
-        assertGt(userShare, 0, "stakers accrue");
+    function test_secondShareholderSharesRedeemableGain() public {
+        _example(0);
+        address second = address(0x12345);
+        vm.startPrank(user);
+        stToken.transfer(second, stToken.balanceOf(user) / 2);
+        vm.stopPrank();
+        _distribute();
+        stToken.syncVesting();
+        vm.warp(block.timestamp + stToken.vestingPeriod());
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(user)), 27.5e18, 2);
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(second)), 27.5e18, 2);
     }
 
-    /// @notice The governance setters emit their update events (restored in v1.1.1 after being
-    ///         dropped for EIP-170 headroom in v1.1.0).
-    function test_governanceSetters_emitEvents() public {
-        _setUpStaking();
-
-        vm.expectEmit(false, false, false, true, address(vault));
-        emit QuantillonVault.FundingRateUpdated(FUNDING_RATE_BPS, 75);
-        vm.prank(admin);
-        vault.setFundingRateAnnualBps(75);
-
-        address newRecipient = address(0xD00D);
-        vm.expectEmit(true, true, false, false, address(vault));
-        emit QuantillonVault.HedgerYieldRecipientUpdated(hedgerSink, newRecipient);
-        vm.prank(admin);
-        vault.setHedgerYieldRecipient(newRecipient);
+    function test_harvestSnapshotReflectsNewStakeAndOraclePrice() public {
+        _example(0);
+        oracle.setPrice(1.2e18);
+        vm.mockCall(address(hedgerPool), abi.encodeWithSignature("getTotalEffectiveHedgerCollateral(uint256)", 1.2e18), abi.encode(980e6));
+        StakingYieldLibrary.Split memory s = vault.previewVaultYieldDistribution(VAULT_ID);
+        assertEq(s.hedgerBase, 98e6);
+        assertEq(s.userShare, 6e6);
+        vm.startPrank(user);
+        qeuro.approve(address(stToken), 50e18);
+        stToken.deposit(50e18, user);
+        vm.stopPrank();
+        s = vault.previewVaultYieldDistribution(VAULT_ID);
+        assertEq(s.userShare, 12e6);
+        assertEq(s.treasuryShare, 0);
     }
 
-    /// @notice Only a YIELD_DISTRIBUTOR_ROLE holder can trigger harvest+distribute.
-    function test_harvestAndDistribute_onlyYieldDistributor() public {
-        _setUpStaking();
-        vm.prank(user);
-        vm.expectRevert();
+    function test_missingRecipientRollsBackHarvest() public {
+        _example(200);
+        // Mock only the configuration read: represent an existing proxy with an unset recipient.
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.yieldDistributionConfig.selector, VAULT_ID), abi.encode(200, address(0), 0));
+        (, , uint256 principal, uint256 underlying) = vault.getVaultExposure(VAULT_ID);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
+        vm.prank(admin);
         vault.harvestAndDistributeVaultYield(VAULT_ID);
+        (, , uint256 principalAfter, uint256 underlyingAfter) = vault.getVaultExposure(VAULT_ID);
+        assertEq(principalAfter, principal);
+        assertEq(underlyingAfter, underlying);
+        (,,uint256 last) = vault.harvestConfig(VAULT_ID);
+        assertEq(last, 0);
     }
 
-    /// @notice When the time-prorated funding accrual exceeds the realized yield, the hedger share is
-    ///         capped at the realized yield and stakers/treasury receive nothing (no principal ponction).
-    function test_harvestAndDistribute_fundingCapBinds() public {
-        _setUpStaking();
-        _seedPositions(20_000e6, 10_000e6);
-        _prime();
-
-        (, , uint256 notional, ) = vault.getVaultExposure(VAULT_ID);
-        uint256 accruedFunding = (notional * FUNDING_RATE_BPS) / 10000; // 1y at 0.5%
-        uint256 yieldUsdc = accruedFunding / 3; // realized yield well below the funding accrual
-        assertGt(yieldUsdc, 0, "fixture sanity: nonzero yield");
-
-        vm.warp(block.timestamp + 365 days);
-        mockAaveVault.setAccruedYield(yieldUsdc);
-
-        uint256 treasuryBefore = usdc.balanceOf(treasury);
-        uint256 shareValueBefore = stToken.convertToAssets(1e18);
-
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
-
-        assertEq(realized, yieldUsdc, "realized == accrued yield");
-        assertEq(hedgerShare, realized, "hedger share capped at realized yield");
-        assertEq(userShare, 0, "no staker residual when the cap binds");
-        assertEq(treasuryShare, 0, "no treasury remainder when the cap binds");
-        assertEq(usdc.balanceOf(treasury), treasuryBefore, "treasury untouched");
-        assertEq(stToken.convertToAssets(1e18), shareValueBefore, "share price unchanged");
-    }
-
-    /// @notice With zero realized yield the distribution is a harmless no-op: an all-zero split,
-    ///         no transfers, no share-price movement.
-    function test_harvestAndDistribute_zeroYield_noOp() public {
-        _setUpStaking();
-        _seedPositions(20_000e6, 10_000e6);
-        _prime();
-
-        vm.warp(block.timestamp + 30 days); // funding clock runs, but there is nothing to carve from
-
-        uint256 hedgerBefore = usdc.balanceOf(hedgerSink);
-        uint256 treasuryBefore = usdc.balanceOf(treasury);
-        uint256 shareValueBefore = stToken.convertToAssets(1e18);
-
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
-
-        assertEq(realized, 0, "nothing realized");
-        assertEq(hedgerShare + userShare + treasuryShare, 0, "all-zero split");
-        assertEq(usdc.balanceOf(hedgerSink), hedgerBefore, "hedger untouched");
-        assertEq(usdc.balanceOf(treasury), treasuryBefore, "treasury untouched");
-        assertEq(stToken.convertToAssets(1e18), shareValueBefore, "share price unchanged");
-    }
-
-    /// @notice With a per-series yieldFee, the treasury receives treasuryShare + fee while the event
-    ///         reports the PRE-fee userShare; stakers accrue only the net (userShare - fee).
-    function test_harvestAndDistribute_yieldFee_treasuryGetsShareAndFee() public {
-        _setUpStaking();
-        uint256 feeBps = 1000; // 10%
+    function test_creditFailureRollsBackTransfersAndClock() public {
+        _example(200);
+        vm.mockCallRevert(address(qeuro), abi.encodeWithSignature("mint(address,uint256)"), abi.encodeWithSignature("Error(string)", "mint blocked"));
+        uint256 beforeHedger = usdc.balanceOf(hedgerSink);
+        uint256 beforeTreasury = usdc.balanceOf(treasury);
+        vm.expectRevert();
         vm.prank(admin);
-        stToken.updateYieldParameters(feeBps);
+        vault.harvestAndDistributeVaultYield(VAULT_ID);
+        assertEq(usdc.balanceOf(hedgerSink), beforeHedger);
+        assertEq(usdc.balanceOf(treasury), beforeTreasury);
+        (,,uint256 last) = vault.harvestConfig(VAULT_ID);
+        assertEq(last, 0);
+        (,,uint256 principal,uint256 underlying) = vault.getVaultExposure(VAULT_ID);
+        assertEq(underlying-principal, 110e6);
+    }
 
-        _seedPositions(20_000e6, 10_000e6);
-        _prime();
+    function test_rejectsOtherFundedStrategy() public {
+        _example(0);
+        vm.startPrank(admin);
+        MockAaveVault other = new MockAaveVault(address(usdc));
+        vault.setStakingVault(2, address(other), true);
+        uint256[] memory ids = new uint256[](2); ids[0] = 1; ids[1] = 2;
+        vault.setRedemptionPriority(ids);
+        vault.grantRole(vault.VAULT_OPERATOR_ROLE(), admin);
+        vault.deployUsdcToVault(2, 1e6);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.harvestAndDistributeVaultYield(VAULT_ID);
+        vm.stopPrank();
+    }
 
-        vm.warp(block.timestamp + 365 days);
-        mockAaveVault.setAccruedYield(2_000e6);
+    function test_rejectsOtherStakingSharesEvenWithoutDeployedCapital() public {
+        _example(0);
+        vm.prank(admin);
+        stQEUROToken other = stQEUROToken(vault.selfRegisterStQEURO(address(factory), 2, "OTHER"));
+        vm.startPrank(user);
+        qeuro.approve(address(other), 1e18);
+        other.deposit(1e18, user);
+        vm.stopPrank();
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.previewVaultYieldDistribution(VAULT_ID);
+    }
 
-        uint256 treasuryBefore = usdc.balanceOf(treasury);
-        uint256 stakedBefore = stToken.totalAssets();
+    function test_invalidOracleFailsClosed() public {
+        _example(0);
+        vm.mockCall(address(oracle), abi.encodeWithSignature("getEurUsdPrice()"), abi.encode(1e18, false));
+        vm.expectRevert(CommonErrorLibrary.InvalidOraclePrice.selector);
+        vault.previewVaultYieldDistribution(VAULT_ID);
+    }
 
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
-        uint256 feeUsdc = (userShare * feeBps) / 10000;
-        assertGt(feeUsdc, 0, "fixture sanity: nonzero fee");
+    function test_governanceBoundariesAndRetiredSetter() public {
+        _setUpStaking();
+        assertEq(vault.hedgerStakingYieldHaircutBps(), 0);
+        vm.expectRevert(); vm.prank(user); vault.setHedgerStakingYieldHaircutBps(200);
+        vm.expectRevert(); vm.prank(user); vault.harvestAndDistributeVaultYield(VAULT_ID);
+        vm.startPrank(admin);
+        vm.expectRevert(CommonErrorLibrary.AboveLimit.selector); vault.setHedgerStakingYieldHaircutBps(10001);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector); vault.setFundingRateAnnualBps(200);
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit QuantillonVault.HedgerStakingYieldHaircutUpdated(0, 200);
+        vault.setHedgerStakingYieldHaircutBps(200);
+        vm.stopPrank();
+    }
 
-        // Event semantics: userShare is PRE-fee; the fee is carved out inside the credit path.
-        assertEq(hedgerShare + userShare + treasuryShare, realized, "event split conserves realized yield");
-        assertEq(
-            usdc.balanceOf(treasury) - treasuryBefore,
-            treasuryShare + feeUsdc,
-            "treasury receives its share plus the yield fee"
-        );
-        // Stakers accrue the net credit (userShare - fee), valued in QEURO via the oracle price.
-        stToken.syncVesting();
-        vm.warp(block.timestamp + 1 days);
-        stToken.syncVesting();
-        assertGt(stToken.totalAssets(), stakedBefore, "stakers accrue net of fee");
+    function test_zeroYieldUpdatesKeeperClockWithoutPayment() public {
+        _setUpStaking();
+        (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(y+h+u+t, 0);
+        (,,uint256 last) = vault.harvestConfig(VAULT_ID);
+        assertEq(last, block.timestamp);
+    }
+
+    function test_noStakersAndNoSupply() public {
+        _setUpStaking();
+        mockAaveVault.setAccruedYield(110e6);
+        (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(y, 110e6); assertEq(h, y); assertEq(u+t, 0);
+    }
+
+    function test_unstakingAllRoutesUserBackingYieldToTreasury() public {
+        _example(200);
+        uint256 shares = stToken.balanceOf(user);
+        vm.prank(user);
+        stToken.redeem(shares, user, user);
+        (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(y, 110e6); assertEq(h, 100e6); assertEq(u, 0); assertEq(t, 10e6);
+    }
+
+    function test_cannotSwitchFactoryAndHideExistingShareholders() public {
+        _example(0);
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.selfRegisterStQEURO(address(0x1234), 3, "HIDDEN");
+        assertEq(vault.stQEUROFactory(), address(factory));
+    }
+
+    function test_orphanYieldGoesToTreasury() public {
+        StakingYieldLibrary.Capital memory c;
+        StakingYieldLibrary.Split memory s = StakingYieldLibrary.calculateSplit(110e6, c, 200);
+        assertEq(s.treasuryShare, 110e6); assertEq(s.hedgerShare+s.userShare, 0);
+    }
+
+    function testFuzz_conservationAndHaircutBound(uint96 y, uint96 h, uint96 u, uint96 supply, uint96 staked, uint16 bps) public pure {
+        bps = uint16(uint256(bps) % 10001);
+        StakingYieldLibrary.Capital memory c = StakingYieldLibrary.Capital(h, u, staked, supply);
+        StakingYieldLibrary.Split memory s = StakingYieldLibrary.calculateSplit(y, c, bps);
+        assertEq(s.hedgerShare+s.userShare+s.treasuryShare, y);
+        assertLe(s.haircut, s.userShare+s.haircut);
+        assertEq(s.hedgerShare, s.hedgerBase+s.haircut);
     }
 }

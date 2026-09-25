@@ -1,220 +1,84 @@
-# Staking Yield Distribution
+# Staking yield distribution
 
-How yield reaches stQEURO stakers: accrual model, the three-way split, the on-chain functions,
-parameters, roles, events, and the operator runbook. Introduced in `QuantillonVault` **v1.1.0**.
-The Base deployment uses QuantillonVault **v1.3.4** and vaultId-2 stQEUROToken
-**v1.2.4** as of 22 September 2026. Yield conversion uses execution pricing and
-hedger-capacity admission with its separate collateralization gate. Check live
-`version()` values and the [deployment record](./Deployment.md#current-base-release-22-september-2026)
-when applying this guide to another deployment.
+## Capital-based distribution (QuantillonVault 1.4.0)
 
-> Related: [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md) ·
-> [stQEUROFactory](./stQEUROFactory.md) ·
-> [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
+This source describes the proposed 1.4.0 implementation. Deploying application changes alone does not activate it. Confirm `version()` on the target proxy; earlier versions retain the annual-funding model until upgraded.
 
----
+Yield from the single funded external strategy belongs to three economic allocations:
 
-## 1. How stakers accrue yield
+- Hedgers receive yield attributable to their effective collateral.
+- Stakers receive yield attributable to the backing of staked QEURO.
+- Treasury receives yield attributable to unstaked QEURO backing and existing protocol fees.
 
-`stQEUROToken` is a yield-bearing **OpenZeppelin ERC-4626** vault whose underlying asset is
-**QEURO**, deployed once per staking vault id by `stQEUROFactory` (e.g. `stQEUROMORPHO1` for
-`vaultId = 2`). Newly credited or donated QEURO is linearly vested (24 hours by default), so
-`totalAssets()` exposes principal plus only the vested portion. The first `syncVesting()` call on
-an upgraded legacy proxy snapshots its existing balance as principal and must be performed while
-the vault is paused before user activity resumes:
+Governance may additionally redirect a percentage of **gross earned staking yield** to the configured hedger recipient. `hedgerStakingYieldHaircutBps` defaults to zero; 100 is 1%, 200 is 2%, and the maximum is 10,000 (100%). This is never an annual rate or a deduction from principal. The haircut applies before the existing staking yield fee.
 
-```
-sharePrice = totalAssets() / totalSupply()
-           = (accounted principal + vested yield) / (stQEURO shares outstanding)
-```
+## Calculation
 
-There is **no rebasing and no claim call**. Stakers earn purely through **share-price appreciation**:
-the share price rises whenever QEURO is added to the stQEURO contract **without** minting new shares.
-The main credit path is `QuantillonVault.creditVaultYield`, which mints fresh QEURO directly to the
-stQEURO contract. Keepers may call `syncVesting()` to advance the linear schedule. A staker's
-redeemable QEURO is always `previewRedeem(shares)`.
+Immediately before harvesting, snapshot:
+
+- `H`: `HedgerPool.getTotalEffectiveHedgerCollateral(price)`, including its existing P&L treatment.
+- `U`: QEURO total supply valued in USDC at a fresh validated EUR/USD reference price (`supply * price / 1e30`).
+- `S`: QEURO balance of the selected stQEURO token, capped at QEURO supply, or zero if there are no shareholders. This includes credited but unvested QEURO: vesting affects redemption, not economic ownership.
+- `Q`: QEURO total supply.
+- `Y`: USDC yield actually realized by the adapter, excluding tracked principal.
 
 ```
-Day 0   stake 1,000 QEURO            -> 1,000 stQEURO   (sharePrice 1.000)
-...     yield credited over the year -> sharePrice 1.04
-Redeem  1,000 stQEURO                -> 1,040 QEURO
+hedgerBase   = floor(Y * H / (H + U))
+userPool     = Y - hedgerBase
+stakerGross  = Q == 0 ? 0 : floor(userPool * S / Q)
+treasuryBase = userPool - stakerGross
+haircut      = floor(stakerGross * haircutBps / 10000)
+hedgerShare  = hedgerBase + haircut
+userShare    = stakerGross - haircut
 ```
 
-> The share price can also **fall** if the protocol ever debits the staked pool to cover hedging
-> cost (see §6, case 3). That debit path is **not** in the minimal V1.
+If `H + U == 0`, orphaned yield goes to treasury. All amounts conserve realized yield; floor rounding remains in the residual allocations. A nonzero hedger payment requires a configured nonzero recipient: there is no implicit treasury fallback.
 
----
+The snapshot uses economic ownership at harvest, including changes to balances or exchange rates before the transaction. It is not time-weighted participation accounting. Idle and deployed capital use the same pooled ownership weights; only strategy yield that is actually harvested is paid out.
 
-## 2. The three-way distribution model
+### Example
 
-All protocol USDC (hedger collateral + the USDC backing user mints) is pooled in a single external
-yield vault (currently the MetaMorpho USDC vault on Base, through `MetaMorphoStakingVaultAdapter`, vaultId 2). The gross yield `Y` realized from that vault is split, **in
-this strict order**:
+At 1 QEURO = 1 USDC, take 1,000 USDC of effective hedger collateral, 100 QEURO outstanding, 50 staked, and 110 USDC harvested:
 
-```
-realizedYield Y  (USDC harvested from the adapter, above tracked principal)
-│
-├─ 1. Hedger funding (FIRST, absolute, time-prorated):
-│      hedgerShare = fundingRateAnnualBps * notional * Δt / (10000 * 365 days)
-│      notional    = principalUsdcByVaultId[vaultId]   (USDC deployed to this vault)
-│      → routed to hedgerYieldRecipient (falls back to treasury)
-│
-└─ 2. residual = Y − hedgerShare, split by the staking ratio:
-       stakedRatio   = stQEURO.totalAssets() / QEURO.totalSupply()
-       userShare     = residual * stakedRatio   → creditVaultYield() → stQEURO share price ↑
-       treasuryShare = residual − userShare      → treasury (yield on unstaked QEURO)
-```
+| Haircut | Hedger | Staker allocation | Treasury base |
+|---|---:|---:|---:|
+| 0% | 100 USDC | 5 USDC | 5 USDC |
+| 1% | 100.05 USDC | 4.95 USDC | 5 USDC |
+| 2% | 100.10 USDC | 4.90 USDC | 5 USDC |
+| 100% | 105 USDC | 0 USDC | 5 USDC |
 
-Key properties:
+Staker allocations above are before the existing staking fee and execution conversion into QEURO.
 
-- **Hedger is paid first and is an absolute funding cost**, not a percentage of yield. It reflects
-  the perp funding rate (+ optional premium), set manually by governance. This is **different** from
-  YieldShift's dynamic pool-ratio split — the funding formula is the policy here.
-- **Only the staked fraction of QEURO earns the residual.** The share attributable to unstaked QEURO
-  goes to the treasury. With no stakers, the entire residual goes to the treasury.
-- **Conservation:** `hedgerShare + userShare + treasuryShare == realizedYield` (every harvested USDC
-  is routed).
-- **Viability:** the protocol is only worthwhile when `Y > hedging cost`. At launch the funding rate
-  is **0** (Quantillon is the sole hedger and bootstraps at a loss), so the entire residual flows to
-  stakers/treasury.
+## Credit, fees and vesting
 
----
+`harvestAndDistributeVaultYield(vaultId)` remains role-gated, paused with the vault, and non-reentrant. The staker allocation goes through the existing `_creditVaultYield` path: staking yield fee, execution-pricing admission, collateralization validation and QEURO minting into stQEURO. The public mint fee is not additionally charged. Zero staker allocations skip crediting entirely.
 
-## 3. On-chain functions
+There is no claim call. Credited QEURO vests under the token's existing schedule and increases redeemable value per share. Including unvested QEURO in the ownership snapshot does not make it immediately withdrawable. A failed admission, mint, transfer or oracle validation reverts the entire harvest, including its timestamp and transfers.
 
-### `QuantillonVault.harvestAndDistributeVaultYield(uint256 vaultId)`
-`YIELD_DISTRIBUTOR_ROLE`, `nonReentrant`, `whenNotPaused`. The single entrypoint that runs the model:
+The initial release supports one funded strategy. Distribution rejects other deployed strategy principal, other registered strategies with underlying assets, or another registered series with outstanding shares. Registered empty series remain allowed. Factory registration must retain the existing factory so its registry remains complete. Multiple-strategy capital attribution requires a later extension.
 
-1. `realizedYield = adapter.harvestYieldToVault()` — pulls the adapter's yield (the amount above
-   tracked principal) into the vault as USDC. Principal is untouched.
-2. Anchors the per-vault funding clock (`lastYieldHarvestByVaultId[vaultId]`). **The first call for a
-   vault id only anchors the clock** (no hedger accrual, `Δt` undefined).
-3. Computes `hedgerShare` (capped at `realizedYield` in V1), `userShare`, `treasuryShare`.
-4. Routes hedger → `hedgerYieldRecipient`, user → `creditVaultYield` (mints QEURO into stQEURO),
-   remainder → `treasury`.
-5. Emits `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)`.
+## Interfaces and compatibility
 
-Returns `(realizedYield, hedgerShare, userShare, treasuryShare)`.
+- `setHedgerStakingYieldHaircutBps(uint256)`: governance-only, accepts 0–10,000; emits `HedgerStakingYieldHaircutUpdated`.
+- `hedgerStakingYieldHaircutBps()`: public getter.
+- `yieldDistributionConfig(vaultId)`: `(haircutBps, hedgerRecipient, lastHarvest)`.
+- `previewVaultYieldDistribution(vaultId)`: returns `(realizedYield, hedgerBase, haircut, hedgerShare, userShare, treasuryShare)` as a struct. Invoke using `eth_call`/`simulateContract`; the oracle's stateful interface means this is not a Solidity view. Shares calculation and validation with execution; realized yield and balances may change before mining.
+- `VaultYieldDistributed`: existing conserved aggregate event; `userShare` is after haircut but before existing staking fees.
+- `VaultYieldBreakdown`: supplemental event exposing hedger base and haircut separately.
+- `harvestConfig`: deprecated read; the first value is always zero after upgrade. Recipient and timestamp remain available.
+- `setFundingRateAnnualBps`: retained selector, explicitly reverts. The old storage slot stays in place and cannot initialize the new haircut.
 
-### `IExternalStakingVault.harvestYieldToVault() → realizedYield`
-`VAULT_MANAGER_ROLE` on the adapter (held by the vault). Like `harvestYield()`, but transfers the
-realized USDC **to the caller (the vault)** instead of routing to YieldShift, so the vault can apply
-the distribution policy. Implemented by all three adapters (Aave / Morpho / MetaMorpho). Realizes only
-the excess over `principalDeposited`; leaves principal in the strategy.
+Keepers continue to use `lastHarvest` for idempotency. There is no funding clock, time prorating, or first-harvest funding exemption. Clients identify contract semantics by version and do not relabel old funding data as a haircut.
 
-### `QuantillonVault.creditVaultYield(uint256 vaultId, uint256 usdcAmount)`
-`YIELD_DISTRIBUTOR_ROLE`. Pulls `usdcAmount` USDC from the caller, deducts the stQEURO `yieldFee`,
-and consumes a mint quote from the configured execution-pricing module. QEURO is minted directly
-into the stQEURO contract, raising the share price. The public mint fee is not additionally charged.
-Reverts (`NotInitialized`) if the vault has no shares yet. Internally this shares its core with
-`harvestAndDistributeVaultYield` (which supplies already-held USDC).
+## Upgrade procedure
 
-With execution pricing enabled, yield mints use the same published ask depth, freshness checks,
-impact limits, and outstanding-capacity budget as public mints. Admission is reserved atomically
-before minting. The EUR/USD oracle still determines reference backing and collateralization:
+1. Validate storage layout, ABI compatibility, semantic versions, runtime size and verification reproducibility. Deploy only the reviewed library/implementation artifacts through the normal authorized release process.
+2. Rehearse on a pinned Base fork through the protocol RPC API. Preserve balances, shares, vesting, execution configuration and harvest timestamps; prove a nonzero old funding rate becomes a zero new haircut.
+3. Stop recurring harvests. Settle accrued yield under the old implementation immediately before coordinated activation. If that cannot succeed, stop activation and resolve it rather than silently change the allocation of pending yield.
+4. Confirm one funded strategy and the intended nonzero hedger recipient. Follow the governance Safe/Timelock upgrade procedure; haircut starts at zero.
+5. Deploy compatible API, keeper and UI changes before resuming. Confirm configuration and the first distribution against the preview and events.
+6. Any later haircut change is a separate governance action.
 
-```
-userShare = yieldFeeToTreasury + referenceBacking + executionSpreadToPricingModule
-```
+Transaction proposals and review artifacts remain private. Never publish transaction JSON or Safe payloads in docs, public assets or releases.
 
-For example, 109 USDC of yield after fees at a 1.09 USD/EUR execution price and a 1.08 reference
-price mints 100 QEURO, adds 108 USDC of reference backing, and transfers 1 USDC to the pricing
-module. If governance has disabled the module, the existing reference-price conversion applies.
-Any failed admission or settlement reverts the whole transaction, including harvest withdrawals,
-funding-clock updates, fee transfers, and execution counters.
-
-### `QuantillonVault.harvestConfig(uint256 vaultId)`
-View returning `(fundingRateBps, hedgerRecipient, lastHarvest)` for a vault id — a single read replacing
-the per-field getters (the config vars are `internal`) to keep the contract under the EIP-170 limit.
-
-> The old `harvestVaultYield` (adapter harvest → YieldShift) was **removed** — the new model routes
-> hedger funding via `harvestAndDistributeVaultYield`, so the YieldShift staking-harvest path is gone.
-
----
-
-## 4. Parameters
-
-| Parameter | Type | Setter (role) | Notes |
-|---|---|---|---|
-| `fundingRateAnnualBps` | `uint256` | `setFundingRateAnnualBps` (`GOVERNANCE_ROLE`) | Annualized hedger funding, bps of notional. **0 live** (`harvestConfig(2)` read 2026-09-05: `fundingRateBps = 0`, `hedgerRecipient` unset, so the hedger share falls back to treasury; last harvest 2026-09-03), `50` (0.5%) for staging/tests. Hard cap `MAX_FUNDING_RATE_ANNUAL_BPS = 5000` (50%). |
-| `hedgerYieldRecipient` | `address` | `setHedgerYieldRecipient` (`GOVERNANCE_ROLE`) | Recipient of the hedger funding share. Falls back to `treasury` when unset (`address(0)`). |
-| `lastYieldHarvestByVaultId[vaultId]` | `mapping` | (internal) | Funding accrual clock; anchored on first distribute call per vault. |
-
----
-
-## 5. Roles, events, errors
-
-**Roles**
-- `YIELD_DISTRIBUTOR_ROLE` — `harvestAndDistributeVaultYield`, `creditVaultYield`. Grant to the
-  keeper/operator (or the Safe).
-- `GOVERNANCE_ROLE` — parameter setters, vault config.
-- `VAULT_OPERATOR_ROLE` — `deployUsdcToVault` (move idle held USDC into a strategy).
-- `VAULT_MANAGER_ROLE` (on each adapter) — must be held by `QuantillonVault` so it can
-  deposit/withdraw/harvest.
-
-**Events**
-- `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)` — the distribution split before the user share pays yield fees and execution costs. Execution admission also emits the pricing module's events. The setters do not emit (the param-change events were removed to fit EIP-170).
-
-**Common reverts:** `InvalidVault` (zero/inactive id), `ZeroAddress` (unset adapter/recipient),
-`NotInitialized` (crediting a vault with zero stQEURO supply), `AboveLimit` (funding rate > cap),
-`InvalidOraclePrice` (stale execution observations), and `InsufficientBalance` (insufficient
-execution depth or capacity within the configured impact limit).
-
----
-
-## 6. Scope (V1) and deferred behavior
-
-Implemented (minimal V1):
-- Single integrated harvest→distribute call; hedger-first; residual to stakers (share price) +
-  treasury; governance funding rate; configurable hedger recipient.
-
-Deferred (documented, **not** built):
-- **Case 3 — negative residual / user ponction.** When `Y < hedgerAccrual`, the model says the
-  shortfall is taken from the user pool (share price falls below 1.0, hedger always paid, protocol
-  stays over-collateralized). V1 instead **caps the hedger share at the realized yield**; the debit
-  path does not exist yet. It does not trigger while funding stays below the vault yield (e.g. 0.5%
-  funding vs ~4% Morpho).
-- **Multi-vault senior/junior tranching** — deducting proportionally more from higher-yielding
-  vaults. Out of scope until multiple yield instruments exist.
-
----
-
-## 7. Operator runbook
-
-One-time, per environment:
-1. Deploy and verify the intended `QuantillonVault` implementation; upgrade via Safe + TimelockController.
-2. `setFundingRateAnnualBps(0)` for commercial launch, or `50` for staging.
-3. `setHedgerYieldRecipient(<hedger pool / treasury>)` (optional; defaults to treasury).
-4. Grant `YIELD_DISTRIBUTOR_ROLE` to the operator (Safe or keeper EOA).
-5. Ensure `QuantillonVault` holds `VAULT_MANAGER_ROLE` on the adapter and principal is deployed
-   (`deployUsdcToVault`).
-
-Recurring:
-- Call `harvestAndDistributeVaultYield(vaultId)` on a schedule (keeper or admin action). The first
-  call anchors the funding clock; subsequent calls accrue funding over the elapsed interval.
-- With execution pricing enabled, the user share must fit fresh published depth and available
-  capacity. Retry after refreshed data or restored capacity when admission fails. Harvesting is
-  atomic and does not partially distribute an oversized yield amount.
-
-Verify after a run:
-- `VaultYieldDistributed` event values sum to `realizedYield`.
-- `stQEURO.convertToAssets(1e18)` increased (share price up).
-- `hedgerYieldRecipient` and `treasury` USDC balances increased by their shares.
-- For a nonzero user share with execution pricing enabled, admitted buy exposure increased by
-  the minted QEURO and the module received the execution spread; only reference backing was
-  added to the vault's collateral accounting.
-- `adapter.totalUnderlying() ≈ principalUsdcByVaultId[vaultId]` (yield realized out of the strategy).
-
----
-
-## Source & tests
-
-- `src/core/QuantillonVault.sol` — `harvestAndDistributeVaultYield`, `creditVaultYield`,
-  `_creditVaultYield`, `setFundingRateAnnualBps`, `setHedgerYieldRecipient`.
-- `src/interfaces/IExternalStakingVault.sol` + `src/core/vaults/{Aave,Morpho,MetaMorpho}StakingVaultAdapter.sol` — `harvestYieldToVault`.
-- `test/StQEUROYieldDistribution.t.sol` — distribution at 0.5% funding (hedger-first, share-price rise, treasury split, conservation, access control).
-- `test/security/MintExecutionBoundaryAudit.t.sol` — yield/public admission sharing, execution costs, fee isolation, and atomic rollback.
-- `test/security/MintExecutionLiveForkAudit.t.sol` — deployed v1.2.0 reproduction and v1.2.1 upgrade regressions on the pinned Base fork.
-## Harvest retry and mint gates
-
-Harvest, fee routing, execution-book admission, price-cache updates, hedger synchronization, and QEURO minting are one atomic operation. If any token, oracle, execution, or hedger condition fails, the transaction rolls back and the adapter yield can be retried. Public minting and yield crediting use different collateralization gates; the live on-chain mint floor is authoritative.
+Tests: `StQEUROYieldDistribution.t.sol` covers allocation, fees, vesting ownership, rollback and boundary cases; `StakingYieldUpgradeFork.t.sol` rehearses the UUPS upgrade in a local Base fork.

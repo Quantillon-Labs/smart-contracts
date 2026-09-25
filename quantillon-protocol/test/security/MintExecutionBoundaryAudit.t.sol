@@ -64,6 +64,7 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         pricing.publish(block.timestamp, asks, bids);
         pricing.acknowledge(0, 0, capacity, block.timestamp);
         vm.startPrank(admin);
+        vault.setHedgerYieldRecipient(address(0xBEEF));
         vault.pause();
         vault.configureExecutionPricing(address(pricing));
         vault.unpause();
@@ -310,18 +311,21 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
     function test_Audit_HarvestConsumesExecutionCapacity() public {
         _prepare(200e18);
         mockAaveVault.setAccruedYield(109e6);
+        uint256 userShare = vault.previewVaultYieldDistribution(VAULT_ID).userShare;
+        uint256 expectedQeuro = userShare * 1e30 / 1.09e18;
+        uint256 expectedBacking = expectedQeuro * 1.08e18 / 1e30;
         uint256 supply = qeuro.totalSupply();
         uint256 assets = stToken.totalAssets();
         vm.prank(admin);
         vault.harvestAndDistributeVaultYield(VAULT_ID);
-        assertEq(qeuro.totalSupply() - supply, 100e18);
+        assertEq(qeuro.totalSupply() - supply, expectedQeuro);
         assertEq(stToken.totalAssets() - assets, 0);
         stToken.syncVesting();
         vm.warp(block.timestamp + 1 days);
         stToken.syncVesting();
-        assertEq(stToken.totalAssets() - assets, 100e18);
-        assertEq(pricing.admittedBuy(), 100e18);
-        assertEq(usdc.balanceOf(address(pricing)), 1e6);
+        assertEq(stToken.totalAssets() - assets, expectedQeuro);
+        assertEq(pricing.admittedBuy(), expectedQeuro);
+        assertEq(usdc.balanceOf(address(pricing)), userShare - expectedBacking);
     }
 
     function _probeYieldReentry(bool harvest) internal {

@@ -36,12 +36,18 @@ This note describes the current `vaultId`-based runtime behavior for staking, mi
 
 ## Yield Distribution to Stakers
 
-`harvestAndDistributeVaultYield(vaultId)` (`YIELD_DISTRIBUTOR_ROLE`) realizes the adapter's accrued
-yield into the vault and splits it three ways: **hedger funding first** (absolute, time-prorated on
-the deployed notional), then the **staked-user share** credited into stQEURO via `creditVaultYield`
-(rising share price), then the **remainder to treasury**. This is the path that actually rewards
-stQEURO holders. See **[Staking Yield Distribution](./Staking-Yield-Distribution.md)** for the full
-model, parameters (`fundingRateAnnualBps`, `hedgerYieldRecipient`), and operator runbook.
+QuantillonVault 1.4.0 allocates realized strategy yield by current economic capital: hedger
+collateral yield to the configured hedger recipient, staked QEURO backing yield to stQEURO,
+and unstaked QEURO backing yield to treasury. A governance-configurable haircut of 0–100%
+of gross staking yield (default zero) goes to the hedger before existing staking fees.
+
+This distribution release accepts one funded strategy and one outstanding staking series;
+other registered empty strategies are allowed. It rejects unsupported multiple-strategy
+allocation instead of misclassifying another series' backing as unstaked.
+
+The keeper uses `yieldDistributionConfig` and the on-chain preview on 1.4.0, retaining
+legacy configuration reads on older deployments. See [Staking Yield Distribution](./Staking-Yield-Distribution.md)
+for formulas, compatibility, vesting and the upgrade procedure.
 
 ## Redemption Flow
 

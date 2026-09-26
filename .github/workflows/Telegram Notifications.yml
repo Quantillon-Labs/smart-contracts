@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - preprod
 
 jobs:
   notify:
@@ -15,7 +16,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL_ID: '-1004408312988'
-          TELEGRAM_MESSAGE_THREAD_ID: '2'
+          TELEGRAM_MESSAGE_THREAD_ID: ${{ fromJSON('{"dev":123,"preprod":124,"main":2}')[github.ref_name] }}
           # Pass event text through env vars; templating it into the script
           # body lets commit messages inject shell (backticks, quotes).
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}

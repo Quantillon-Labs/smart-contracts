@@ -680,6 +680,15 @@ contains `name`, `fqn`, `address`, `version`, and `runtimeCodeHash`. Derive expe
 hashes from the reproducible, reviewed build and verified library links; do not
 blindly bless whatever code an address currently returns.
 
+For QuantillonVault 1.4.0 and later, its contract entry also requires a nonzero
+`hedgerYieldRecipient` equal to `singleHedger()` on the vault's configured
+HedgerPool. The builder validates that binding and the Safe's governance role.
+Its execute package contains an ordered, atomic Safe batch: configure the vault
+recipient to the hedger itself, then execute the scheduled controller upgrade.
+The schedule and cancel packages do not change the recipient. Revalidate the
+manifest immediately before execution; regenerate/review it if the hedger changes.
+The recipient setting does not automatically track subsequent hedger rotations.
+
 The builder checks chain, runtime hashes, versions, UUPS identity, current
 implementation, controller, Safe permissions and the live delay. It creates a
 unique salt and matching schedule, execute and cancel payloads. Rehearse the exact

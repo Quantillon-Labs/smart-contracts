@@ -872,6 +872,26 @@ contract QuantillonInvariants is Test {
     // ACTION-BASED STATEFUL TESTS
     // =============================================================================
 
+    /// @notice Every action must complete in a funded multi-actor sequence, including redemption.
+    function testFuzz_HandlerCompletesFundedSequences(uint256 seed) public {
+        for (uint256 i; i < 8; ++i) {
+            seed = uint256(keccak256(abi.encode(seed, i)));
+            uint256 actor = i % 2;
+            handler.actionMint(actor, 100e6 + seed % 900e6);
+            handler.actionStake(actor, 25 + seed % 51);
+            handler.actionUnstake(actor, 100);
+            handler.actionRedeem(actor, 100);
+            invariant_qeuroSupplyEqualsMintTracker();
+            invariant_vaultBackingSolvency();
+        }
+        for (uint256 action; action < 4; ++action) {
+            assertEq(handler.successfulCalls(action), 8, "all funded actions must succeed");
+            assertEq(handler.failedCalls(action), 0, "unexpected action failure");
+        }
+        assertEq(handler.actionCount(), 32);
+        assertGt(handler.totalRedeemed(), 0, "redemption coverage must be nonzero");
+    }
+
     /**
      * @notice Test protocol with fuzzed action sequences
      * @dev Mints, redeems, stakes, and unstakes in random order, then verifies invariants
@@ -1099,6 +1119,10 @@ contract InvariantActionHandler is Test {
 
     address[] public actors;
     uint256 public actionCount;
+    // Indices: mint, redeem, stake, unstake. Early no-op returns are not successes.
+    uint256[4] public successfulCalls;
+    uint256[4] public failedCalls;
+    bytes4[4] public lastFailure;
 
     // Ghost variables for tracking
     uint256 public totalMinted;
@@ -1145,7 +1169,11 @@ contract InvariantActionHandler is Test {
         try vault.mintQEURO(amount, minQeuro) {
             totalMinted += amount;
             actionCount++;
-        } catch {}
+            successfulCalls[0]++;
+        } catch (bytes memory reason) {
+            failedCalls[0]++;
+            lastFailure[0] = bytes4(reason);
+        }
         vm.stopPrank();
     }
 
@@ -1163,7 +1191,8 @@ contract InvariantActionHandler is Test {
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return;
 
-        uint256 expectedUsdc = (redeemAmount * eurPrice) / 1e18;
+        // QEURO and EUR/USD have 18 decimals; USDC has 6.
+        uint256 expectedUsdc = (redeemAmount * eurPrice) / 1e30;
         uint256 minUsdc = (expectedUsdc * 95) / 100; // 5% slippage
 
         vm.startPrank(actor);
@@ -1171,7 +1200,11 @@ contract InvariantActionHandler is Test {
         try vault.redeemQEURO(redeemAmount, minUsdc) {
             totalRedeemed += redeemAmount;
             actionCount++;
-        } catch {}
+            successfulCalls[1]++;
+        } catch (bytes memory reason) {
+            failedCalls[1]++;
+            lastFailure[1] = bytes4(reason);
+        }
         vm.stopPrank();
     }
 
@@ -1191,7 +1224,11 @@ contract InvariantActionHandler is Test {
         try stQEURO.deposit(stakeAmount, actor) returns (uint256) {
             totalStaked += stakeAmount;
             actionCount++;
-        } catch {}
+            successfulCalls[2]++;
+        } catch (bytes memory reason) {
+            failedCalls[2]++;
+            lastFailure[2] = bytes4(reason);
+        }
         vm.stopPrank();
     }
 
@@ -1210,7 +1247,11 @@ contract InvariantActionHandler is Test {
         try stQEURO.redeem(unstakeAmount, actor, actor) returns (uint256) {
             totalUnstaked += unstakeAmount;
             actionCount++;
-        } catch {}
+            successfulCalls[3]++;
+        } catch (bytes memory reason) {
+            failedCalls[3]++;
+            lastFailure[3] = bytes4(reason);
+        }
         vm.stopPrank();
     }
 }

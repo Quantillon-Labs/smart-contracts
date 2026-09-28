@@ -50,7 +50,8 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.2.4";
+        // Patch release: relink TreasuryRecoveryLibrary 1.0.1.
+        return "1.2.5";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;

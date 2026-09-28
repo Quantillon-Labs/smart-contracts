@@ -75,10 +75,18 @@ Keepers continue to use `lastHarvest` for idempotency. There is no funding clock
 1. Validate storage layout, ABI compatibility, semantic versions, runtime size and verification reproducibility. Deploy only the reviewed library/implementation artifacts through the normal authorized release process.
 2. Rehearse on a pinned Base fork through the protocol RPC API. Preserve balances, shares, vesting, execution configuration and harvest timestamps; prove a nonzero old funding rate becomes a zero new haircut.
 3. Stop recurring harvests. Settle accrued yield under the old implementation immediately before coordinated activation. If that cannot succeed, stop activation and resolve it rather than silently change the allocation of pending yield.
-4. Confirm one funded strategy and the intended nonzero hedger recipient. Follow the governance Safe/Timelock upgrade procedure; haircut starts at zero.
+4. Confirm one funded strategy. Resolve `HedgerPool` from the vault, read its nonzero `singleHedger()`, and use that account itself as `hedgerYieldRecipient` in the reviewed release manifest. The private Safe execute package sets that recipient through the Safe's governance role before executing the controller upgrade; execute those calls together as one atomic Safe batch. Revalidate the hedger immediately before execution; a hedger change invalidates the prepared recipient binding. Haircut starts at zero, but hedger capital yield still requires this recipient.
 5. Deploy compatible API, keeper and UI changes before resuming. Confirm configuration and the first distribution against the preview and events.
 6. Any later haircut change is a separate governance action.
 
 Transaction proposals and review artifacts remain private. Never publish transaction JSON or Safe payloads in docs, public assets or releases.
 
-Tests: `StQEUROYieldDistribution.t.sol` covers allocation, fees, vesting ownership, rollback and boundary cases; `StakingYieldUpgradeFork.t.sol` rehearses the UUPS upgrade in a local Base fork.
+Tests: `StQEUROYieldDistribution.t.sol` covers allocation, fees, vesting ownership, rollback and boundary cases; `StakingYieldUpgradeFork.t.sol` rehearses the UUPS upgrade and payment to `singleHedger()` in a local Base fork. Release rehearsals must set `REQUIRE_BASE_FORK=true` so an absent or incorrect fork fails instead of skipping. Use production compiler settings and an explicitly pinned block:
+
+```bash
+REQUIRE_BASE_FORK=true FOUNDRY_PROFILE=production forge test \
+  --match-path test/StakingYieldUpgradeFork.t.sol \
+  --fork-url "$RPC_URL" --fork-block-number "$FORK_BLOCK" -vv
+```
+
+Confirm the activated `yieldDistributionConfig(vaultId)` recipient equals `HedgerPool.singleHedger()` before resuming harvests. Repeat that configuration check when rotating the hedger; the recipient is an explicit governance setting and does not automatically follow a rotation.

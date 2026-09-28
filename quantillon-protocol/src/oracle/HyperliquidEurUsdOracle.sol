@@ -118,7 +118,8 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.5";
+        // Patch release: relink TreasuryRecoveryLibrary 1.0.1.
+        return "1.0.6";
     }
 
     // =============================================================================

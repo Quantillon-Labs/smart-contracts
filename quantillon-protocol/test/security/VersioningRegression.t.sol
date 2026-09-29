@@ -23,10 +23,10 @@ contract VersioningRegression is DeploymentSmokeTest {
         deployFullProtocol();
         _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.9");
         _assertVersioned(address(qtiToken), "QTIToken", "1.0.5");
-        _assertVersioned(address(vault), "QuantillonVault", "1.4.0");
+        _assertVersioned(address(vault), "QuantillonVault", "1.5.0");
         _assertVersioned(address(userPool), "UserPool", "1.0.6");
         _assertVersioned(address(hedgerPool), "HedgerPool", "1.4.1");
-        _assertVersioned(address(stQEURO), "stQEUROToken", "1.2.4");
+        _assertVersioned(address(stQEURO), "stQEUROToken", "1.2.5");
         _assertVersioned(address(feeCollector), "FeeCollector", "1.0.3");
         _assertVersioned(address(yieldShift), "YieldShift", "1.1.1");
         _assertVersioned(address(timeProvider), "TimeProvider", "1.0.1");
@@ -35,6 +35,6 @@ contract VersioningRegression is DeploymentSmokeTest {
     /// @notice version() is a pure getter callable directly (reflects the implementation code).
     function test_VersionIsCallableDirectly() public {
         deployFullProtocol();
-        assertEq(vault.version(), "1.4.0", "direct call returns semver");
+        assertEq(vault.version(), "1.5.0", "direct call returns semver");
     }
 }

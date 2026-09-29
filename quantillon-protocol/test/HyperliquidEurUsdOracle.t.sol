@@ -592,7 +592,7 @@ contract HyperliquidEurUsdOracleTest is Test {
     // -- additional branch coverage --
 
     function test_version_returnsSemver() public view {
-        assertEq(oracle.version(), "1.0.5");
+        assertEq(oracle.version(), "1.0.6");
     }
 
     /// @notice A reverting USDC source does not block the EUR/USD commit: the event read
@@ -670,7 +670,7 @@ contract HyperliquidEurUsdOracleTest is Test {
         HyperliquidEurUsdOracle newImpl = new HyperliquidEurUsdOracle(timeProvider);
         vm.prank(admin);
         oracle.upgradeToAndCall(address(newImpl), "");
-        assertEq(oracle.version(), "1.0.5");
+        assertEq(oracle.version(), "1.0.6");
     }
 
 }

@@ -2,8 +2,6 @@
 pragma solidity 0.8.24;
 
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
-import {IOracle} from "../interfaces/IOracle.sol";
-import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -279,10 +277,10 @@ library StakingYieldLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.4.0";
+        return "1.5.0";
     }
 
-    /// @notice Configuration and capital registries supplied by the calling vault.
+    /// @notice Configuration and strategy registries supplied by the calling vault.
     struct DistributeParams {
         address adapter;
         address stToken;
@@ -299,7 +297,7 @@ library StakingYieldLibrary {
         uint256 vaultId;
     }
 
-    /// @notice USDC amounts before the staking token's existing yield fee and execution costs.
+    /// @notice USDC allocations before execution costs; hedgerBase is retired and always zero.
     struct Split {
         uint256 realizedYield;
         uint256 hedgerBase;
@@ -309,7 +307,7 @@ library StakingYieldLibrary {
         uint256 treasuryShare;
     }
 
-    /// @notice Harvest-time ownership snapshot, excluding the yield being distributed.
+    /// @notice Harvest-time staking snapshot; hedger and userBacking are retired ABI fields.
     struct Capital {
         uint256 hedger;
         uint256 userBacking;
@@ -318,12 +316,12 @@ library StakingYieldLibrary {
     }
 
     /**
-     * @notice Calculate conserved capital-weighted allocations of realized yield.
-     * @dev Floors the hedger base and haircut; residual rounding remains in the user/treasury allocation.
+     * @notice Calculate conserved staking-ratio allocations of realized yield.
+     * @dev Floors gross staker yield and the haircut; staking-ratio dust goes to treasury and haircut dust to stakers.
      * @param yieldUsdc Realized USDC yield.
-     * @param c Economic ownership snapshot.
+     * @param c Staking ownership snapshot; retired capital fields are ignored.
      * @param haircutBps Percentage of gross staker yield, in basis points.
-     * @return s Distribution before existing staking fees.
+     * @return s Distribution before execution costs.
      * @custom:security Never deducts principal; allocations sum to yieldUsdc.
      * @custom:validation Haircut cannot exceed 100%.
      * @custom:state-changes None.
@@ -331,7 +329,7 @@ library StakingYieldLibrary {
      * @custom:errors AboveLimit for an invalid haircut.
      * @custom:reentrancy No external calls.
      * @custom:access Public library calculation.
-     * @custom:oracle Uses caller-supplied economic values.
+     * @custom:oracle No price used in allocation.
      */
     // Zero selects an empty pool; positive balances always use proportional allocation.
     // slither-disable-next-line incorrect-equality
@@ -340,22 +338,15 @@ library StakingYieldLibrary {
     {
         if (haircutBps > BPS_DENOMINATOR) revert CommonErrorLibrary.AboveLimit();
         s.realizedYield = yieldUsdc;
-        uint256 capital = c.hedger + c.userBacking;
-        if (capital == 0) {
-            s.treasuryShare = yieldUsdc;
-            return s;
-        }
-        s.hedgerBase = yieldUsdc.mulDiv(c.hedger, capital);
-        uint256 userPool = yieldUsdc - s.hedgerBase;
         uint256 staked = c.staked > c.supply ? c.supply : c.staked;
-        uint256 gross = c.supply == 0 ? 0 : userPool.mulDiv(staked, c.supply);
+        uint256 gross = c.supply == 0 ? 0 : yieldUsdc.mulDiv(staked, c.supply);
         s.haircut = gross.mulDiv(haircutBps, BPS_DENOMINATOR);
-        s.hedgerShare = s.hedgerBase + s.haircut;
+        s.hedgerShare = s.haircut;
         s.userShare = gross - s.haircut;
-        s.treasuryShare = userPool - gross;
+        s.treasuryShare = yieldUsdc - gross;
     }
 
-    /// @notice Resolve the calling vault's configuration before taking a capital snapshot.
+    /// @notice Resolve the calling vault's configuration before taking a staking snapshot.
     /// @dev Only called by delegatecall entrypoints; external self-calls read public vault getters.
     /// @param vaultId Selected strategy.
     /// @return p Validated configuration.
@@ -376,26 +367,24 @@ library StakingYieldLibrary {
         p.treasury = v.treasury();
         p.totalPrincipalUsdc = v.totalUsdcInExternalVaults();
         p.factory = v.stQEUROFactory();
-        p.hedgerPool = v.hedgerPool();
-        p.oracle = v.oracle();
         p.vaultId = vaultId;
     }
 
     /**
-     * @notice Snapshot capital and enforce the single-funded-strategy distribution boundary.
+     * @notice Snapshot staking ownership and enforce the single-funded-strategy distribution boundary.
      * @dev Registered token balances include credited unvested QEURO when shareholders exist.
      * @param p Calling vault configuration.
      * @return c Economic ownership before harvest and minting.
-     * @custom:security Fails closed on unsupported strategies or invalid oracle/accounting reads.
+     * @custom:security Fails closed on unsupported strategies or invalid accounting reads.
      * @custom:validation All external principal and all outstanding staking shares must belong to this series.
-     * @custom:state-changes Oracle may refresh its price cache.
-     * @custom:events Oracle events only.
-     * @custom:errors InvalidCondition, InvalidVault, InvalidOraclePrice, or propagated external errors.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors InvalidCondition, InvalidVault, or propagated external errors.
      * @custom:reentrancy Caller holds its reentrancy guard.
      * @custom:access Internal library helper.
-     * @custom:oracle Fresh validated EUR/USD reference price.
+     * @custom:oracle None; conversion validates prices separately.
      */
-    function _snapshot(DistributeParams memory p) private returns (Capital memory c) {
+    function _snapshot(DistributeParams memory p) private view returns (Capital memory c) {
         if (p.totalPrincipalUsdc != p.principalUsdc) revert CommonErrorLibrary.InvalidCondition();
         if (p.factory != address(0)) {
             uint256[] memory ids = IStQEUROFactory(p.factory).getVaultIdsByVault(address(this));
@@ -411,13 +400,7 @@ library StakingYieldLibrary {
                 }
             }
         }
-        (uint256 price, bool valid) = IOracle(p.oracle).getEurUsdPrice();
-        if (!valid || price == 0) revert CommonErrorLibrary.InvalidOraclePrice();
         c.supply = IERC20(p.qeuro).totalSupply();
-        c.userBacking = c.supply.mulDiv(price, 1e30);
-        if (p.hedgerPool != address(0)) {
-            c.hedger = IHedgerPool(p.hedgerPool).getTotalEffectiveHedgerCollateral(price);
-        }
         if (p.stToken != address(0) && IERC20(p.stToken).totalSupply() > 0) {
             c.staked = IERC20(p.qeuro).balanceOf(p.stToken);
         }
@@ -425,17 +408,17 @@ library StakingYieldLibrary {
 
     /**
      * @notice Preview the next distribution with the same ownership calculation as execution.
-     * @dev Call through eth_call: the oracle interface can refresh state. Actual realized yield may differ.
+     * @dev Call through eth_call. Actual realized yield may differ due to available withdrawal liquidity.
      * @param vaultId Selected strategy.
-     * @return s Estimated USDC allocations before existing staking fees.
+     * @return s Estimated USDC allocations before execution costs.
      * @custom:security Shares execution validation and requires a recipient for nonzero hedger payments.
-     * @custom:validation Validates capital, strategy boundary, oracle and recipient.
-     * @custom:state-changes Oracle cache only; eth_call persists nothing.
-     * @custom:events Oracle events only.
+     * @custom:validation Validates the strategy boundary and any nonzero hedger recipient.
+     * @custom:state-changes None.
+     * @custom:events None.
      * @custom:errors Propagates snapshot errors; ZeroAddress for a missing hedger recipient.
      * @custom:reentrancy Caller holds its reentrancy guard.
      * @custom:access Linked library.
-     * @custom:oracle Fresh EUR/USD reference price.
+     * @custom:oracle None; conversion validates prices separately.
      */
     function previewSplit(uint256 vaultId) external returns (Split memory s) {
         DistributeParams memory p = _params(vaultId);
@@ -446,19 +429,19 @@ library StakingYieldLibrary {
     }
 
     /**
-     * @notice Harvest and allocate yield by economic capital, with a haircut on gross staking yield.
+     * @notice Harvest and allocate yield by the staking ratio, with a haircut on gross staking yield.
      * @dev The vault credits userShare via its existing QEURO mint path. Failure rolls back the whole harvest.
      * @param vaultId Selected strategy.
      * @param lastHarvest Keeper timestamps updated atomically with distribution.
      * @return userShare USDC allocation to credit through the existing QEURO mint path.
      * @custom:security Principal is untouched; no fallback recipient silently captures hedger yield.
-     * @custom:validation Same capital validation as preview; nonzero hedger payout requires a recipient.
+     * @custom:validation Same staking validation as preview; nonzero hedger payout requires a recipient.
      * @custom:state-changes Harvests adapter yield and transfers hedger/treasury USDC.
-     * @custom:events Adapter/token/oracle events; the vault emits distribution events.
+     * @custom:events Adapter/token events; the vault emits distribution events.
      * @custom:errors Propagates snapshot/adapter/token errors; ZeroAddress for missing recipient.
      * @custom:reentrancy Caller holds its reentrancy guard.
      * @custom:access Linked library.
-     * @custom:oracle Snapshot taken before harvesting and yield minting.
+     * @custom:oracle No price used for allocation; ownership is sampled before harvesting and minting.
      */
     function harvestAndSplit(uint256 vaultId, mapping(uint256 => uint256) storage lastHarvest) external returns (uint256 userShare) {
         Split memory s;

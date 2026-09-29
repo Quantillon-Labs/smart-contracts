@@ -189,10 +189,12 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         _assertCreditReverts(109e6, Errors.InsufficientBalance.selector);
     }
 
-    function test_Audit_YieldPreservesFeeBoundValidation() public {
+    function test_Audit_YieldIgnoresRetiredFeeGetter() public {
         _prepare(200e18);
         vm.mockCall(address(stToken), abi.encodeWithSignature("yieldFee()"), abi.encode(uint256(10_001)));
-        _assertCreditReverts(109e6, Errors.PercentageTooHigh.selector);
+        _fundYield(109e6);
+        vm.prank(admin);
+        assertEq(vault.creditVaultYield(VAULT_ID, 109e6), 100e18);
     }
 
     function test_Audit_YieldRejectsStaleExecutionBook() public {
@@ -252,27 +254,27 @@ contract MintExecutionBoundaryAuditTest is StQEUROYieldAndExternalCollateralTest
         assertEq(usdc.balanceOf(address(pricing)), 3e6);
     }
 
-    function test_Audit_YieldFeeAndExecutionSpreadConserveFundsWithoutMintFee() public {
+    function test_Audit_YieldIgnoresLegacyAndPublicFeesButPaysExecutionSpread() public {
         _prepare(200e18);
         vm.startPrank(admin);
-        stToken.updateYieldParameters(2000); // 20% yield fee, independently of the public mint fee.
+        stToken.updateYieldParameters(2000); // Retired fee must not affect yield crediting.
         vault.updateParameters(5e16, 0);
         vm.stopPrank();
-        _fundYield(136_250_000);
+        _fundYield(109e6);
         uint256 treasuryBefore = usdc.balanceOf(treasury);
         uint256 backingBefore = usdc.balanceOf(address(vault));
         uint256 heldBefore = vault.totalUsdcHeld();
         vm.prank(admin);
-        uint256 credited = vault.creditVaultYield(VAULT_ID, 136_250_000);
+        uint256 credited = vault.creditVaultYield(VAULT_ID, 109e6);
         assertEq(credited, 100e18);
-        assertEq(usdc.balanceOf(treasury) - treasuryBefore, 27_250_000);
+        assertEq(usdc.balanceOf(treasury) - treasuryBefore, 0);
         assertEq(usdc.balanceOf(address(pricing)), 1e6);
         assertEq(usdc.balanceOf(address(vault)) - backingBefore, 108e6);
         assertEq(vault.totalUsdcHeld() - heldBefore, 108e6);
         assertEq(
             usdc.balanceOf(treasury) - treasuryBefore + usdc.balanceOf(address(pricing))
                 + usdc.balanceOf(address(vault)) - backingBefore,
-            136_250_000
+            109e6
         );
     }
 

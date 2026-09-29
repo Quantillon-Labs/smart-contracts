@@ -137,7 +137,7 @@ get_percentage() {
 # Function to discover all contracts automatically
 # Scans the out/ directory for all compiled contracts
 discover_contracts() {
-    local out_dir="out"
+    local out_dir="${FOUNDRY_OUT:-out}"  # Match the build output, including isolated release builds.
     local exclude_tests="${1:-true}"  # Default: exclude test contracts
     
     if [ ! -d "$out_dir" ]; then

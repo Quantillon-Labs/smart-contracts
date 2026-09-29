@@ -1,6 +1,7 @@
-# Staking-ratio yield distribution — 1.5.0 release candidate
+# Staking-ratio yield distribution — 1.5.0 release
 
-This is an implementation and activation runbook, not a statement that 1.5.0 is deployed.
+The Base candidate contracts were deployed and source-verified on 29 September 2026.
+The production proxy remains on 1.4.0 until the Safe executes the delayed upgrade.
 QuantillonVault and its linked StakingYieldLibrary change from capital-weighted allocation to
 harvest-time staking-ratio allocation. The Morpho adapter and staking-token implementation do not
 change. The existing single-funded-strategy guard remains.
@@ -88,3 +89,28 @@ stakers, syncVesting confirms, and the keeper reports a healthy served slot with
 
 If these checks fail, stop further keeper attempts and investigate with the writer journal intact.
 Corrective upgrades follow governance; completed payouts cannot be rolled back automatically.
+
+## Base deployment and governance handoff — 29 September 2026
+
+Source commit: `d0232f8e3d5a072e18447345380d753ae91089cb`.
+
+| Component | Candidate address | Deployment block |
+| --- | --- | --- |
+| StakingYieldLibrary 1.5.0 | [0x5dc57a0ba352E357afEbF9386fc3520CAD686058](https://basescan.org/address/0x5dc57a0ba352E357afEbF9386fc3520CAD686058#code) | 51,944,053 |
+| QuantillonVault 1.5.0 implementation | [0x4d1014C50Cb3AAfB5D45AECd5d47e05CFC5e5290](https://basescan.org/address/0x4d1014C50Cb3AAfB5D45AECd5d47e05CFC5e5290#code) | 51,944,055 |
+
+Both deployed runtimes match the independently reproduced build. The vault keeps the live
+ExecutionPricingLibrary, SecureUpgradeLibrary and TreasuryRecoveryLibrary bindings. The proxy
+address is unchanged: `0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07`.
+
+The generated private schedule, execute and cancel package was rehearsed against Base block
+51,944,104 using the actual Safe (two-owner threshold), controller and deployed candidates.
+The rehearsal proved early execution fails, cancellation works, the operation becomes ready
+only after 43,200 seconds, and the ordered recipient configuration plus upgrade succeeds through
+Safe MultiSend. Accounting, configuration, staking shares and vesting storage were preserved.
+At zero haircut, the post-upgrade preview paid no yield to the hedger.
+
+This deployment record does not record a production activation. The production Safe still needs
+to schedule the operation, wait the controller delay, and execute it. Keep the payloads private;
+revalidate the predecessor implementation, recipient, code hashes and keeper state before each
+phase. Record the actual activation transaction and update deployed-version provenance afterward.

@@ -301,3 +301,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 
 Yield crediting uses an independent solvency gate above `max(101%, criticalCollateralizationRatio)` and a projected 100% floor; public minting continues to use the live configured mint floor.
+
+### Staking yield distribution 1.5.0
+
+The release candidate allocates harvested yield by the staked/total QEURO ratio, with haircut-only hedger compensation and no separate staking yield fee. See the [economics and activation runbook](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). Activation requires the governance upgrade; source availability does not imply deployment.

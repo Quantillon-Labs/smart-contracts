@@ -92,3 +92,5 @@
     - [SlippageStorage](src/oracle/SlippageStorage.sol/contract.SlippageStorage.md)
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)
     - [StorkOracle](src/oracle/StorkOracle.sol/contract.StorkOracle.md)
+
+- [Staking yield distribution 1.5.0](Yield-Distribution-1.5.0.md)

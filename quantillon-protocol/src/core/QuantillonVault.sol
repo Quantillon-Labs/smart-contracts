@@ -122,7 +122,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.4.0";
+        return "1.5.0";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -1763,7 +1763,7 @@ contract QuantillonVault is
     /**
      * @notice Credits harvested user yield into a specific stQEURO vault as real QEURO backing.
      * @dev Converts harvested user-side USDC into newly minted QEURO sent directly to the target stQEURO vault.
-     *      Configured execution pricing applies after the yield fee; execution costs are paid from the yield.
+     *      No protocol yield fee applies; configured execution costs are paid from the yield.
      * @param vaultId Vault identifier whose stQEURO series receives the compounded yield.
      * @param usdcAmount Amount of harvested USDC allocated to users for this vault.
      * @return qeuroMinted Net QEURO minted into the stQEURO vault.
@@ -1825,12 +1825,11 @@ contract QuantillonVault is
         );
         _enforcePriceDeviation(eurUsdPrice);
 
-        // The yield fee is in basis points; the shared mint calculation takes an
-        // 18-decimal fee fraction. Yield does not also pay the public mint fee.
-        uint256 yieldFeeBps = IstQEURO(stToken).yieldFee();
-        if (yieldFeeBps > 10_000) revert CommonErrorLibrary.PercentageTooHigh();
-        (uint256 feeUsdc, uint256 netUsdcAmount, uint256 executionQeuro) = ExecutionPricingLibrary.mint(
-            executionPricing, usdcAmount, yieldFeeBps * 1e14, eurUsdPrice, 0
+        // The harvest haircut is the only configurable yield deduction. The share token's
+        // legacy yieldFee is ignored for both harvests and direct yield credits; execution
+        // costs and all mint eligibility checks still apply. Public mint fees do not apply.
+        (, uint256 netUsdcAmount, uint256 executionQeuro) = ExecutionPricingLibrary.mint(
+            executionPricing, usdcAmount, 0, eurUsdPrice, 0
         );
         qeuroMinted = executionQeuro;
         if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
@@ -1847,10 +1846,7 @@ contract QuantillonVault is
 
         _syncMintWithHedgersOrRevert(netUsdcAmount, eurUsdPrice, qeuroMinted);
 
-        if (feeUsdc > 0) {
-            usdc.safeTransfer(treasury, feeUsdc);
-        }
-        uint256 executionSpread = usdcAmount - feeUsdc - netUsdcAmount;
+        uint256 executionSpread = usdcAmount - netUsdcAmount;
         if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
         qeuro.mint(stToken, qeuroMinted);
     }
@@ -1874,7 +1870,7 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Sets the recipient of hedger capital yield and the staking yield haircut.
+     * @notice Sets the recipient of the staking yield haircut.
      * @dev Nonzero hedger payouts require this recipient to be configured.
      * @param newRecipient New hedger yield recipient address.
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
@@ -1894,10 +1890,10 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Harvests yield and allocates it by economic capital, with a haircut on gross staking yield.
+     * @notice Harvests yield and allocates it by the staking ratio, with a haircut on gross staking yield.
      * @dev The linked library snapshots ownership, realizes yield, routes USDC and records the keeper
      *      timestamp. The existing credit path converts the post-haircut staker allocation into QEURO.
-     *      Allocation, fees, execution admission and minting are one atomic operation.
+     *      Allocation, execution admission and minting are one atomic operation.
      * @param vaultId Vault id whose adapter yield is harvested and distributed.
      * @custom:security Restricted to `YIELD_DISTRIBUTOR_ROLE`; protected by `nonReentrant` and pause.
      * @custom:validation Reverts when vault id is invalid/inactive or adapter is unset.
@@ -1919,20 +1915,23 @@ contract QuantillonVault is
         if (userShare > 0) _creditVaultYield(vaultId, userShare);
     }
 
-    /// @notice Hedger capital yield and staking haircut, both in USDC (6 decimals).
+    /// @notice Retired yield-fee validation error retained for ABI compatibility.
+    error PercentageTooHigh();
+
+    /// @notice Retired hedger base (always zero) and staking haircut, in USDC (6 decimals).
     event VaultYieldBreakdown(uint256 indexed vaultId, uint256 hedgerBase, uint256 stakingYieldHaircut);
     /// @notice Governance changed the percentage of gross staking yield paid to the hedger.
     event HedgerStakingYieldHaircutUpdated(uint256 oldBps, uint256 newBps);
 
     /**
-     * @notice Preview USDC distribution using fresh economic ownership; call with eth_call.
-     * @dev Non-view because the oracle may refresh its cache. No USDC is transferred.
+     * @notice Preview USDC distribution using the harvest-time staking ratio; call with eth_call.
+     * @dev Non-view for ABI compatibility. No USDC is transferred.
      * @param vaultId Selected strategy.
-     * @return split Estimated allocations before staking fees and execution costs.
+     * @return split Estimated allocations before execution costs.
      * @custom:security Uses the same calculation and guards as harvest.
-     * @custom:validation Active single funded strategy and valid oracle required.
-     * @custom:state-changes Oracle cache only; eth_call persists nothing.
-     * @custom:events Oracle events only.
+     * @custom:validation Active single funded strategy required. Conversion checks are separate.
+     * @custom:state-changes None.
+     * @custom:events None.
      * @custom:errors Propagates library validation errors.
      * @custom:reentrancy nonReentrant.
      * @custom:access Public.
@@ -1944,7 +1943,7 @@ contract QuantillonVault is
 
     /**
      * @notice Configure the hedger percentage of gross earned staking yield (0 to 100%).
-     * @dev Applies before existing staking fees; never deducts principal.
+     * @dev The only configurable deduction from harvested staking yield; never deducts principal.
      * @param newBps Basis points, where 200 means 2% of earned yield.
      * @custom:security Governance only.
      * @custom:validation At most 10,000 bps.
@@ -1962,7 +1961,7 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Read capital-based distribution settings and the keeper's last-harvest timestamp.
+     * @notice Read staking-yield distribution settings and the keeper's last-harvest timestamp.
      * @dev Available from version 1.4.0; the retired annual funding rate is not returned here.
      * @param vaultId Strategy identifier.
      * @return haircutBps Percentage of earned staking yield in basis points.
@@ -2846,7 +2845,7 @@ contract QuantillonVault is
     /// @dev Set lazily on the first `harvestAndDistributeVaultYield` call for a vault id.
     mapping(uint256 => uint256) internal lastYieldHarvestByVaultId;
 
-    /// @notice Recipient of hedger capital yield and staking yield haircut.
+    /// @notice Recipient of the staking yield haircut; there is no hedger base allocation.
     /// @dev Falls back to `treasury` when unset (address(0)).
     address internal hedgerYieldRecipient;
 

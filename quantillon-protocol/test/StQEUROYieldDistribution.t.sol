@@ -13,7 +13,7 @@ import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {stQEUROFactory} from "../src/core/stQEUROFactory.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 
-/// @notice Capital ownership, haircut, settlement and upgrade-compatibility regressions.
+/// @notice Snapshot staking ownership, haircut, settlement and upgrade-compatibility regressions.
 contract StQEUROYieldDistributionTest is AaveIntegrationTest {
     stQEUROFactory internal factory;
     stQEUROToken internal stToken;
@@ -106,16 +106,16 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
     function _checkExample(uint256 haircut, uint256 expectedHaircut) internal {
         _example(haircut);
         StakingYieldLibrary.Split memory preview = vault.previewVaultYieldDistribution(VAULT_ID);
-        assertEq(preview.hedgerBase, 100e6);
+        assertEq(preview.hedgerBase, 0);
         assertEq(preview.haircut, expectedHaircut);
         uint256 beforeAssets = qeuro.balanceOf(address(stToken));
         uint256 beforeRedeemable = stToken.totalAssets();
         uint256 beforeHeld = vault.totalUsdcHeld();
         (uint256 realized, uint256 h, uint256 u, uint256 t) = _distribute();
         assertEq(realized, 110e6);
-        assertEq(h, 100e6 + expectedHaircut);
-        assertEq(u, 5e6 - expectedHaircut);
-        assertEq(t, 5e6);
+        assertEq(h, expectedHaircut);
+        assertEq(u, 55e6 - expectedHaircut);
+        assertEq(t, 55e6);
         assertEq(h + u + t, realized);
         assertEq(usdc.balanceOf(hedgerSink), h);
         assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, u * 1e12);
@@ -130,19 +130,19 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
     }
 
     function test_exampleZero() public { _checkExample(0, 0); }
-    function test_exampleOnePercent() public { _checkExample(100, 50_000); }
-    function test_exampleTwoPercent() public { _checkExample(200, 100_000); }
-    function test_exampleHundredPercent() public { _checkExample(10000, 5e6); }
+    function test_exampleOnePercent() public { _checkExample(100, 550_000); }
+    function test_exampleTwoPercent() public { _checkExample(200, 1_100_000); }
+    function test_exampleHundredPercent() public { _checkExample(10000, 55e6); }
 
-    function test_feeAfterHaircut() public {
+    function test_legacyFeeCannotDeductAfterHaircut() public {
         _example(200);
         vm.prank(admin);
         stToken.updateYieldParameters(1000);
         uint256 beforeTreasury = usdc.balanceOf(treasury);
         uint256 beforeAssets = qeuro.balanceOf(address(stToken));
         _distribute();
-        assertEq(usdc.balanceOf(treasury) - beforeTreasury, 5e6 + 490_000);
-        assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, 4.41e18);
+        assertEq(usdc.balanceOf(treasury) - beforeTreasury, 55e6);
+        assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, 53.9e18);
     }
 
     function test_unvestedYieldRemainsStakerOwned() public {
@@ -150,11 +150,10 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         _distribute();
         stToken.syncVesting();
         assertEq(stToken.totalAssets(), 50e18);
-        assertEq(qeuro.balanceOf(address(stToken)), 55e18);
+        assertEq(qeuro.balanceOf(address(stToken)), 105e18);
         mockAaveVault.setAccruedYield(110e6);
         StakingYieldLibrary.Split memory s = vault.previewVaultYieldDistribution(VAULT_ID);
-        uint256 residual = 110e6 - uint256(110e6) * 1000e6 / 1105e6;
-        assertEq(s.userShare, residual * 55 / 105);
+        assertEq(s.userShare, uint256(110e6) * 105 / 155);
     }
 
     function test_secondShareholderSharesRedeemableGain() public {
@@ -166,23 +165,23 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         _distribute();
         stToken.syncVesting();
         vm.warp(block.timestamp + stToken.vestingPeriod());
-        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(user)), 27.5e18, 2);
-        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(second)), 27.5e18, 2);
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(user)), 52.5e18, 2);
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(second)), 52.5e18, 2);
     }
 
-    function test_harvestSnapshotReflectsNewStakeAndOraclePrice() public {
+    function test_harvestSnapshotReflectsNewStakeButIgnoresOracleAndHedgerCapital() public {
         _example(0);
         oracle.setPrice(1.2e18);
         vm.mockCall(address(hedgerPool), abi.encodeWithSignature("getTotalEffectiveHedgerCollateral(uint256)", 1.2e18), abi.encode(980e6));
         StakingYieldLibrary.Split memory s = vault.previewVaultYieldDistribution(VAULT_ID);
-        assertEq(s.hedgerBase, 98e6);
-        assertEq(s.userShare, 6e6);
+        assertEq(s.hedgerBase, 0);
+        assertEq(s.userShare, 55e6);
         vm.startPrank(user);
         qeuro.approve(address(stToken), 50e18);
         stToken.deposit(50e18, user);
         vm.stopPrank();
         s = vault.previewVaultYieldDistribution(VAULT_ID);
-        assertEq(s.userShare, 12e6);
+        assertEq(s.userShare, 110e6);
         assertEq(s.treasuryShare, 0);
     }
 
@@ -246,8 +245,66 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
     function test_invalidOracleFailsClosed() public {
         _example(0);
         vm.mockCall(address(oracle), abi.encodeWithSignature("getEurUsdPrice()"), abi.encode(1e18, false));
-        vm.expectRevert(CommonErrorLibrary.InvalidOraclePrice.selector);
-        vault.previewVaultYieldDistribution(VAULT_ID);
+        // Allocation no longer uses prices, but actual QEURO conversion must still fail closed.
+        assertEq(vault.previewVaultYieldDistribution(VAULT_ID).userShare, 55e6);
+        vm.expectRevert();
+        vm.prank(admin);
+        vault.harvestAndDistributeVaultYield(VAULT_ID);
+        (,,uint256 last) = vault.harvestConfig(VAULT_ID);
+        assertEq(last, 0);
+    }
+
+    function test_zeroHaircutDoesNotNeedHedgerRecipientOrCapitalRead() public {
+        _example(0);
+        vm.mockCall(address(vault), abi.encodeWithSelector(vault.yieldDistributionConfig.selector, VAULT_ID), abi.encode(0, address(0), 0));
+        vm.mockCallRevert(address(hedgerPool), abi.encodeWithSignature("getTotalEffectiveHedgerCollateral(uint256)"), "retired allocation read");
+        assertEq(vault.previewVaultYieldDistribution(VAULT_ID).hedgerShare, 0);
+        (,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(h, 0); assertEq(u, 55e6); assertEq(t, 55e6);
+    }
+
+    function test_allStakedGetsFullYieldLessHaircut() public {
+        _example(200);
+        vm.startPrank(user);
+        qeuro.approve(address(stToken), 50e18);
+        stToken.deposit(50e18, user);
+        vm.stopPrank();
+        (,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(h, 2.2e6); assertEq(u, 107.8e6); assertEq(t, 0);
+    }
+
+    function test_directCreditIgnoresLegacyYieldFee() public {
+        _example(0);
+        vm.startPrank(admin);
+        stToken.updateYieldParameters(2000);
+        usdc.mint(admin, 10e6);
+        usdc.approve(address(vault), 10e6);
+        uint256 beforeTreasury = usdc.balanceOf(treasury);
+        uint256 beforeAssets = qeuro.balanceOf(address(stToken));
+        assertEq(vault.creditVaultYield(VAULT_ID, 10e6), 10e18);
+        vm.stopPrank();
+        assertEq(usdc.balanceOf(treasury), beforeTreasury);
+        assertEq(qeuro.balanceOf(address(stToken)) - beforeAssets, 10e18);
+    }
+
+    function test_distributesRealizedYieldRatherThanPreviewWhenLiquidityIsLimited() public {
+        _example(200);
+        assertEq(vault.previewVaultYieldDistribution(VAULT_ID).realizedYield, 110e6);
+        // Model an adapter that can release only 20 USDC of its accrued 110 USDC.
+        // Pre-fund the exact payout because mocked calls do not transfer tokens.
+        usdc.mint(address(vault), 20e6);
+        vm.mockCall(address(mockAaveVault), abi.encodeWithSignature("harvestYieldToVault()"), abi.encode(20e6));
+        (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
+        assertEq(y, 20e6); assertEq(h, 200_000); assertEq(u, 9_800_000); assertEq(t, 10e6);
+    }
+
+    function test_roundingAndStakedBalanceCap() public pure {
+        StakingYieldLibrary.Capital memory c = StakingYieldLibrary.Capital(999, 999, 1, 3);
+        StakingYieldLibrary.Split memory s = StakingYieldLibrary.calculateSplit(10, c, 200);
+        assertEq(s.userShare, 3); assertEq(s.hedgerShare, 0); assertEq(s.treasuryShare, 7);
+        c.staked = 4;
+        s = StakingYieldLibrary.calculateSplit(10, c, 10000);
+        assertEq(s.hedgerShare, 10); assertEq(s.userShare+s.treasuryShare, 0);
     }
 
     function test_governanceBoundariesAndRetiredSetter() public {
@@ -276,7 +333,7 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         _setUpStaking();
         mockAaveVault.setAccruedYield(110e6);
         (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
-        assertEq(y, 110e6); assertEq(h, y); assertEq(u+t, 0);
+        assertEq(y, 110e6); assertEq(t, y); assertEq(h+u, 0);
     }
 
     function test_unstakingAllRoutesUserBackingYieldToTreasury() public {
@@ -285,7 +342,7 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         vm.prank(user);
         stToken.redeem(shares, user, user);
         (uint256 y,uint256 h,uint256 u,uint256 t) = _distribute();
-        assertEq(y, 110e6); assertEq(h, 100e6); assertEq(u, 0); assertEq(t, 10e6);
+        assertEq(y, 110e6); assertEq(h, 0); assertEq(u, 0); assertEq(t, 110e6);
     }
 
     function test_cannotSwitchFactoryAndHideExistingShareholders() public {
@@ -308,6 +365,10 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         StakingYieldLibrary.Split memory s = StakingYieldLibrary.calculateSplit(y, c, bps);
         assertEq(s.hedgerShare+s.userShare+s.treasuryShare, y);
         assertLe(s.haircut, s.userShare+s.haircut);
-        assertEq(s.hedgerShare, s.hedgerBase+s.haircut);
+        assertEq(s.hedgerBase, 0);
+        assertEq(s.hedgerShare, s.haircut);
+        c.hedger = 0; c.userBacking = 0;
+        StakingYieldLibrary.Split memory withoutCapital = StakingYieldLibrary.calculateSplit(y, c, bps);
+        assertEq(abi.encode(s), abi.encode(withoutCapital));
     }
 }

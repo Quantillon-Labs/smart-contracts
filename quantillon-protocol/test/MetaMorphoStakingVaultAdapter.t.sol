@@ -150,6 +150,20 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
         assertEq(usdc.balanceOf(vaultMgr) - balBefore, expectedHarvest, "Caller should receive yield");
     }
 
+    function test_HarvestYield_CapsToLiquidityAndLeavesPrincipal() public {
+        vm.prank(vaultMgr);
+        adapter.depositUnderlying(DEPOSIT_AMT);
+        vm.prank(yieldSource);
+        metaMorphoVault.injectYield(YIELD_AMT);
+        metaMorphoVault.setForcedMaxWithdraw(25e6);
+        uint256 beforeBalance = usdc.balanceOf(vaultMgr);
+        vm.prank(vaultMgr);
+        assertEq(adapter.harvestYieldToVault(), 25e6);
+        assertEq(usdc.balanceOf(vaultMgr) - beforeBalance, 25e6);
+        assertEq(adapter.principalDeposited(), DEPOSIT_AMT);
+        assertGt(adapter.totalUnderlying(), DEPOSIT_AMT, "remaining yield stays invested");
+    }
+
     function test_HarvestYieldToVault_NoYield_ReturnsZero() public {
         vm.prank(vaultMgr);
         adapter.depositUnderlying(DEPOSIT_AMT);

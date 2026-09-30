@@ -115,7 +115,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.6";
+        return "1.0.7";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -322,6 +322,10 @@ contract UserPool is
 
     /// @notice Pending USDC withdrawals for users whose transfers failed (e.g. USDC blacklist)
     mapping(address => uint256) public pendingUsdcWithdrawals;
+    /// @notice Aggregate USDC reserved for pending user withdrawals.
+    uint256 public totalPendingUsdcWithdrawals;
+    /// @notice Whether legacy pending-withdrawal liabilities have been included in the aggregate.
+    bool public pendingUsdcLiabilitiesInitialized;
     // BLOCKS_PER_DAY removed: dead constant, never used in arithmetic.
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
@@ -562,6 +566,28 @@ contract UserPool is
         accumulatedYieldPerShare = 0;
         lastYieldDistribution = TIME_PROVIDER.currentTime();
         totalYieldDistributed = 0;
+        pendingUsdcLiabilitiesInitialized = true;
+    }
+
+    /**
+     * @notice Backfills aggregate pending USDC liabilities after an implementation upgrade.
+     * @custom:security Governance-only migration; configured-USDC recovery stays disabled until completion.
+     * @custom:validation Conservatively reserves the full pre-migration USDC balance.
+     * @custom:state-changes Initializes `totalPendingUsdcWithdrawals` and marks the aggregate ready.
+     * @custom:events Emits initializer framework events where applicable.
+     * @custom:errors Reverts when already initialized.
+     * @custom:reentrancy Performs only a balance read on the configured USDC token.
+     * @custom:access Restricted to GOVERNANCE_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
+    function initializePendingUsdcLiabilitiesV2()
+        external
+        onlyRole(GOVERNANCE_ROLE)
+        reinitializer(2)
+    {
+        if (pendingUsdcLiabilitiesInitialized) revert CommonErrorLibrary.AlreadyInitialized();
+        totalPendingUsdcWithdrawals = usdc.balanceOf(address(this));
+        pendingUsdcLiabilitiesInitialized = true;
     }
 
     /**
@@ -1156,6 +1182,9 @@ contract UserPool is
         if (payload.totalWithdrawn > 0) {
             // Credit pending first so settlement failure keeps funds claimable.
             pendingUsdcWithdrawals[payload.user] += payload.totalWithdrawn;
+            if (pendingUsdcLiabilitiesInitialized) {
+                totalPendingUsdcWithdrawals += payload.totalWithdrawn;
+            }
             try this._settlePendingWithdrawalCommit(payload.user, payload.totalWithdrawn) {
                 // settled immediately
             } catch {
@@ -1182,6 +1211,9 @@ contract UserPool is
         uint256 pendingAmount = pendingUsdcWithdrawals[user];
         if (pendingAmount < amount) revert CommonErrorLibrary.InsufficientBalance();
         pendingUsdcWithdrawals[user] = pendingAmount - amount;
+        if (pendingUsdcLiabilitiesInitialized) {
+            totalPendingUsdcWithdrawals -= amount;
+        }
         usdc.safeTransfer(user, amount);
     }
 
@@ -1201,6 +1233,9 @@ contract UserPool is
         uint256 amount = pendingUsdcWithdrawals[msg.sender];
         if (amount == 0) revert CommonErrorLibrary.InsufficientBalance();
         pendingUsdcWithdrawals[msg.sender] = 0;
+        if (pendingUsdcLiabilitiesInitialized) {
+            totalPendingUsdcWithdrawals -= amount;
+        }
         usdc.safeTransfer(msg.sender, amount);
         emit PendingWithdrawalClaimed(msg.sender, amount);
     }
@@ -1900,6 +1935,18 @@ contract UserPool is
      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (token == address(qeuro)) {
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance < totalStakes || amount > balance - totalStakes) {
+                revert CommonErrorLibrary.InsufficientBalance();
+            }
+        } else if (token == address(usdc)) {
+            if (!pendingUsdcLiabilitiesInitialized) revert CommonErrorLibrary.NotInitialized();
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance < totalPendingUsdcWithdrawals || amount > balance - totalPendingUsdcWithdrawals) {
+                revert CommonErrorLibrary.InsufficientBalance();
+            }
+        }
         AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
     }
 

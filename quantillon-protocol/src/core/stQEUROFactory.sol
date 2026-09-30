@@ -33,7 +33,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.4";
+        return "1.0.5";
     }
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant VAULT_FACTORY_ROLE = keccak256("VAULT_FACTORY_ROLE");
@@ -54,6 +54,8 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
     mapping(address => uint256[]) private _vaultIdsByVault;
     mapping(uint256 => string) private _vaultNamesById;
     mapping(bytes32 => bool) private _vaultNameHashUsed;
+    /// @notice Whether content-based hashes have been backfilled for all registered vault names.
+    bool public vaultNameHashesMigrated;
 
     event VaultRegistered(
         uint256 indexed vaultId,
@@ -131,6 +133,40 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         treasury = _treasury;
         oracle = _oracle;
         tokenAdmin = admin;
+        vaultNameHashesMigrated = true;
+    }
+
+    /**
+     * @notice Backfills content-based vault-name hashes after a factory implementation upgrade.
+     * @param vaultIds Complete, strictly increasing list of registered vault identifiers.
+     * @custom:security Governance-only migration; registration remains disabled until it completes.
+     * @custom:validation Requires every id to be registered and the list to be strictly increasing.
+     * @custom:state-changes Reserves each existing name hash and enables future registrations.
+     * @custom:events Emits initializer framework events where applicable.
+     * @custom:errors Reverts for an already completed migration, invalid ordering, or unknown vault ids.
+     * @custom:reentrancy No external calls.
+     * @custom:access Restricted to GOVERNANCE_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
+    function initializeVaultNameHashesV2(uint256[] calldata vaultIds)
+        external
+        onlyRole(GOVERNANCE_ROLE)
+        reinitializer(2)
+    {
+        if (vaultNameHashesMigrated) revert CommonErrorLibrary.AlreadyInitialized();
+        uint256 previousId = 0;
+        for (uint256 i; i < vaultIds.length; ++i) {
+            uint256 vaultId = vaultIds[i];
+            if (vaultId == 0 || (i != 0 && vaultId <= previousId)) {
+                revert CommonErrorLibrary.InvalidParameter();
+            }
+            if (stQEUROByVaultId[vaultId] == address(0)) revert CommonErrorLibrary.InvalidVault();
+            string storage vaultName = _vaultNamesById[vaultId];
+            if (bytes(vaultName).length == 0) revert CommonErrorLibrary.InvalidVault();
+            _vaultNameHashUsed[keccak256(bytes(vaultName))] = true;
+            previousId = vaultId;
+        }
+        vaultNameHashesMigrated = true;
     }
 
     /**
@@ -154,6 +190,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         returns (address stQEUROToken_)
     {
         address vault = msg.sender;
+        if (!vaultNameHashesMigrated) revert CommonErrorLibrary.NotInitialized();
         if (vault == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
         if (stQEUROByVaultId[vaultId] != address(0)) {
@@ -161,10 +198,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         }
 
         _validateVaultName(vaultName);
-        bytes32 nameHash;
-        assembly ("memory-safe") {
-            nameHash := keccak256(vaultName.offset, vaultName.length)
-        }
+        bytes32 nameHash = keccak256(bytes(vaultName));
         if (_vaultNameHashUsed[nameHash]) revert CommonErrorLibrary.AlreadyInitialized();
 
         bytes32 salt = _vaultSalt(vault, vaultId, vaultName);

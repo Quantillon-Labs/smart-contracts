@@ -16,6 +16,12 @@ contract MockVaultSelfRegister {
     }
 }
 
+contract stQEUROFactoryMigrationHarness is stQEUROFactory {
+    function setVaultNameHashesMigratedForTest(bool migrated) external {
+        vaultNameHashesMigrated = migrated;
+    }
+}
+
 contract stQEUROFactoryTest is Test {
     address internal admin = address(0xA11CE);
     address internal qeuro = address(0xBEEF);
@@ -37,7 +43,7 @@ contract stQEUROFactoryTest is Test {
         TimeProvider timeProvider = TimeProvider(address(timeProviderProxy));
 
         tokenImpl = new stQEUROToken(timeProvider);
-        stQEUROFactory factoryImpl = new stQEUROFactory();
+        stQEUROFactory factoryImpl = new stQEUROFactoryMigrationHarness();
         bytes memory initData = abi.encodeCall(
             stQEUROFactory.initialize,
             (admin, address(tokenImpl), qeuro, yieldShift, usdc, treasury, timelock, oracle)
@@ -131,6 +137,32 @@ contract stQEUROFactoryTest is Test {
         otherVault.selfRegister(address(factory), 2, "AAVE");
     }
 
+    function test_RegisterVault_DistinctSameLengthNames_Success() public {
+        address token1 = vault.selfRegister(address(factory), 1, "AAVE");
+        address token2 = otherVault.selfRegister(address(factory), 2, "COMP");
+
+        assertTrue(token1 != token2);
+        assertEq(factory.getVaultName(1), "AAVE");
+        assertEq(factory.getVaultName(2), "COMP");
+    }
+
+    function test_NameHashMigrationBlocksRegistrationAndReservesExistingName() public {
+        vault.selfRegister(address(factory), 1, "MORPHO1");
+        stQEUROFactoryMigrationHarness(address(factory)).setVaultNameHashesMigratedForTest(false);
+
+        vm.expectRevert(CommonErrorLibrary.NotInitialized.selector);
+        otherVault.selfRegister(address(factory), 2, "MORPHO2");
+
+        uint256[] memory vaultIds = new uint256[](1);
+        vaultIds[0] = 1;
+        vm.prank(admin);
+        factory.initializeVaultNameHashesV2(vaultIds);
+
+        vm.expectRevert(CommonErrorLibrary.AlreadyInitialized.selector);
+        otherVault.selfRegister(address(factory), 2, "MORPHO1");
+        assertTrue(otherVault.selfRegister(address(factory), 2, "MORPHO2") != address(0));
+    }
+
     function test_RegisterVault_CoreName_Disabled_Revert() public {
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         vault.selfRegister(address(factory), 1, "CORE");
@@ -148,7 +180,7 @@ contract stQEUROFactoryTest is Test {
     // ---- config setters (governance) + zero-address reverts ----
 
     function test_cov_version() public view {
-        assertEq(factory.version(), "1.0.4");
+        assertEq(factory.version(), "1.0.5");
     }
 
     function test_cov_updateYieldShift() public {

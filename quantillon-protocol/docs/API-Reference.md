@@ -234,17 +234,16 @@ One-step user entrypoint to mint QEURO and stake into the vault-specific stQEURO
 Vault-operator entrypoint for manual collateral deployment to a specific adapter.
 
 #### `harvestAndDistributeVaultYield(uint256 vaultId)`
-Keeper entrypoint (`YIELD_DISTRIBUTOR_ROLE`) that realizes a vault's external yield and splits it: hedger funding first (time-prorated `fundingRateAnnualBps` on tracked principal, capped at realized yield), residual to stQEURO stakers as QEURO backing, remainder to treasury. Emits `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)`. See the Staking Yield Distribution guide.
+Keeper entrypoint (`YIELD_DISTRIBUTOR_ROLE`). In live vault 1.5.0, gross staker yield is harvested USDC multiplied by the harvest-time ratio of raw staked QEURO to total QEURO supply. Stakers receive that allocation after the configured haircut; treasury receives the unstaked allocation; the hedger receives only the haircut (currently zero). Conversion execution costs remain. Emits `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)` and `VaultYieldBreakdown` with `hedgerBase = 0`. See the [1.5.0 distribution guide](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html).
 
 #### `creditVaultYield(uint256 vaultId, uint256 usdcAmount) → (uint256 qeuroMinted)`
 `YIELD_DISTRIBUTOR_ROLE` entrypoint crediting externally realized USDC yield into a vault's stQEURO backing.
 
 #### `harvestConfig(uint256 vaultId) → (uint256 fundingRateBps, address hedgerRecipient, uint256 lastHarvest)`
-Read-only view of the distribution parameters and the vault's last-harvest timestamp.
+Compatibility view: the retired funding-rate result is always zero. Use `yieldDistributionConfig(vaultId)` for `(haircutBps, hedgerRecipient, lastHarvest)`.
 
 #### `setFundingRateAnnualBps(uint256 newRateBps)` / `setHedgerYieldRecipient(address newRecipient)`
-Governance setters for the hedger funding carve-out and its recipient. Emit `FundingRateUpdated` /
-`HedgerYieldRecipientUpdated` (restored in v1.1.1).
+`setFundingRateAnnualBps` is retired and reverts. Governance configures the haircut with `setHedgerStakingYieldHaircutBps(uint256 newBps)` (0–10,000 bps), and its recipient with `setHedgerYieldRecipient`. These emit `HedgerStakingYieldHaircutUpdated` and `HedgerYieldRecipientUpdated`.
 
 ### Events
 
@@ -781,7 +780,7 @@ Notes:
 - Current share price: `convertToAssets(1e18)`. A holder's redeemable QEURO: `previewRedeem(balanceOf(holder))`.
 
 #### `yieldFee()` / `updateYieldParameters(uint256 _yieldFee)`
-`yieldFee` (bps; **0 live**, max 2000 = 20%) is deducted by `QuantillonVault.creditVaultYield` before yield is credited. Setter: `GOVERNANCE_ROLE`; emits `YieldParametersUpdated(uint256 yieldFee)`.
+The legacy `yieldFee` setting remains on the staking token for compatibility, but vault **1.5.0 ignores it** for harvested and directly credited yield. The dapp retires this control for 1.5.0. Existing conversion execution costs still apply. The token setter remains `GOVERNANCE_ROLE` and emits `YieldParametersUpdated(uint256 yieldFee)`.
 
 #### `updateTreasury(address _treasury)`
 `GOVERNANCE_ROLE`; emits `TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury, address indexed caller)`.
@@ -836,7 +835,7 @@ Withdraws USDC from the wrapped vault back to the protocol.
 function harvestYieldToVault() external returns (uint256 realizedYield)
 ```
 
-Realizes accrued yield and transfers it to the calling vault (`VAULT_MANAGER_ROLE`). Invoked by `QuantillonVault.harvestAndDistributeVaultYield(vaultId)`, which then splits the realized USDC between hedger funding, stQEURO stakers, and treasury.
+Realizes accrued yield and transfers it to the calling vault (`VAULT_MANAGER_ROLE`). Invoked by `QuantillonVault.harvestAndDistributeVaultYield(vaultId)`, which then splits the realized USDC by the staking ratio between stakers and treasury, paying the hedger only the configured haircut from gross staker yield.
 
 #### `totalUnderlying() → (uint256)`
 ```solidity
@@ -1250,7 +1249,7 @@ Verified against the deployed contracts on Base mainnet with `cast` on 2026-09-0
 - `minCollateralizationRatioForMinting`: **102.5% live (`1.025e20`, since 2026-09-02)** — governance-settable (initializer default 105% = `105e18`; hard floor 101%)
 - `criticalCollateralizationRatio`: 101% (`101e18`) — liquidation mode at or below this protocol CR
 - `MAX_PRICE_DEVIATION`: 200 bps (2%) between cached and live oracle price
-- `MAX_FUNDING_RATE_ANNUAL_BPS`: 5000 (50%) cap on the hedger funding rate
+- `hedgerStakingYieldHaircutBps`: **0 live on 30 September 2026**; governance-settable from 0 to 10,000 bps of gross staker yield. The annual-funding model is retired.
 
 ### QEUROToken
 - Supply model: **no fixed tokenomic supply cap** — supply is economically bounded by hedging capacity (minting requires the protocol CR to stay above the governance-set minting floor)
@@ -1281,7 +1280,7 @@ Verified against the deployed contracts on Base mainnet with `cast` on 2026-09-0
 - Single-hedger model (`setSingleHedger`; the delayed rotation path was removed, see `setSingleHedger` above); liquidation is driven by the vault-level critical CR (<= 101%), not a per-position threshold constant
 
 ### stQEURO
-- `yieldFee`: 0 (*settable*, max 20% = 2000 bps)
+- `yieldFee`: legacy token setting, ignored by QuantillonVault 1.5.0.
 
 ### YieldShift
 - `baseYieldShift`: 50% · `maxYieldShift`: 90% (*settable*)

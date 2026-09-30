@@ -1,5 +1,9 @@
 # Quantillon Protocol Architecture
 
+## Current production controls
+
+See [Production Protocol Reference](Production-Protocol-Reference.md) for the dated configuration. The oracle supplies valuation; ExecutionPricing supplies directional quotes, buffers and hedge admission. Its spread reserve is excluded from backing. A valid oracle mid alone is not an executable mint/redeem quote. Core role administration belongs to the TimelockController; peripheral administration remains with the Safe.
+
 ## Overview
 
 The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pegged stablecoin (QEURO) with advanced yield management and risk mitigation systems. The architecture is designed for scalability, security, and efficient capital utilization.
@@ -103,7 +107,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Architecture Patterns**:
 - **Escrow Pattern**: Time-locked voting power; topping up an existing lock recomputes voting power over the **full merged position** (not just the added amount)
-- **Voting System**: On-chain self-execution — the token holds `GOVERNANCE_ROLE`, so a passed proposal executes its own role-gated calldata after a mandatory post-vote timelock (`PROPOSAL_EXECUTION_DELAY`, 2 days). Activation requires the Safe to grant `GOVERNANCE_ROLE` to the QTI proxy.
+- **Voting System**: On-chain self-execution — the token holds `GOVERNANCE_ROLE`, so a passed proposal executes its own role-gated calldata after a mandatory post-vote timelock (`PROPOSAL_EXECUTION_DELAY`, 2 days). Activation requires the applicable core admin controller to grant governance permissions through the timelock, along with a mint/distribution upgrade.
 - **Decay Function**: Linear voting power decay
 
 ### 4. UserPool
@@ -313,7 +317,7 @@ QEURO Minting Flow:
      │                │ price, isValid       │ (HyperliquidEurUsdOracle)
      │                │◀─────────────────────┤                    │
      │                │ validatePrice()      │                    │
-     │                │ calculateMintAmount()│                    │
+     │                │ previewMint() via module│                    │
      │                │ transferFrom()       │                    │
      │                │ mint()               │                    │
      │                ├─────────────────────────────────────────▶│

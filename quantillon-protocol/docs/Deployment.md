@@ -1,5 +1,8 @@
 # Quantillon Protocol — Deployment Guide
 
+For the current deployed behavior, versions and role ownership, use [Production Protocol Reference](Production-Protocol-Reference.md). Dated release sections below describe their respective upgrade bundles, not the latest state after subsequent upgrades.
+
+
 ## Overview
 
 This guide covers deploying and configuring the Quantillon Protocol smart contracts using Foundry. Core contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`, which writes the deployed addresses to `deployments/{chainId}/addresses.json`.
@@ -105,13 +108,14 @@ queries blocked until activation. The generic upgrade script does not perform th
 governance activation call.
 
 <a id="current-base-release-22-september-2026"></a>
+<a id="current-base-release-23-september-2026"></a>
 
-### Current Base release (23 September 2026)
+### Base release (23 September 2026, historical)
 
 The live versions and runtime hashes are recorded in `deployments/8453/versions.json`.
 Proxy addresses are unchanged. The coordinated activation completed on Base at
 block **51,685,734** on **23 September 2026, 10:53:35 UTC**. The controller operation
-is complete. Live versions are QEUROToken **1.0.9**, QTIToken **1.0.5**, UserPool
+is complete. Versions at that activation were QEUROToken **1.0.9**, QTIToken **1.0.5**, UserPool
 **1.0.6**, HedgerPool **1.4.1**, stQEUROFactory **1.0.4**, YieldShift **1.1.1**,
 ChainlinkOracle **1.0.5**, OracleRouter **1.1.2**, SlippageStorage **1.0.3**,
 LighterEurUsdOracle **1.0.2** (inert), and FeeCollector **1.0.3**. QuantillonVault
@@ -396,10 +400,10 @@ Use `scripts/deployment/setup-external-vaults.sh` for post-core onboarding.
 
 ```bash
 # Plain local node (all mocks required)
-anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+anvil --host 127.0.0.1 --port 8545 --accounts 10 --balance 10000
 
 # Or fork Base mainnet (allows using real oracle feeds without mocks)
-anvil --host 0.0.0.0 --port 8545 --fork-url https://mainnet.base.org --chain-id 31337
+anvil --host 127.0.0.1 --port 8545 --fork-url https://app.quantillon.money/api/rpc/base --chain-id 31337
 ```
 
 ### Deploy
@@ -626,7 +630,7 @@ forge verify-contract \
 
 ### Anvil not running
 ```bash
-anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+anvil --host 127.0.0.1 --port 8545 --accounts 10 --balance 10000
 ```
 
 ### Missing environment file

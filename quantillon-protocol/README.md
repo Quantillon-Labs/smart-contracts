@@ -28,7 +28,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
 - **[stQEUROFactory Technical Upgrade](https://smartcontracts.quantillon.money/stQEUROFactory.html)** - Multi-vault staking refactor details and runbook
 - **[Multi-Vault Staking Runtime Flow](https://smartcontracts.quantillon.money/Multi-Vault-Staking-Flow.html)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
-- **[Staking Yield Distribution](https://smartcontracts.quantillon.money/Staking-Yield-Distribution.html)** - How yield reaches stQEURO stakers (hedger-first three-way split)
+- **[Yield Distribution 1.5.0](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html)** - Harvest-time staking ratio, haircut-only hedger payout and vesting
 - **[External Vault Onboarding Runbook](https://smartcontracts.quantillon.money/External-Vault-Onboarding-Runbook.html)** - Operator guide for `setup-external-vaults.sh`
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
@@ -304,4 +304,4 @@ Yield crediting uses an independent solvency gate above `max(101%, criticalColla
 
 ### Staking yield distribution 1.5.0
 
-The release candidate allocates harvested yield by the staked/total QEURO ratio, with haircut-only hedger compensation and no separate staking yield fee. See the [economics and activation runbook](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). Activation requires the governance upgrade; source availability does not imply deployment.
+Production QuantillonVault 1.5.0 was activated on 30 September 2026. It allocates harvested yield by the staked/total QEURO ratio, with haircut-only hedger compensation and no separate staking yield fee. Yield credit vests through the share price; allocation remains snapshot-weighted. See the [economics and confirmed activation record](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). The capital-weighted 1.4 guide is historical.

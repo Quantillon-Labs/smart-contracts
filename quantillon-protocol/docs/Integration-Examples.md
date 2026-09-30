@@ -519,7 +519,7 @@ await portfolio.optimizeYield();
 
 ### Automated Yield Management (keeper)
 
-External-vault yield is realized and split by one vault call, `QuantillonVault.harvestAndDistributeVaultYield(vaultId)` (hedger funding first, residual to stQEURO stakers via `creditVaultYield`, remainder to treasury — see the Staking Yield Distribution guide). The caller must hold `YIELD_DISTRIBUTOR_ROLE` on the vault. The former Aave-based vault contract no longer exists in the protocol and YieldShift has no `distributeYield` / `rebalanceThreshold` entrypoints.
+External-vault yield is realized and split by one vault call, `QuantillonVault.harvestAndDistributeVaultYield(vaultId)` (staked allocation to stQEURO after the configured haircut, unstaked allocation to treasury, haircut only to the hedger recipient; see [Yield Distribution 1.5.0](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html)). The caller must hold `YIELD_DISTRIBUTOR_ROLE` on the vault. The former Aave-based vault contract no longer exists in the protocol and YieldShift has no `distributeYield` / `rebalanceThreshold` entrypoints.
 
 ```javascript
 class VaultYieldKeeper {
@@ -530,8 +530,8 @@ class VaultYieldKeeper {
 
     async inspect(vaultId) {
         const [adapter, active, principalTracked, currentUnderlying] = await this.vault.getVaultExposure(vaultId);
-        const [fundingRateBps, hedgerRecipient, lastHarvest] = await this.vault.harvestConfig(vaultId);
-        return { adapter, active, principalTracked, currentUnderlying, fundingRateBps, hedgerRecipient, lastHarvest };
+        const [haircutBps, hedgerRecipient, lastHarvest] = await this.vault.yieldDistributionConfig(vaultId);
+        return { adapter, active, principalTracked, currentUnderlying, haircutBps, hedgerRecipient, lastHarvest };
     }
 
     async harvest(vaultId) {
@@ -540,7 +540,7 @@ class VaultYieldKeeper {
             if (!exposure.active) throw new Error(`vault ${vaultId} is not active`);
 
             // Nothing to realize when the adapter holds no more than the tracked principal.
-            // Note: the very first call for a vault id only anchors the hedger funding clock.
+            // Vault 1.5.0 applies the staking ratio on the first successful harvest too.
             if (exposure.currentUnderlying.lte(exposure.principalTracked)) {
                 console.log(`vault ${vaultId}: no yield above principal`);
                 return null;

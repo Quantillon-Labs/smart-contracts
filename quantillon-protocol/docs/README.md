@@ -32,8 +32,8 @@ Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, 
 ### [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md)
 Contract runtime behavior for mint/stake/redeem/hedger flows after the `vaultId` refactor (default vault, redemption priority, adapter routing).
 
-### [Staking Yield Distribution](./Staking-Yield-Distribution.md)
-How yield reaches stQEURO stakers: the share-price accrual model, the hedger-first three-way split (hedger funding / stakers / treasury), `harvestAndDistributeVaultYield`, parameters, roles, events, and the operator runbook.
+### [Yield Distribution 1.5.0](./Yield-Distribution-1.5.0.md)
+Current production policy: harvest-time staking allocation, unstaked yield to treasury, haircut-only hedger payment and QEURO credit that vests through the share price. Includes the formula, APY interpretation and confirmed activation record. The [1.4 guide](./Staking-Yield-Distribution.md) is historical.
 
 ### [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md)
 Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs, parameters, examples, verification).
@@ -247,3 +247,7 @@ Live contract versions are recorded in [`deployments/8453/versions.json`](../dep
 
 
 Yield crediting uses an independent solvency gate above `max(101%, criticalCollateralizationRatio)` and a projected 100% floor; public minting continues to use the live configured mint floor.
+
+## Current yield allocation
+
+See [Yield Distribution 1.5.0](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html) for the production staking-ratio policy, haircut-only hedger payout, vesting and activation evidence. The capital-weighted 1.4 guide is historical.

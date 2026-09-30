@@ -250,7 +250,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 - **Adapter Pattern**: thin `IExternalStakingVault` adapters wrap each external vault
 - **Factory Registry**: `stQEUROFactory` maps `vaultId` to adapter + stQEURO series
 - **Yield Optimization**: Dynamic allocation strategies
-- **Vault-Aware Routing**: harvested external-vault yield is split by `QuantillonVault.harvestAndDistributeVaultYield` (hedger funding / stQEURO stakers / treasury); `YieldShift.addYield(vaultId, ...)` stays available for other authorized sources
+- **Vault-Aware Routing**: harvested external-vault yield is split by `QuantillonVault.harvestAndDistributeVaultYield` (staked allocation after haircut / unstaked allocation to treasury / haircut only to hedger); `YieldShift.addYield(vaultId, ...)` stays available for other authorized sources
 
 ---
 
@@ -339,11 +339,12 @@ Yield Distribution Flow (QuantillonVault.harvestAndDistributeVaultYield):
      │              ├─────────────────▶│            │              │
      │              │ realizedYield (USDC above tracked principal) │
      │              │◀─────────────────┤            │              │
-     │              │ hedgerShare = fundingRateAnnualBps × principal × Δt (paid first)
+     │              │ grossStaker = floor(realizedYield × rawStakedQEURO / totalQEURO)
+     │              │ hedgerShare = floor(grossStaker × haircutBps / 10000)
      │              ├──────────────────────────────────────────────▶│
-     │              │ userShare → _creditVaultYield(): mint QEURO into stQEURO (share price ↑)
+     │              │ userShare = grossStaker - hedgerShare → QEURO credit (share price rises as yield vests)
      │              ├───────────────────────────────▶│              │
-     │              │ treasuryShare (USDC remainder) │              │
+     │              │ treasuryShare = realizedYield - grossStaker (USDC) │              │
      │              ├──────────────────────────────────────────────▶│
      │              │ emit VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)
 ```

@@ -11,7 +11,8 @@
 - [2026-08-26 Bundle Release Runbook](Bundle-Release-2026-08-26.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
 - [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)
-- [Staking Yield Distribution](Staking-Yield-Distribution.md)
+- [Yield Distribution 1.5.0](Yield-Distribution-1.5.0.md)
+- [Historical Yield Distribution 1.4](Staking-Yield-Distribution.md)
 - [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 # src
   - [❱ core](src/core/README.md)
@@ -92,5 +93,3 @@
     - [SlippageStorage](src/oracle/SlippageStorage.sol/contract.SlippageStorage.md)
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)
     - [StorkOracle](src/oracle/StorkOracle.sol/contract.StorkOracle.md)
-
-- [Staking yield distribution 1.5.0](Yield-Distribution-1.5.0.md)

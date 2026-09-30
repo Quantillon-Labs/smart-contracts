@@ -36,18 +36,11 @@ This note describes the current `vaultId`-based runtime behavior for staking, mi
 
 ## Yield Distribution to Stakers
 
-QuantillonVault 1.4.0 allocates realized strategy yield by current economic capital: hedger
-collateral yield to the configured hedger recipient, staked QEURO backing yield to stQEURO,
-and unstaked QEURO backing yield to treasury. A governance-configurable haircut of 0–100%
-of gross staking yield (default zero) goes to the hedger before existing staking fees.
+QuantillonVault 1.5.0 allocates realized strategy yield by the harvest-time ratio of raw staked QEURO to total QEURO supply. Stakers receive their gross allocation after the configured haircut; treasury receives the unstaked allocation. The hedger receives only that haircut, with no base allocation for hedger collateral. There is no additional staking yield fee on vault credits; conversion costs and admission checks remain.
 
-This distribution release accepts one funded strategy and one outstanding staking series;
-other registered empty strategies are allowed. It rejects unsupported multiple-strategy
-allocation instead of misclassifying another series' backing as unstaked.
+The release accepts one funded strategy and one outstanding staking series; registered empty strategies are allowed. It rejects unsupported simultaneous allocation. Raw staked QEURO includes unvested credit, while `totalAssets()` excludes yield not yet redeemable. Shareholders participate pro rata as yield vests; this does not make allocation time-weighted.
 
-The keeper uses `yieldDistributionConfig` and the on-chain preview on 1.4.0, retaining
-legacy configuration reads on older deployments. See [Staking Yield Distribution](./Staking-Yield-Distribution.md)
-for formulas, compatibility, vesting and the upgrade procedure.
+The keeper reads `yieldDistributionConfig` and the on-chain preview. `hedgerBase` remains zero for ABI compatibility. Older 1.4.x and legacy deployments retain their own models. See [Yield Distribution 1.5.0](./Yield-Distribution-1.5.0.md).
 
 ## Redemption Flow
 
@@ -81,7 +74,7 @@ Liquidation-mode redemption uses the same external-withdraw planning pattern.
 - `setRedemptionPriority(vaultIds[])` (`GOVERNANCE_ROLE`)
 - `harvestAndDistributeVaultYield(vaultId)` (`YIELD_DISTRIBUTOR_ROLE`) — harvest + 3-way split to stakers/hedger/treasury
 - `creditVaultYield(vaultId, usdcAmount)` (`YIELD_DISTRIBUTOR_ROLE`) — credit USDC into stQEURO as QEURO backing
-- `setFundingRateAnnualBps(bps)` / `setHedgerYieldRecipient(addr)` (`GOVERNANCE_ROLE`)
+- `setHedgerStakingYieldHaircutBps(bps)` / `setHedgerYieldRecipient(addr)` (`GOVERNANCE_ROLE`)
 - `deployUsdcToVault(vaultId, usdcAmount)` (`VAULT_OPERATOR_ROLE`)
 
 Factory binding:

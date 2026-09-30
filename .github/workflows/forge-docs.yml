@@ -74,7 +74,7 @@ jobs:
           # SAVE custom markdown files BEFORE deleting docs
           echo "Saving custom markdown documentation files..."
           mkdir -p /tmp/custom-docs
-          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md Yield-Distribution-1.5.0.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md favicon.png favicon.ico; do
+          for f in Production-Protocol-Reference.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md Yield-Distribution-1.5.0.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md favicon.png favicon.ico; do
             if [ -f "docs/$f" ]; then
               cp "docs/$f" "/tmp/custom-docs/$f"
               echo "Saved $f"
@@ -104,7 +104,7 @@ jobs:
 
           # COPY custom markdown files into docs/src/ so mdBook builds them with navigation
           echo "Copying custom markdown files into docs/src/..."
-          for f in API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md Yield-Distribution-1.5.0.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md; do
+          for f in Production-Protocol-Reference.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Oracle-Architecture.md Deployment.md stQEUROFactory.md Multi-Vault-Staking-Flow.md Staking-Yield-Distribution.md Yield-Distribution-1.5.0.md External-Vault-Onboarding-Runbook.md Dapp-Compatibility.md; do
             if [ -f "/tmp/custom-docs/$f" ]; then
               cp "/tmp/custom-docs/$f" "docs/src/$f"
               echo "Copied $f to docs/src/"
@@ -120,6 +120,7 @@ jobs:
               echo "- [Home](README.md)"
               echo ""
               echo "# Documentation"
+              echo "- [Production Protocol Reference](Production-Protocol-Reference.md)"
               echo "- [Technical Reference](API-Reference.md)"
               echo "- [Quick Start Guide](Quick-Start.md)"
               echo "- [Integration Examples](Integration-Examples.md)"

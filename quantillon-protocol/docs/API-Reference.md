@@ -8,7 +8,7 @@ This document provides detailed technical specifications for all Quantillon Prot
 
 ## Contract Addresses
 
-Deployed addresses for **Base Mainnet (chain ID `8453`)**. The machine-readable registry `deployments/8453/addresses.json` is a local deployment artifact (gitignored, not published); the tracked [`deployments/8453/versions.json`](https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/deployments/8453/versions.json) carries the proxy and implementation address plus the live `version()` of every upgradeable contract. All core contracts are UUPS proxies — the addresses below are the stable proxy addresses that integrators should use.
+Deployed addresses for **Base Mainnet (chain ID `8453`)**. The machine-readable registry `deployments/8453/addresses.json` is a local deployment artifact (gitignored, not published); the tracked [`deployments/8453/versions.json`](https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/deployments/8453/versions.json) carries the proxy and implementation address plus versions recorded by deployment tooling; these records can lag subsequent upgrades, so read live `version()` values. All core contracts are UUPS proxies — the addresses below are the stable proxy addresses that integrators should use.
 
 ### Core protocol
 
@@ -52,8 +52,7 @@ addresses and cannot be repointed to another pricing deployment.
 
 The active report batcher holds `WRITER_ROLE` on SlippageStorage and ExecutionPricing,
 and `REPORTER_ROLE` on ExecutionPricing. See the [deployment guide](./Deployment.md#current-base-release-23-september-2026)
-for configuration and freshness checks. Live proxy versions are QuantillonVault
-1.3.4, vaultId-2 stQEUROToken 1.2.4, and HyperliquidEurUsdOracle 1.0.5.
+for configuration and freshness checks. At finalized Base block 51,985,907 (30 September 2026), QuantillonVault is 1.5.0, vaultId-2 stQEUROToken is 1.2.5 and HyperliquidEurUsdOracle is 1.0.6. See [Production Protocol Reference](Production-Protocol-Reference.md).
 
 ### Governance & infrastructure
 
@@ -147,32 +146,16 @@ function redeemQEURO(
 **Requirements**:
 - `qeuroAmount > 0`
 - Sufficient QEURO balance and allowance
-- Automatically routes to liquidation mode when protocol CR is at or below critical threshold
+- Automatically routes to liquidation mode when protocol CR is positive and at or below the critical threshold
 - Pulls liquidity from external vault adapters when needed (tracked principal only; unharvested adapter yield is not used as redemption collateral)
 
-#### `calculateMintAmount(uint256 usdcAmount) → (uint256, uint256)`
-```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee)
-```
+#### Execution previews
 
-**Returns**:
-- `qeuroAmount`: Amount of QEURO that would be minted (18 decimals)
-- `fee`: Mint fee amount (USDC, 6 decimals)
+The former `calculateMintAmount` and `calculateRedeemAmount` helpers are absent from the current vault ABI. Resolve `vault.executionPricing()` and use `ExecutionPricing.previewMint(usdcInput)` or `previewRedeem(qeuroInput)` for normal execution.
 
-**Notes**:
-- Uses cached EUR/USD price path (`lastValidEurUsdPrice`).
+Both return a `Quote` tuple: `amountOut`, `executionRate`, `referenceRate`, `capacityQeuro`, `observedAt`, `sequence` (all uint256). Mint output is QEURO in 18 decimals; redeem output is USDC in 6 decimals. Preview outputs include the configured protocol fee. Prices are 18-decimal USD/EUR and capacity is 18-decimal QEURO. Quotes can revert and do not reserve capacity.
 
-#### `calculateRedeemAmount(uint256 qeuroAmount) → (uint256, uint256)`
-```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee)
-```
-
-**Returns**:
-- `usdcAmount`: Amount of USDC that would be received (6 decimals)
-- `fee`: Redemption fee amount (USDC, 6 decimals)
-
-**Notes**:
-- Uses cached EUR/USD price path (`lastValidEurUsdPrice`).
+The redemption preview can use the module's degraded quote path. It is **not** a liquidation-mode payout preview. Simulate the actual vault call with a user-selected minimum output and the user's account before submitting. See [Integration Examples](Integration-Examples.md).
 
 #### Vault balance getters (public state)
 ```solidity
@@ -185,8 +168,7 @@ uint256 public totalUsdcInExternalVaults;  // Principal tracked across external 
 - The aggregated `getVaultMetrics()` helper was retired in the external
   multi-vault refactor (EIP-170 headroom); read the three public trackers
   directly, and use `getProtocolCollateralizationRatio()` for debt/collateral
-  ratio math (`1e20` = 100%). Total available collateral = `totalUsdcHeld +
-  totalUsdcInExternalVaults` (unharvested adapter yield is excluded).
+  ratio math (`1e20` = 100%). Do not sum the trackers as proof of redeemable backing: external strategy losses and the excluded execution-spread reserve matter. Use `getTotalUsdcAvailable()` and the collateralization getter; unharvested yield is not backing.
 
 #### `getProtocolCollateralizationRatio() → (uint256)`
 ```solidity
@@ -713,10 +695,7 @@ function registerVault(uint256 vaultId, string calldata vaultName) external retu
 function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQEUROToken_);
 ```
 
-#### `getStQEUROByVault(address vault) -> (address)`
-```solidity
-function getStQEUROByVault(address vault) external view returns (address stQEUROToken_);
-```
+The address-keyed `getStQEUROByVault` helper was removed. Resolve each series by numeric vaultId.
 
 #### `getVaultById(uint256 vaultId) -> (address)`
 ```solidity
@@ -932,6 +911,7 @@ event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed tim
 event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
 event SourceVaultBindingUpdated(address indexed source, uint256 indexed vaultId);
 event SourceVaultBindingModeUpdated(bool enabled);
+```
 
 ---
 
@@ -1235,13 +1215,13 @@ event TimeReset(address indexed resetter, uint256 timestamp);
 | `TREASURY_ROLE` / `FEE_SOURCE_ROLE` | FeeCollector | `distributeFees` / contracts allowed to push fees (`QuantillonVault`, `HedgerPool`) |
 | `YIELD_MANAGER_ROLE` | YieldShift | Initializer-granted legacy role; the public update interval applies normally, and `forceUpdateYieldDistribution` requires `GOVERNANCE_ROLE` |
 
-> On Base mainnet the governance Safe holds operational governance, upgrade, emergency and oracle-manager roles as configured per contract. The 23 September 2026 activation transferred core default-admin roles to the controller while retaining Safe operational roles; direct-Safe oracle/fee administration is unchanged. Read live `hasRole` values to verify current authority. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (vault CR <= 101%), not a per-position keeper action.
+> On Base mainnet the governance Safe holds operational governance, upgrade, emergency and oracle-manager roles as configured per contract. The 23 September 2026 activation transferred core default-admin roles to the controller while retaining Safe operational roles; direct-Safe oracle/fee administration is unchanged. Read live `hasRole` values to verify current authority. Operational roles are delegated to dedicated service wallets: `VAULT_OPERATOR_ROLE` and `YIELD_DISTRIBUTOR_ROLE` to keeper wallets, an additional `EMERGENCY_ROLE` grant on the vault to the hedging watchdog, and SlippageStorage `WRITER_ROLE` to the off-chain price publisher (currently also held by the deployer EOA). `OracleRouter` itself holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the market oracle so that its admin passthroughs work. There is no liquidator role — liquidation mode is a protocol-level state (0 < vault CR <= critical ratio (currently 101%)), not a per-position keeper action.
 
 ---
 
 ## Constants and Limits
 
-Verified against the deployed contracts on Base mainnet with `cast` on 2026-09-05. Values marked *settable* are current live values that governance can change, not immutable constants.
+Configuration checked against finalized Base block 51,985,907 on 30 September 2026; see [Production Protocol Reference](Production-Protocol-Reference.md). Values marked *settable* are current live values that governance can change, not immutable constants.
 
 ### QuantillonVault
 - `mintFee`: 0 (*settable*, max 5% = `5e16`)
@@ -1271,12 +1251,12 @@ Verified against the deployed contracts on Base mainnet with `cast` on 2026-09-0
 - `performanceFee`: 0 (*settable*)
 
 ### HedgerPool
-- `coreParams().maxLeverage`: 20× (*settable* via `configureRiskAndFees`; the `MAX_LEVERAGE` constant = 65535 is only the `uint16` upper bound of the setter) · `coreParams().minMarginRatio`: **250 bps (2.5%) live since 2026-09-02** — governance-set via `configureRiskAndFees`: 500 bps at launch, hard floor `DEFAULT_MIN_MARGIN_RATIO_BPS` = 250 bps since v1.0.8
+- `coreParams().maxLeverage`: 40× (*settable* via `configureRiskAndFees`; the `MAX_LEVERAGE` constant = 65535 is a storage bound; `MAX_CONFIGURABLE_LEVERAGE` caps configuration at 40) · `coreParams().minMarginRatio`: **250 bps (2.5%) live since 2026-09-02** — governance-set via `configureRiskAndFees`: 500 bps at launch, hard floor `DEFAULT_MIN_MARGIN_RATIO_BPS` = 250 bps since v1.0.8
 - `MAX_MARGIN_RATIO`: 5000 bps (50%, i.e. 2× minimum leverage)
 - `minMarginAmount`: **0 live** (*settable*; initializer default 100 USDC) · `minPositionHoldBlocks`: **0 live** (*settable*; initializer default 5 blocks)
 - `entryFee` / `exitFee` / `marginFee`: 0 (*settable*)
 - `eurInterestRate` / `usdInterestRate`: 350 / 450 bps (*settable*)
-- `rewardFeeSplit`: 20% (`2e17`) of protocol fees routed to the hedger reward reserve (*settable*)
+- HedgerPool `rewardFeeSplit`: 0 of its operation fees routed to the reserve (*settable*). The separate vault `hedgerRewardFeeSplit` is 20% of collected vault fees; neither is a reward-claim tax.
 - Single-hedger model (`setSingleHedger`; the delayed rotation path was removed, see `setSingleHedger` above); liquidation is driven by the vault-level critical CR (<= 101%), not a per-position threshold constant
 
 ### stQEURO
@@ -1391,7 +1371,8 @@ tx_hash = contract.functions.mintQEURO(usdc_amount, min_qeuro_out).transact({
 usdc.approve(vaultAddress, usdcAmount);
 
 // 2. Quote the mint (QEURO is 18 decimals, USDC is 6 — never derive the floor from usdcAmount)
-(uint256 expectedQeuro, ) = vault.calculateMintAmount(usdcAmount);
+ExecutionPricing.Quote memory quote = ExecutionPricing(vault.executionPricing()).previewMint(usdcAmount);
+uint256 expectedQeuro = quote.amountOut;
 uint256 minQeuroOut = (expectedQeuro * 95) / 100; // 5% slippage tolerance
 
 // 3. Mint QEURO with slippage protection
@@ -1420,7 +1401,7 @@ userPool.stake(amounts);
 // 1. Approve USDC spending (caller must be the configured single hedger)
 usdc.approve(hedgerPoolAddress, marginAmount);
 
-// 2. Open position with 5x leverage (max leverage: 20x)
+// 2. Open position with 5x leverage (max leverage: 40x)
 uint256 positionId = hedgerPool.enterHedgePosition(marginAmount, 5);
 
 // 3. Monitor hedger activity / claim rewards

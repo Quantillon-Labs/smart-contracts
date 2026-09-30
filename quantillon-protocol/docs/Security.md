@@ -132,7 +132,7 @@ if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 **Pause System**:
 - Global pause functionality
 - Role-based pause controls
-- Emergency withdrawal capabilities
+- Contract-specific emergency controls; the vault has no generic emergency withdrawal from an external strategy
 - Circuit breaker activation
 
 **Implementation**:
@@ -160,7 +160,7 @@ A bug bounty program is **planned**; reward tiers and scope will be published on
 
 ### Audits
 
-Quantillon Protocol has not yet been audited by an external security firm. It goes through recurring internal, AI-assisted security reviews; remediation from the first reviews went live in June and July 2026. The scope, limits and report commitment of every review are published at [security.quantillon.money](https://security.quantillon.money).
+No professional security audit has been performed. Review to date is internal and AI-assisted; findings and corrections are ongoing work, not a completed audit milestone. Internal review does not establish that deployed contracts are free of defects. No external audit report is promised.
 
 ---
 

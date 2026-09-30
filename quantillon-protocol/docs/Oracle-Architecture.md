@@ -1,6 +1,6 @@
 # Oracle Architecture
 
-How QEURO mint/redeem is priced on-chain: a dual-source `OracleRouter` whose **active** EUR/USD source
+The reference-price path for QEURO valuation: a dual-source `OracleRouter` whose **active** EUR/USD source
 is the Hyperliquid `xyz:EUR` perpetual mid (the venue where the protocol hedge executes), with the
 `ChainlinkOracle` retained as a one-transaction fallback. Live on Base mainnet since 2026-06-25.
 
@@ -8,7 +8,7 @@ is the Hyperliquid `xyz:EUR` perpetual mid (the venue where the protocol hedge e
 
 The protocol neutralizes the EUR/USD leg with a hedge on Hyperliquid. Pricing QEURO mint/redeem off a
 generic *spot* feed while the hedge fills at the *venue* price leaves a persistent basis between the
-QEURO liability and its hedge. Reading the venue mid on-chain removes that basis by construction.
+QEURO liability and its hedge. Reading the venue mid aligns valuation more closely with the hedge, but does not eliminate basis, spreads, funding, timing or execution risk. Normal user amounts additionally come from directional depth and buffers in ExecutionPricing.
 Chainlink spot is kept as a safety reference and fallback, not as the primary valuation source.
 
 ## Components
@@ -35,7 +35,7 @@ QuantillonVault          0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07
 Safe (Multisig)          0x1d7fF432a93d0085Fb69474c7E567f859829e6cd
 ```
 
-All contracts are verified on Basescan. Proxy addresses are the stable reference; implementation addresses and live `version()` values are tracked in `deployments/8453/versions.json`.
+All contracts are verified on Basescan. Proxy addresses are the stable reference; deployment records are tracked in `deployments/8453/versions.json`, but can lag subsequent upgrades. Read live `version()` and active module bindings; see [Production Protocol Reference](Production-Protocol-Reference.md).
 
 The active publication route uses ReportPublicationBatcher v1.0.0 at
 `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB`, bound to SlippageStorage and
@@ -172,3 +172,7 @@ Chainlink, and governance can fall back to Chainlink with one `switchOracle(0)`.
 ## Independent reference checks
 
 The active market oracle can compare its publication with a fresh Chainlink EUR/USD probe. Reference age, normal-hours divergence, and the Friday 21:00 UTC through Sunday 21:00 UTC off-hours bound are governance parameters; invalid or stale references fail closed. Emergency baseline reseeding requires a fresh reference that passes the same checks and emits an on-chain event.
+
+## Execution and fallback boundaries
+
+The router mid is a valuation reference, not a normal executable user quote. ExecutionPricing checks directional depth, observed capacity and source compatibility. Switching to Chainlink alone does not reopen minting. Its degraded redemption path still needs a valid reference and cannot bypass pause, liquidity or minimum-output checks. The dapp can apply stricter quote-availability gates than the contract fallback.

@@ -1,444 +1,97 @@
-# Quantillon Protocol Quick Start Guide
+# Quantillon Protocol Quick Start
 
-## Getting Started
+This example targets the current Base deployment and **ethers v6**, using integer arithmetic and a wallet signer. It mints QEURO and deposits QEURO into the direct ERC-4626 stQEURO series. The optional UserPool contract is a different staking path.
 
-This guide will help you quickly integrate with the Quantillon Protocol smart contracts.
+Install `ethers@6` in your integration project. Obtain current ABIs from the compiled `out/<Contract>.sol/<Contract>.json` artifact's `abi` field; signature baseline files are not JSON ABIs. Use the [address inventory](API-Reference.md#contract-addresses) and check [Production Protocol Reference](Production-Protocol-Reference.md) before integrating. Library syntax follows the [ethers v6 guide](https://docs.ethers.org/v6/getting-started/).
 
----
-
-## Prerequisites
-
-- Node.js 18+ and npm/yarn
-- Web3 library (web3.js, ethers.js, or web3.py)
-- Ethereum wallet (MetaMask, WalletConnect, etc.)
-- USDC tokens for testing
-
----
-
-## Installation
-
-### JavaScript/TypeScript
-
-```bash
-npm install ethers
-# or
-yarn add ethers
-```
-
-### Python
-
-```bash
-pip install web3
-```
-
----
-
-## Basic Integration
-
-### 1. Connect to the Protocol
+## Connect and resolve the active contracts
 
 ```javascript
-import { ethers } from 'ethers';
+import { BrowserProvider, Contract, parseUnits, ZeroAddress } from 'ethers';
 
-// Contract ABIs: build the repo (`forge build`) and read `out/<Contract>.sol/<Contract>.json`,
-// or use the committed signature baselines in `abi-baseline/*.abisig`.
-import QuantillonVaultABI from './abis/QuantillonVault.json';
-import QEUROTokenABI from './abis/QEUROToken.json';
-import UserPoolABI from './abis/UserPool.json';
+// Browser wallet must be configured for Base. Production server-side reads use
+// https://app.quantillon.money/api/rpc/base, not a public Base RPC fallback.
+const provider = new BrowserProvider(window.ethereum);
+if ((await provider.getNetwork()).chainId !== 8453n) throw new Error('Select Base');
+const signer = await provider.getSigner();
+const owner = await signer.getAddress();
+const vaultAddress = '0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07';
+const qeuroAddress = '0x69aD4e6c49d6275D0e11b5515D98a89f029869AA';
+const usdcAddress = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const factoryAddress = '0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53';
 
-// Initialize contracts
-const vault = new ethers.Contract(vaultAddress, QuantillonVaultABI, provider);
-const qeuro = new ethers.Contract(qeuroAddress, QEUROTokenABI, provider);
-const userPool = new ethers.Contract(userPoolAddress, UserPoolABI, provider);
-```
-
-### 2. Mint QEURO
-
-```javascript
-// Approve USDC spending
-await usdc.approve(vaultAddress, usdcAmount);
-
-// Mint QEURO with slippage protection. QEURO is 18 decimals and USDC 6 decimals,
-// so quote with calculateMintAmount instead of scaling usdcAmount.
-const [expectedQeuro] = await vault.calculateMintAmount(usdcAmount);
-const minQeuroOut = expectedQeuro.mul(95).div(100); // 5% slippage tolerance
-await vault.mintQEURO(usdcAmount, minQeuroOut);
-```
-
-### 3. Stake QEURO for Rewards
-
-```javascript
-// Approve QEURO spending
-await qeuro.approve(userPoolAddress, qeuroAmount);
-
-// Stake QEURO (UserPool functions take arrays; one element for a single stake)
-await userPool.stake([qeuroAmount]);
-
-// Note: there is no staking-reward claim. Protocol yield accrues automatically
-// through the stQEURO wrapper (its exchange rate rises) — wrap QEURO into stQEURO to earn it.
-```
-
-### 4. Participate in Governance
-
-> QTI is dormant on Base mainnet: no mint path is wired, so the supply is 0 and these calls cannot be exercised until an activation upgrade. Shown for the as-coded API.
-
-```javascript
-// Lock QTI for voting power
-await qti.lock(lockAmount, lockDuration);
-
-// Create a proposal
-const proposalId = await qti.createProposal(
-    "Update protocol parameters",
-    startTime,
-    endTime
-);
-
-// Vote on proposal
-await qti.vote(proposalId, true); // Vote yes
-```
-
----
-
-## Common Patterns
-
-### Error Handling
-
-```javascript
-try {
-    await vault.mintQEURO(usdcAmount, minQeuroOut);
-} catch (error) {
-    // Reverts are custom errors (see API-Reference "Error Handling")
-    const msg = error.reason || error.message;
-    if (msg.includes('ERC20InsufficientBalance') || msg.includes('InsufficientBalance')) {
-        console.log('Insufficient USDC balance');
-    } else if (msg.includes('InvalidOraclePrice')) {
-        console.log('Oracle price is stale or invalid');
-    } else if (msg.includes('ExcessiveSlippage')) {
-        console.log('Output below minQeuroOut; re-quote and retry');
-    } else {
-        console.log('Transaction failed:', msg);
-    }
+const tokenAbi = [
+  'function approve(address spender,uint256 amount) returns (bool)',
+  'function balanceOf(address owner) view returns (uint256)',
+];
+const vault = new Contract(vaultAddress, [
+  'function executionPricing() view returns (address)',
+  'function paused() view returns (bool)',
+  'function mintQEURO(uint256 usdcAmount,uint256 minQeuroOut)',
+  'function redeemQEURO(uint256 qeuroAmount,uint256 minUsdcOut)',
+  'function shouldTriggerLiquidationLive() returns (bool shouldLiquidate,uint256 collateralizationRatio)',
+], signer);
+const pricingAddress = await vault.executionPricing();
+if (pricingAddress === ZeroAddress) throw new Error('No execution pricing configured');
+const pricing = new Contract(pricingAddress, [
+  'function previewMint(uint256 input) view returns ((uint256 amountOut,uint256 executionRate,uint256 referenceRate,uint256 capacityQeuro,uint256 observedAt,uint256 sequence) quote)',
+  'function previewRedeem(uint256 input) view returns ((uint256 amountOut,uint256 executionRate,uint256 referenceRate,uint256 capacityQeuro,uint256 observedAt,uint256 sequence) quote)',
+], provider);
+const usdc = new Contract(usdcAddress, tokenAbi, signer);
+const qeuro = new Contract(qeuroAddress, tokenAbi, signer);
+const factory = new Contract(factoryAddress, [
+  'function getStQEUROByVaultId(uint256 vaultId) view returns (address)',
+], provider);
+const seriesAddress = await factory.getStQEUROByVaultId(2n);
+if (seriesAddress === ZeroAddress) throw new Error('No series for this vault');
+const series = new Contract(seriesAddress, [
+  'function asset() view returns (address)',
+  'function previewDeposit(uint256 assets) view returns (uint256)',
+  'function deposit(uint256 assets,address receiver) returns (uint256)',
+  'function balanceOf(address owner) view returns (uint256)',
+  'function convertToAssets(uint256 shares) view returns (uint256)',
+  'function redeem(uint256 shares,address receiver,address owner) returns (uint256)',
+], signer);
+if ((await series.asset()).toLowerCase() !== qeuroAddress.toLowerCase()) {
+  throw new Error('Unexpected staking asset');
 }
+const minimum = (output, toleranceBps) => {
+  if (toleranceBps < 0n || toleranceBps >= 10_000n) throw new Error('Invalid tolerance');
+  return output * (10_000n - toleranceBps) / 10_000n;
+};
 ```
 
-### Event Listening
+## Mint with a current execution quote
 
 ```javascript
-// Listen for mint events (event name is QEUROminted — lowercase m — with 3 arguments)
-vault.on('QEUROminted', (user, usdcAmount, qeuroAmount) => {
-    console.log(`User ${user} minted ${qeuroAmount} QEURO for ${usdcAmount} USDC`);
-});
-
-// Listen for stake events (3 arguments)
-userPool.on('QEUROStaked', (user, qeuroAmount, timestamp) => {
-    console.log(`User ${user} staked ${qeuroAmount} QEURO at ${timestamp}`);
-});
+if (await vault.paused()) throw new Error('Vault paused');
+const inputUsdc = parseUnits('100', 6);
+await (await usdc.approve(vaultAddress, inputUsdc)).wait();
+// Quote after approval is mined; its amountOut already includes the mint fee.
+const quote = await pricing.previewMint(inputUsdc);
+const minQeuro = minimum(quote.amountOut, 50n); // illustrative 0.5%; user chooses
+await vault.mintQEURO.staticCall(inputUsdc, minQeuro);
+await (await vault.mintQEURO(inputUsdc, minQeuro)).wait();
 ```
 
-### Batch Operations
+Simulation does not reserve capacity. A later state change can make the transaction revert. Do not derive output by dividing USDC by an oracle mid or use the retired `calculateMintAmount` helper.
 
-Dependent transactions must be sent sequentially (an approval has to be mined before the transfer that consumes it). Native batching exists where it matters: `UserPool.deposit` / `withdraw` / `stake` accept arrays.
+## Stake QEURO directly
 
 ```javascript
-// Sequential: approve -> mint -> approve -> stake
-await (await usdc.approve(vaultAddress, usdcAmount)).wait();
-await (await vault.mintQEURO(usdcAmount, minQeuroOut)).wait();
-await (await qeuro.approve(userPoolAddress, qeuroAmountA.add(qeuroAmountB))).wait();
-
-// One transaction, two stakes (each entry must be >= userPool.minStakeAmount())
-await (await userPool.stake([qeuroAmountA, qeuroAmountB])).wait();
+const assets = parseUnits('10', 18); // user-selected amount, must be available
+if (await qeuro.balanceOf(owner) < assets) throw new Error('Insufficient QEURO');
+await (await qeuro.approve(seriesAddress, assets)).wait();
+const expectedShares = await series.previewDeposit(assets);
+if (expectedShares === 0n) throw new Error('Deposit would produce no shares');
+await series.deposit.staticCall(assets, owner);
+await (await series.deposit(assets, owner)).wait();
+const shares = await series.balanceOf(owner);
+const vestedAssets = await series.convertToAssets(shares);
 ```
 
----
+Standard ERC-4626 `deposit` does not accept a minimum-share argument: a preview is informational, not slippage protection. The vault's `mintAndStakeQEURO` path has an explicit minimum-share parameter for a combined mint/stake. Yield increases the assets represented by shares as it vests; no separate staking-reward claim is needed. See [Yield Distribution 1.5.0](Yield-Distribution-1.5.0.md).
 
-## Testing
+## Next steps
 
-### Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/Quantillon-Labs/smart-contracts.git
-cd smart-contracts/quantillon-protocol
-
-# Install dependencies
-forge install
-
-# Build contracts
-forge build
-
-# Run tests
-forge test
-
-# Run specific test
-forge test --match-contract QEUROToken
-
-# Run security analysis
-make security  # Runs both Slither and Mythril
-```
-
----
-
-## Security Best Practices
-
-### 1. Always Validate Inputs
-
-```javascript
-// Validate amounts
-if (usdcAmount <= 0) {
-    throw new Error('Invalid USDC amount');
-}
-
-// Validate addresses
-if (!ethers.utils.isAddress(userAddress)) {
-    throw new Error('Invalid address');
-}
-```
-
-### 2. Use Slippage Protection
-
-```javascript
-// Calculate minimum output with slippage
-const slippage = 0.05; // 5%
-const minQeuroOut = expectedQeuro * (1 - slippage);
-```
-
-### 3. Check Contract State
-
-```javascript
-// Check if contract is paused
-const isPaused = await vault.paused();
-if (isPaused) {
-    throw new Error('Contract is paused');
-}
-
-// Check oracle price freshness. OracleRouter.getEurUsdPrice() is NOT a view (a fresh read
-// updates the deviation baseline), so simulate it instead of sending a transaction.
-const [price, isValid] = await oracleRouter.callStatic.getEurUsdPrice();
-if (!isValid) {
-    throw new Error('Oracle price is invalid');
-}
-```
-
-### 4. Implement Proper Error Handling
-
-```javascript
-// Retry mechanism for failed transactions
-async function retryTransaction(txFunction, maxRetries = 3) {
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            return await txFunction();
-        } catch (error) {
-            if (i === maxRetries - 1) throw error;
-            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-        }
-    }
-}
-```
-
-### 5. Security Analysis
-
-```bash
-# Run comprehensive security analysis
-make security
-
-# Run individual tools
-make slither    # Static analysis
-make mythril    # Symbolic execution analysis
-
-# Check security reports
-ls scripts/results/mythril-reports/   # Mythril reports
-ls scripts/results/slither/           # Slither reports
-cat scripts/results/natspec-validation-report.txt
-cat scripts/results/contract-sizes/contract-sizes-summary.txt
-```
-
----
-
-## Advanced Features
-
-### Yield Optimization
-
-```javascript
-// Check yield opportunities
-const userPoolAPY = await userPool.stakingAPY(); // bps, e.g. 800 = 8%
-
-// Hedger economics derive from the EUR/USD interest-rate differential
-// (there is no APY getter on HedgerPool)
-const params = await hedgerPool.coreParams();
-const hedgerCarryBps = params.usdInterestRate - params.eurInterestRate; // bps
-
-if (userPoolAPY > hedgerCarryBps) {
-    // Stake in user pool (array argument)
-    await userPool.stake([qeuroAmount]);
-} else {
-    // Open hedge position (single-hedger model: caller must be the configured hedger)
-    await hedgerPool.enterHedgePosition(marginAmount, leverage);
-}
-```
-
-### Risk Management
-
-```javascript
-// Monitor position health
-const positionInfo = await hedgerPool.positions(positionId);
-const marginRatioBps = positionInfo.margin.mul(10000).div(positionInfo.positionSize);
-const minMarginRatioBps = (await hedgerPool.coreParams()).minMarginRatio; // bps, governance-set: 250 = 2.5% live (since 2026-09-02); 500 at launch
-
-if (marginRatioBps.lt(minMarginRatioBps.add(100))) {
-    console.warn('Position is near the minimum margin ratio');
-    // Add margin or close position
-}
-// Note: protocol-level liquidation mode triggers at vault CR <= 101%
-// (QuantillonVault.criticalCollateralizationRatio), independent of per-position margin.
-```
-
-### Governance Participation
-
-> QTI is dormant on Base mainnet (supply 0, no mint path wired): these calls become functional only after an activation upgrade.
-
-```javascript
-// Check voting power
-const votingPower = await qti.getVotingPower(userAddress);
-const minPower = await qti.proposalThreshold(); // 100,000 QTI
-
-if (votingPower >= minPower) {
-    // Can create proposals
-    const proposalId = await qti.createProposal(description, startTime, endTime);
-}
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-1. **`ERC20InsufficientAllowance` revert**
-   - Solution: Approve token spending before calling functions
-
-2. **`EnforcedPause` revert**
-   - Solution: the contract is paused; wait for it to be unpaused or check with the protocol team
-
-3. **`InvalidOraclePrice` revert**
-   - Solution: the active oracle returned `isValid = false` (stale, out of bounds or circuit breaker). Check `OracleRouter.getOracleHealth()` and wait for a fresh publish
-
-4. **"Gas estimation failed"**
-   - Solution: Increase gas limit or check transaction parameters
-
----
-
-## Support
-
-### Resources
-
-- **Documentation**: [docs.quantillon.money](https://docs.quantillon.money)
-- **GitHub**: [github.com/Quantillon-Labs](https://github.com/Quantillon-Labs)
-- **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
-- **Email**: team@quantillon.money
-
-### Community
-
-- **Telegram**: [t.me/QuantillonLabs](https://t.me/QuantillonLabs)
-- **X (Twitter)**: [@QuantillonLabs](https://x.com/QuantillonLabs)
-- **Medium**: [medium.com/@quantillonlabs](https://medium.com/@quantillonlabs)
-
----
-
-## Examples
-
-### Complete Integration Example
-
-```javascript
-import { ethers } from 'ethers';
-
-class QuantillonIntegration {
-    constructor(provider, signer) {
-        this.provider = provider;
-        this.signer = signer;
-        this.vault = new ethers.Contract(VAULT_ADDRESS, QuantillonVaultABI, signer);
-        this.qeuro = new ethers.Contract(QEURO_ADDRESS, QEUROTokenABI, signer);
-        this.userPool = new ethers.Contract(USER_POOL_ADDRESS, UserPoolABI, signer);
-    }
-
-    async mintQEURO(usdcAmount, slippage = 0.05) {
-        try {
-            // Check contract state
-            if (await this.vault.paused()) {
-                throw new Error('Contract is paused');
-            }
-
-            // Calculate minimum output (calculateMintAmount returns (qeuroAmount, fee))
-            const [expectedQeuro] = await this.vault.calculateMintAmount(usdcAmount);
-            const minQeuroOut = expectedQeuro.mul(100 - slippage * 100).div(100);
-
-            // Approve USDC spending
-            const usdc = new ethers.Contract(USDC_ADDRESS, USDC_ABI, this.signer);
-            await usdc.approve(VAULT_ADDRESS, usdcAmount);
-
-            // Mint QEURO
-            const tx = await this.vault.mintQEURO(usdcAmount, minQeuroOut);
-            await tx.wait();
-
-            console.log('QEURO minted successfully');
-            return tx;
-        } catch (error) {
-            console.error('Minting failed:', error.message);
-            throw error;
-        }
-    }
-
-    async stakeQEURO(qeuroAmount) {
-        try {
-            // Approve QEURO spending
-            await this.qeuro.approve(USER_POOL_ADDRESS, qeuroAmount);
-
-            // Stake QEURO (array argument; one element for a single stake)
-            const tx = await this.userPool.stake([qeuroAmount]);
-            await tx.wait();
-
-            console.log('QEURO staked successfully');
-            return tx;
-        } catch (error) {
-            console.error('Staking failed:', error.message);
-            throw error;
-        }
-    }
-
-    async getPortfolio(userAddress) {
-        try {
-            const [collateralizationRatio, totalUsdcHeld, totalMinted, userInfo, qeuroBalance] = await Promise.all([
-                this.vault.getProtocolCollateralizationRatio(), // 1e20 == 100%
-                this.vault.totalUsdcHeld(),
-                this.vault.totalMinted(),
-                this.userPool.getUserInfo(userAddress),
-                this.qeuro.balanceOf(userAddress)
-            ]);
-
-            return {
-                qeuroBalance: qeuroBalance.toString(),
-                stakedAmount: userInfo.stakedAmount.toString(),
-                pendingUnstake: userInfo.unstakeAmount.toString(),
-                depositHistoryUsdc: userInfo.depositHistory.toString(),
-                vault: {
-                    usdcHeld: totalUsdcHeld.toString(),
-                    qeuroMinted: totalMinted.toString(),
-                    collateralizationRatioPct: ethers.utils.formatEther(collateralizationRatio)
-                }
-            };
-        } catch (error) {
-            console.error('Failed to get portfolio:', error.message);
-            throw error;
-        }
-    }
-}
-
-// Usage
-const integration = new QuantillonIntegration(provider, signer);
-await integration.mintQEURO(ethers.utils.parseUnits('1000', 6)); // 1000 USDC
-await integration.stakeQEURO(ethers.utils.parseUnits('500', 18)); // 500 QEURO
-const portfolio = await integration.getPortfolio(userAddress);
-```
-
----
-
-*This quick start guide is maintained by Quantillon Labs and updated regularly.*
+[Integration Examples](Integration-Examples.md) covers normal redemption, unstaking and transaction recovery. The [API Reference](API-Reference.md) documents optional UserPool, hedger and dormant QTI interfaces. No mainnet transactions are required to validate an integration: use an isolated fork and funded test accounts.

@@ -121,11 +121,12 @@ We welcome several types of contributions:
 ```
 
 #### Code Blocks
-```markdown
+````markdown
 ```javascript
 // JavaScript code with syntax highlighting
 const contract = new ethers.Contract(address, abi, signer);
 ```
+````
 
 #### Tables
 ```markdown
@@ -292,34 +293,7 @@ Mints QEURO by swapping USDC.
 - Best practices
 - Complete implementations
 
-**Example**:
-```markdown
-### Minting QEURO from USDC
-
-```javascript
-async function mintQEURO(usdcAmount, slippage = 0.05) {
-    const vault = new ethers.Contract(VAULT_ADDRESS, VAULT_ABI, signer);
-    
-    try {
-        // Calculate minimum output with slippage protection
-        const expectedQeuro = await vault.calculateMintAmount(usdcAmount);
-        const minQeuroOut = expectedQeuro.mul(100 - slippage * 100).div(100);
-        
-        // Approve USDC spending
-        await usdc.approve(VAULT_ADDRESS, usdcAmount);
-        
-        // Mint QEURO
-        const tx = await vault.mintQEURO(usdcAmount, minQeuroOut);
-        await tx.wait();
-        
-        console.log('QEURO minted successfully');
-    } catch (error) {
-        console.error('Minting failed:', error.message);
-        throw error;
-    }
-}
-```
-```
+**Example:** Link to the maintained [Quick Start](Quick-Start.md) and [Integration Examples](Integration-Examples.md) for current ethers v6 syntax. New transaction examples must use active ABIs, integer amounts, confirmed approvals, execution previews and explicit minimum outputs. Avoid copying retired quote helpers into new guides.
 
 ### Architecture Documentation
 

@@ -175,4 +175,4 @@ The active market oracle can compare its publication with a fresh Chainlink EUR/
 
 ## Execution and fallback boundaries
 
-The router mid is a valuation reference, not a normal executable user quote. ExecutionPricing checks directional depth, observed capacity and source compatibility. Switching to Chainlink alone does not reopen minting. Its degraded redemption path still needs a valid reference and cannot bypass pause, liquidity or minimum-output checks. The dapp can apply stricter quote-availability gates than the contract fallback.
+The router mid is a valuation reference, not a normal executable user quote. ExecutionPricing checks directional depth, observed capacity and source compatibility. Switching to Chainlink alone does not reopen minting. Its degraded redemption path still needs a valid reference, remains bounded by the last reporter-certified net directional capacity, and cannot bypass pause, liquidity or minimum-output checks. The dapp can apply stricter quote-availability gates than the contract fallback.

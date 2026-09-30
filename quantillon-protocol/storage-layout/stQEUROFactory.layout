@@ -6,6 +6,7 @@
 13:0	mapping(address => uint256[])	32
 14:0	mapping(uint256 => string)	32
 15:0	mapping(bytes32 => bool)	32
+16:0	bool	1
 1:0	uint256	32
 2:0	address	20
 3:0	address	20

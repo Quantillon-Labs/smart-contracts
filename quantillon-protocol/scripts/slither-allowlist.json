@@ -185,11 +185,10 @@
     "reason": "Exact day-bucket selection deliberately distinguishes the current and immediately previous bucket; the rolling sum retains both. Day-boundary limit tests exercise the transitions."
   },
   {
-    "id": "55e0096afe779da47ba457ad034e3f7c7d9cfc775bd022ead87ce2fbc8abe0fb",
     "check": "incorrect-equality",
     "file": "src/core/stQEUROToken.sol",
     "function": "_vestedBalanceView",
-    "reason": "The zero-amount guard intentionally handles an empty payout or vesting balance. Positive values follow the payout/vesting path; it is not an equality against a manipulable nonzero balance."
+    "reason": "The unvestedBalance == 0 check returns zero when no yield remains to vest. It intentionally tests an empty internal accounting balance, not equality to a manipulable nonzero external balance. Vesting preview and settlement tests cover empty, partially vested and fully vested balances."
   },
   {
     "id": "86bc6d79b0e4c525295cec28fad2da8e543be04850b236d03085bb9ea32260dd",
@@ -309,5 +308,47 @@
     "file": "src/core/QuantillonVault.sol",
     "function": "",
     "reason": "Solidity initializes the value to zero. A positive external withdrawal overwrites it with the actual returned amount; the no-withdrawal branch must contribute zero to held collateral."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_creditVaultYield",
+    "reason": "Yield credits pass a literal zero feeRate to ExecutionPricingLibrary.mint, so its first return (Math.mulDiv(input, feeRate, 1e18)) is always zero. Net backing and QEURO output are both consumed, and the execution spread is paid separately. Yield fee and execution-spread tests cover this path."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/automation/MetaMorphoAdapterMigration.sol",
+    "function": "migrate",
+    "reason": "The Safe-only, nonReentrant migration marks completed before external calls. heldBefore and received deliberately preserve pre-operation balances for exact transfer-delta and final conservation checks; rereading them would erase those checks. Both adapters are constructor-bound and use the same USDC and underlying vault. Migration tests cover principal/yield preservation and atomic rollback on liquidity or registry failure."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "addMargin",
+    "reason": "addMargin, removeMargin, configure and setPaused share nonReentrant. The authorized operator executes fixed approval and pool calls through the bound Safe. beforeBalance deliberately remains the pre-operation balance so the final check enforces an exact USDC debit and any unexpected transfer reverts atomically. Rebalancer tests cover Safe fund conservation, allowance cleanup and reserve protection."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/automation/QuantillonRebalancerModule.sol",
+    "function": "removeMargin",
+    "reason": "addMargin, removeMargin, configure and setPaused share nonReentrant, including across Safe execution and the oracle read. beforeBalance is intentionally the pre-withdrawal balance: the final comparison requires the Safe to receive exactly amount. Rebalancer tests cover the exact credit and rollback when position or vault solvency floors fail."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/core/vaults/MetaMorphoStakingVaultAdapter.sol",
+    "function": "withdrawUnderlying",
+    "reason": "The manager-only withdrawal holds nonReentrant and reduces tracked principal before the bound ERC4626 withdrawal. balanceBefore intentionally snapshots USDC before that call; the post-call delta must equal fromVault and sharesBurned must be nonzero before funds are sent to the manager. Adapter tests verify exact withdrawals, principal accounting and the one-unit idle buffer."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/core/vaults/MetaMorphoStakingVaultAdapter.sol",
+    "function": "harvestYieldToVault",
+    "reason": "The manager-only harvest shares nonReentrant with deposits, withdrawals and principal write-downs. Yield and idle balances are intentional pre-withdrawal snapshots; balanceBefore enforces the exact USDC receipt and sharesBurned is the fresh ERC4626 return, checked for zero. Adapter tests cover realized yield, liquidity caps, zero yield and preservation of principal."
+  },
+  {
+    "check": "reentrancy-balance",
+    "file": "src/libraries/StakingYieldLibrary.sol",
+    "function": "withdrawPrincipal",
+    "reason": "This linked-library helper is reached through QuantillonVault._withdrawUsdcFromExternalVaults under the nonReentrant redemption or hedger-withdrawal entrypoints; external redemption commit helpers are onlySelf. The pre-call USDC snapshot deliberately measures each adapter receipt, which must equal both requested and returned amounts before principal is reduced. Each loop iteration takes a new snapshot. External-collateral redemption tests cover the withdrawal accounting."
   }
 ]

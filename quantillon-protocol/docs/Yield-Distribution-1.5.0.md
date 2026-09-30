@@ -1,7 +1,7 @@
 # Staking-ratio yield distribution — 1.5.0 release
 
 The Base candidate contracts were deployed and source-verified on 29 September 2026.
-The production proxy remains on 1.4.0 until the Safe executes the delayed upgrade.
+The production proxy was upgraded to 1.5.0 on 30 September 2026 at 09:21:13 UTC (11:21:13 Paris time), in Base block 51,985,363.
 QuantillonVault and its linked StakingYieldLibrary change from capital-weighted allocation to
 harvest-time staking-ratio allocation. The Morpho adapter and staking-token implementation do not
 change. The existing single-funded-strategy guard remains.
@@ -110,7 +110,17 @@ only after 43,200 seconds, and the ordered recipient configuration plus upgrade 
 Safe MultiSend. Accounting, configuration, staking shares and vesting storage were preserved.
 At zero haircut, the post-upgrade preview paid no yield to the hedger.
 
-This deployment record does not record a production activation. The production Safe still needs
-to schedule the operation, wait the controller delay, and execute it. Keep the payloads private;
-revalidate the predecessor implementation, recipient, code hashes and keeper state before each
-phase. Record the actual activation transaction and update deployed-version provenance afterward.
+## Confirmed production activation — 30 September 2026
+
+Safe transaction #78 completed the reviewed operation in
+[Base transaction 0xc41087be…d3255b3](https://basescan.org/tx/0xc41087befce4ef0832398af3abfd45a91860eff5f97f2af6bd36df993d3255b3).
+The Safe success event, completed controller operation, proxy implementation and all linked
+runtime hashes were verified. Accounting, QEURO supply, staking shares and token vesting storage
+were preserved across the activation block. The haircut remains zero and the preview pays no
+hedger yield. The dapp reports `staking-ratio`; the keeper remains healthy on its 03:00 UTC schedule.
+
+The 30 September 03:00 UTC harvest occurred before activation and used the previous model.
+The first scheduled harvest under 1.5.0 is 1 October 2026 at 03:00 UTC (05:00 Paris time).
+Its actual allocation and vesting synchronization still need to be observed after that run.
+Deployment provenance is recorded in `deployments/8453/versions.json`; transaction payloads and
+execution evidence remain private.

@@ -1,4 +1,6 @@
-# Staking yield distribution
+# Historical staking yield distribution — 1.4.0
+
+Production uses **1.5.0** from 30 September 2026. See the [current staking-ratio allocation and activation record](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). The capital-weighted model below is retained only as historical documentation.
 
 ## Capital-based distribution (QuantillonVault 1.4.0)
 

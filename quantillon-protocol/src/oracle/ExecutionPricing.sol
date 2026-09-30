@@ -141,7 +141,7 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     uint256 public maxImpactBps;
     /// @notice Venue fee and timing allowance incorporated into each execution rate.
     uint256 public bufferBps;
-    /// @notice Governance ceiling on admitted unacknowledged EUR exposure.
+    /// @notice Governance ceiling on net directional unacknowledged EUR exposure.
     uint256 public maxOutstanding;
     /// @notice Haircut applied to reference-priced redemptions when execution data is unavailable.
     uint256 public degradedHaircutBps = 25;
@@ -229,7 +229,7 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
      * @custom:access Public read access.
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
-    function version() external pure returns (string memory) { return "1.3.2"; }
+    function version() external pure returns (string memory) { return "1.3.3"; }
 
     /**
      * @notice Sets the bounded haircut used by the redemption liveness fallback.
@@ -487,10 +487,12 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
     function previewRedeem(uint256 qeuroInput) external view returns (Quote memory quote) {
         uint256 ref = _reference();
         bool executable = _bookCanExecuteRedeem(qeuroInput, ref);
+        uint256 capacity = executable ? _capacity(false, ref) : _admissionRoom(false);
+        if (!executable && qeuroInput > capacity) revert Errors.InsufficientBalance();
         uint256 payout = executable ? _redeem(qeuroInput, ref) : _degradedPayout(qeuroInput, ref);
         uint256 fee = Math.mulDiv(Math.mulDiv(qeuroInput, ref, SCALE), IExecutionVault(vault).redemptionFee(), 1e18);
         if (payout <= fee) revert Errors.InvalidAmount();
-        quote = Quote(payout - fee, Math.mulDiv(payout, SCALE, qeuroInput), ref, executable ? _capacity(false, ref) : qeuroInput, observedAt, sequence);
+        quote = Quote(payout - fee, Math.mulDiv(payout, SCALE, qeuroInput), ref, capacity, observedAt, sequence);
     }
 
     /**
@@ -540,6 +542,7 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
             payout = _redeem(q, ref);
             usedSell += q;
         } else {
+            if (q > _admissionRoom(false)) revert Errors.InsufficientBalance();
             payout = _degradedPayout(q, ref);
             emit DegradedRedemption(q, ref, payout, _degradedHaircut());
         }
@@ -741,16 +744,33 @@ contract ExecutionPricing is AccessControl, IExecutionPricing {
             if (skip >= quantity) { skip -= quantity; continue; }
             capacity += quantity - skip; skip = 0;
         }
-        uint256 limit = Math.min(maxOutstanding, marginCapacity);
-        (uint256 pendingBuy, uint256 pendingSell, uint256 gross,) = pendingExposure();
-        uint256 pending = buy ? pendingBuy : pendingSell;
-        uint256 opposite = buy ? pendingSell : pendingBuy;
-        uint256 sideRoom = pending >= opposite
-            ? (pending - opposite >= limit ? 0 : limit - (pending - opposite))
-            : limit + (opposite - pending);
+        uint256 sideRoom = _admissionRoom(buy);
+        (,, uint256 gross,) = pendingExposure();
         uint256 grossLimit = maxOutstanding * 2;
         uint256 grossRoom = gross >= grossLimit ? 0 : grossLimit - gross;
         return Math.min(capacity, buy ? Math.min(sideRoom, grossRoom) : sideRoom);
+    }
+
+    /// @notice Returns remaining net admission room for one execution side.
+    /// @dev Opposite pending exposure may be offset before reaching the configured directional limit.
+    /// @param buy True for buy-side admission, false for sell-side admission.
+    /// @return sideRoom Remaining quantity that can be admitted on the selected side.
+    /// @custom:security Applies the governance and reporter capacity ceilings to every admission path.
+    /// @custom:validation None.
+    /// @custom:state-changes None.
+    /// @custom:events None.
+    /// @custom:errors None.
+    /// @custom:reentrancy None.
+    /// @custom:access Private helper.
+    /// @custom:oracle Uses the last reported margin capacity, including during degraded execution.
+    function _admissionRoom(bool buy) private view returns (uint256 sideRoom) {
+        uint256 limit = Math.min(maxOutstanding, marginCapacity);
+        (uint256 pendingBuy, uint256 pendingSell,,) = pendingExposure();
+        uint256 pending = buy ? pendingBuy : pendingSell;
+        uint256 opposite = buy ? pendingSell : pendingBuy;
+        sideRoom = pending >= opposite
+            ? (pending - opposite >= limit ? 0 : limit - (pending - opposite))
+            : limit + (opposite - pending);
     }
 
     /**

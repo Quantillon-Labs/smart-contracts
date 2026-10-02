@@ -259,7 +259,7 @@ recorded in `deployments/8453/versions.json`.
 | --- | --- | --- |
 | Maximum depth/account age | 60 seconds | Reject stale book or margin observations; the execution publisher refreshes on the 10-second polling loop when due. |
 | Maximum execution impact | 25 bps (0.25%) | Total per-level price limit relative to the reference oracle, consistent with the hedge engine's existing limit. |
-| Execution buffer | 10 bps (0.10%) | Included in the execution rate and inside the 25 bps ceiling; covers venue fees plus a limited timing allowance. |
+| Execution buffer | 0 bps | Current governance-selected value. It remains changeable through `updateRiskLimits` while the vault is paused and admitted exposure is settled. |
 | Maximum unacknowledged exposure | EUR 1,000 | Aggregate across mint and redeem directions; additionally limited by current depth and reporter-certified margin capacity. |
 | Published depth | Up to 10 observed levels per side | Keeps cold publication within the writer's existing gas ceiling; omitted depth never contributes to capacity. |
 | Base confirmations for reporting | 4 blocks | Reporter uses confirmed supply and admission counters and checks the block hash again. |

@@ -10,7 +10,7 @@
   "reserveRecipient": "0x8DAD1B6c1A40e2649d50952977b5af1992f098d1",
   "maxAgeSeconds": 60,
   "maxImpactBps": 25,
-  "bufferBps": 10,
+  "bufferBps": 0,
   "maxOutstandingEur": "1000",
   "maxOutstandingEurRaw": "1000000000000000000000",
   "reporterConfirmations": 4,

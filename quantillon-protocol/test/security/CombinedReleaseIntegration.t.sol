@@ -25,7 +25,7 @@ contract CombinedReleaseIntegrationTest is HedgerVaultRegressionTest {
     function test_CombinedRelease_ExecutionSpreadAndHedgerProfitConserveUsdc() public {
         ExecutionPricing module = new ExecutionPricing(
             [address(vault), address(0x1234), admin, address(this), address(this), treasury],
-            [uint256(60), uint256(25), uint256(10), uint256(1000e18)]
+            [uint256(60), uint256(25), uint256(0), uint256(1000e18)]
         );
         // Model the router's venue selection while keeping the real reference feed checks.
         vm.mockCall(address(oracle), abi.encodeWithSignature("activeOracle()"), abi.encode(uint8(1)));
@@ -45,7 +45,7 @@ contract CombinedReleaseIntegrationTest is HedgerVaultRegressionTest {
 
         vm.startStateDiffRecording();
         vm.prank(user);
-        vault.mintQEURO(110120010, 100e18);
+        vault.mintQEURO(110010000, 100e18);
         VmSafe.AccountAccess[] memory accesses = vm.stopAndReturnStateDiff();
         for (uint256 i; i < accesses.length; ++i) {
             assertFalse(
@@ -57,7 +57,7 @@ contract CombinedReleaseIntegrationTest is HedgerVaultRegressionTest {
         }
         assertEq(_position().filledVolume, 110e6);
         assertEq(_position().qeuroBacked, 100e18);
-        assertEq(usdc.balanceOf(address(module)), 120010);
+        assertEq(usdc.balanceOf(address(module)), 10000);
 
         vm.roll(block.number + 10);
         vm.warp(block.timestamp + 1);
@@ -66,14 +66,14 @@ contract CombinedReleaseIntegrationTest is HedgerVaultRegressionTest {
         _publish(module, 1.0901e18, 1.0899e18);
         vm.startPrank(user);
         qeuro.approve(address(vault), type(uint256).max);
-        vault.redeemQEURO(100e18, 108881010);
+        vault.redeemQEURO(100e18, 108990000);
         vm.stopPrank();
 
         assertEq(_position().margin, 201e6);
         assertEq(_position().filledVolume, 0);
         assertEq(_position().qeuroBacked, 0);
-        assertEq(usdc.balanceOf(address(module)), 239000);
-        assertEq(usdc.balanceOf(user), userBefore - 1239000);
+        assertEq(usdc.balanceOf(address(module)), 20000);
+        assertEq(usdc.balanceOf(user), userBefore - 1020000);
         assertEq(module.outstanding(), 200e18);
         uint256 hedgerBefore = usdc.balanceOf(hedger);
         vm.prank(hedger);

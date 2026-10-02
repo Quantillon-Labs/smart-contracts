@@ -345,6 +345,16 @@
       "numberOfBytes": "32"
     }
   },
+  "27:0": {
+    "encoding": "inplace",
+    "label": "uint256",
+    "numberOfBytes": "32"
+  },
+  "28:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
   "2:0": {
     "encoding": "inplace",
     "label": "contract IQEUROToken",

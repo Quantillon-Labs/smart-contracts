@@ -18,6 +18,8 @@
 24:0	mapping(address => struct UserPool.UserWithdrawalInfo[])	32
 25:0	mapping(address => uint256)	32
 26:0	mapping(address => uint256)	32
+27:0	uint256	32
+28:0	bool	1
 2:0	contract IQEUROToken	20
 3:0	contract IERC20	20
 4:0	uint256	32

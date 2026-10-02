@@ -2323,6 +2323,19 @@ contract MockERC20 {
     }
 }
 
+contract UserPoolMigrationHarness is UserPool {
+    constructor(TimeProvider timeProvider) UserPool(timeProvider) {}
+
+    function setPendingMigrationStateForTest(bool initialized, uint256 totalPending) external {
+        pendingUsdcLiabilitiesInitialized = initialized;
+        totalPendingUsdcWithdrawals = totalPending;
+    }
+
+    function setPendingWithdrawalForTest(address user, uint256 amount) external {
+        pendingUsdcWithdrawals[user] = amount;
+    }
+}
+
 // =============================================================================
 // MOCK CONTRACTS FOR TESTING
 // =============================================================================
@@ -2491,7 +2504,7 @@ contract UserPoolTrackingTestSuite is Test {
         timeProvider = new TimeProvider();
         
         // Deploy UserPool implementation
-        implementation = new UserPool(timeProvider);
+        implementation = new UserPoolMigrationHarness(timeProvider);
         
         // Deploy proxy
         bytes memory initData = abi.encodeWithSelector(
@@ -2623,6 +2636,96 @@ contract UserPoolTrackingTestSuite is Test {
         
         (, uint256 totalWithdrawals2, , ) = userPool.getPoolTotals();
         assertEq(totalWithdrawals2, withdrawAmount + secondWithdraw, "Total withdrawals should accumulate");
+    }
+
+    function test_Recovery_ConfiguredQEUROPreservesStakeAndRecoversOnlySurplus() public {
+        uint256 depositAmount = 1000 * USDC_PRECISION;
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory minOuts = new uint256[](1);
+        amounts[0] = depositAmount;
+
+        vm.prank(user1);
+        userPool.deposit(amounts, minOuts);
+
+        amounts[0] = 100 * QEURO_PRECISION;
+        vm.prank(user1);
+        userPool.stake(amounts);
+
+        uint256 surplus = mockQEUROToken.balanceOf(address(userPool)) - userPool.totalStakes();
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        userPool.recoverToken(address(mockQEUROToken), surplus + 1);
+
+        vm.prank(admin);
+        userPool.recoverToken(address(mockQEUROToken), surplus);
+        assertEq(mockQEUROToken.balanceOf(address(userPool)), userPool.totalStakes());
+
+        vm.prank(user1);
+        userPool.requestUnstake(100 * QEURO_PRECISION);
+        vm.warp(block.timestamp + userPool.unstakingCooldown());
+        vm.prank(user1);
+        userPool.unstake();
+        assertEq(mockQEUROToken.balanceOf(address(userPool)), 0);
+    }
+
+    function test_Recovery_ConfiguredUSDCPreservesPendingWithdrawal() public {
+        uint256[] memory amounts = new uint256[](1);
+        uint256[] memory minOuts = new uint256[](1);
+        amounts[0] = 1000 * USDC_PRECISION;
+        vm.prank(user1);
+        userPool.deposit(amounts, minOuts);
+
+        uint256 qeuroAmount = 100 * QEURO_PRECISION;
+        uint256 expectedUsdc = (qeuroAmount * 108) / (1e12 * 100);
+        vm.mockCallRevert(
+            address(mockUSDCToken),
+            abi.encodeWithSelector(MockERC20.transfer.selector, user1, expectedUsdc),
+            "blocked"
+        );
+        amounts[0] = qeuroAmount;
+        vm.prank(user1);
+        userPool.withdraw(amounts, minOuts);
+
+        assertEq(userPool.pendingUsdcWithdrawals(user1), expectedUsdc);
+        assertEq(userPool.totalPendingUsdcWithdrawals(), expectedUsdc);
+        vm.clearMockedCalls();
+
+        uint256 surplus = mockUSDCToken.balanceOf(address(userPool)) - expectedUsdc;
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
+        userPool.recoverToken(address(mockUSDCToken), surplus + 1);
+
+        vm.prank(admin);
+        userPool.recoverToken(address(mockUSDCToken), surplus);
+        vm.prank(user1);
+        userPool.claimPendingWithdrawal();
+        assertEq(userPool.totalPendingUsdcWithdrawals(), 0);
+        assertEq(mockUSDCToken.balanceOf(address(userPool)), 0);
+    }
+
+    function test_PendingUsdcMigrationBackfillsLegacyLiability() public {
+        UserPoolMigrationHarness harness = UserPoolMigrationHarness(address(userPool));
+        uint256 legacyPending = 25 * USDC_PRECISION;
+        uint256 secondLegacyPending = 15 * USDC_PRECISION;
+        harness.setPendingMigrationStateForTest(false, 0);
+        harness.setPendingWithdrawalForTest(user1, legacyPending);
+        harness.setPendingWithdrawalForTest(user2, secondLegacyPending);
+        mockUSDCToken.mint(address(userPool), legacyPending + secondLegacyPending);
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.NotInitialized.selector);
+        userPool.recoverToken(address(mockUSDCToken), 1);
+
+        vm.prank(admin);
+        userPool.initializePendingUsdcLiabilitiesV2();
+        assertEq(userPool.totalPendingUsdcWithdrawals(), legacyPending + secondLegacyPending);
+
+        vm.prank(user1);
+        userPool.claimPendingWithdrawal();
+        assertEq(userPool.totalPendingUsdcWithdrawals(), secondLegacyPending);
+        vm.prank(user2);
+        userPool.claimPendingWithdrawal();
+        assertEq(userPool.totalPendingUsdcWithdrawals(), 0);
     }
     
     /**

@@ -230,13 +230,63 @@ contract ExecutionPricingTest is Test {
         assertEq(pricing.outstanding(), 0);
         assertEq(pricing.admittedBuy(), 1000e18);
         assertEq(pricing.marginCapacity(), 0);
-        assertEq(pricing.previewRedeem(1e18).amountOut, 997500);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.previewRedeem(1e18);
         vm.expectRevert(Errors.InvalidTime.selector);
         pricing.acknowledge(1000e18, 0, 1000e18, block.timestamp);
         vm.warp(block.timestamp + 1);
         pricing.acknowledge(1000e18, 0, 1000e18, block.timestamp);
         _publish();
         assertGt(pricing.previewRedeem(1e18).amountOut, 0);
+    }
+
+    function test_DegradedRedemptionStopsAtDirectionalLimit() public {
+        paused = true;
+        pricing.updateRiskLimits(60, 500, 0, 1000e18);
+        vm.warp(block.timestamp + 1);
+        pricing.acknowledge(0, 0, 1000e18, block.timestamp);
+        _publish();
+        vm.warp(block.timestamp + 61);
+
+        ExecutionPricing.Quote memory first = pricing.previewRedeem(600e18);
+        assertEq(first.capacityQeuro, 1000e18);
+        pricing.consumeRedeem(600e18, ref);
+
+        ExecutionPricing.Quote memory second = pricing.previewRedeem(400e18);
+        assertEq(second.capacityQeuro, 400e18);
+        pricing.consumeRedeem(400e18, ref);
+
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.previewRedeem(1e18);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.consumeRedeem(1e18, ref);
+    }
+
+    function test_DegradedRedemptionUsesReportedMarginLimit() public {
+        vm.warp(block.timestamp + 1);
+        pricing.acknowledge(0, 0, 100e18, block.timestamp);
+        _publish();
+        vm.warp(block.timestamp + 61);
+
+        assertEq(pricing.previewRedeem(100e18).capacityQeuro, 100e18);
+        pricing.consumeRedeem(100e18, ref);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.previewRedeem(1e18);
+    }
+
+    function test_DegradedRedemptionMayOffsetPendingBuysBeforeSellLimit() public {
+        paused = true;
+        pricing.updateRiskLimits(60, 500, 0, 1000e18);
+        vm.warp(block.timestamp + 1);
+        pricing.acknowledge(0, 0, 1000e18, block.timestamp);
+        _publish();
+        pricing.consumeMint(1001e6, ref);
+        vm.warp(block.timestamp + 61);
+
+        assertEq(pricing.previewRedeem(2000e18).capacityQeuro, 2000e18);
+        pricing.consumeRedeem(2000e18, ref);
+        vm.expectRevert(Errors.InsufficientBalance.selector);
+        pricing.consumeRedeem(1e18, ref);
     }
 
     function test_StaleBookRedemptionMatchesPreviewAndTracksExposure() public {

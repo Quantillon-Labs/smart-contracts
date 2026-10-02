@@ -104,6 +104,11 @@
       "numberOfBytes": "1"
     }
   },
+  "16:0": {
+    "encoding": "inplace",
+    "label": "bool",
+    "numberOfBytes": "1"
+  },
   "1:0": {
     "encoding": "inplace",
     "label": "uint256",

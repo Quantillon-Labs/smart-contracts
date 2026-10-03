@@ -176,12 +176,12 @@ make validate-natspec
 ## 🔐 Security
 
 ### Audits
-- Independent security audit completed; the resulting on-chain remediation went live in July 2026
+- No independent professional audit has been completed. Review to date is internal and AI-assisted; see the [public security record](https://security.quantillon.money/).
 
-### Bug Bounty
-- **Program**: planned (not yet open)
-- **Scope**: all smart contracts
-- **Contact**: team@quantillon.money — see [Responsible Disclosure](./Security.md#responsible-disclosure)
+### Vulnerability Disclosure
+- **Programme**: active and unpaid
+- **Policy and scope**: [security.quantillon.money/disclosure](https://security.quantillon.money/disclosure/)
+- **Contact**: team@quantillon.money
 
 ### Security Best Practices
 1. Always validate inputs

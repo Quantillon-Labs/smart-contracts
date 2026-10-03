@@ -149,14 +149,13 @@ function pause() external onlyRole(EMERGENCY_ROLE) {   // PAUSER_ROLE on QEUROTo
 
 ### Reporting a vulnerability
 
-Report suspected vulnerabilities privately to **team@quantillon.money** before any public disclosure. Include the affected contract(s) and addresses, a reproduction (transaction trace or Foundry test) and your assessment of impact. The team acknowledges reports, works with the reporter on validation and remediation, and coordinates publication once a fix is live.
+Report suspected vulnerabilities privately to **team@quantillon.money** before any public disclosure. Include the affected contract(s) and addresses, a reproduction (preferably a Foundry test against a local fork) and your assessment of impact. The team acknowledges reports, works with the reporter on validation and remediation, and coordinates a reasonable disclosure date.
 
-**In scope**: all contracts under `src/` as deployed on Base mainnet (see the [API Reference](./API-Reference.md#contract-addresses)), including the oracle stack and the external vault adapters.
-**Out of scope**: issues in third-party dependencies, social engineering, and scenarios that require already-privileged roles.
+**In scope**: Quantillon-written contracts under `src/` as deployed on Base mainnet (see the [API Reference](./API-Reference.md#contract-addresses)), including the oracle stack and external-vault integration logic. A defect in third-party code is outside this programme, but an exploitable impact caused by Quantillon's configuration or integration remains in scope.
 
-### Bug bounty
+Do not execute exploit or disruptive transactions on Base mainnet without prior written authorization. Do not access or move data or funds that are not yours, and do not perform denial of service, abusive automated traffic, oracle or market manipulation, governance interference, phishing, or social engineering.
 
-A bug bounty program is **planned**; reward tiers and scope will be published on this page when it opens. Until then, reports are handled through the disclosure process above.
+The canonical, current terms and programme status are maintained at [security.quantillon.money/disclosure](https://security.quantillon.money/disclosure/). The disclosure programme is active and unpaid.
 
 ### Audits
 

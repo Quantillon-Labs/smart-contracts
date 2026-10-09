@@ -118,6 +118,37 @@ library StakingYieldLibrary {
     }
 
     /**
+     * @notice Requires the effective redemption set to cover all tracked external principal.
+     * @dev The priority setter guarantees unique ids; an empty list selects only the default.
+     * @param principal Tracked principal by vault id.
+     * @param priority Unique ordered redemption ids.
+     * @param defaultId Fallback id when priority is empty.
+     * @param totalPrincipal Aggregate tracked external principal.
+     * @custom:security Prevents configuration from omitting funded collateral.
+     * @custom:validation Sum of included principal must equal the aggregate tracker.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors InvalidCondition or arithmetic overflow.
+     * @custom:reentrancy No external calls.
+     * @custom:access Linked library; caller enforces governance authorization.
+     * @custom:oracle None.
+     */
+    function validateRedemptionCoverage(
+        mapping(uint256 => uint256) storage principal,
+        uint256[] storage priority,
+        uint256 defaultId,
+        uint256 totalPrincipal
+    ) external view {
+        uint256 included;
+        if (priority.length == 0) {
+            if (defaultId != 0) included = principal[defaultId];
+        } else {
+            for (uint256 i; i < priority.length; ++i) included += principal[priority[i]];
+        }
+        if (included != totalPrincipal) revert CommonErrorLibrary.InvalidCondition();
+    }
+
+    /**
      * @notice Configures an external adapter while preserving tracked collateral.
      * @dev Funded replacements require a paused vault, empty old adapter, and funded new adapter.
      * @param adapters Adapter registry.
@@ -277,7 +308,7 @@ library StakingYieldLibrary {
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure returns (string memory) {
-        return "1.5.0";
+        return "1.6.0";
     }
 
     /// @notice Configuration and strategy registries supplied by the calling vault.

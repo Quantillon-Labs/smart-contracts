@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -406,13 +407,14 @@ contract stQEUROTokenTestSuite is Test {
         vm.stopPrank();
         stQEURO.syncVesting();
         vm.warp(block.timestamp + 1 days);
-        uint256 shares = stQEURO.previewDeposit(100e18);
+        uint256 smallDeposit = 150_000_000;
+        uint256 shares = stQEURO.previewDeposit(smallDeposit);
         assertGt(shares, 0);
         uint256 beforeBalance = qeuro.balanceOf(user2);
         vm.startPrank(user2);
-        qeuro.approve(address(stQEURO), 100e18);
+        qeuro.approve(address(stQEURO), smallDeposit);
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
-        stQEURO.deposit(100e18, user2);
+        stQEURO.deposit(smallDeposit, user2);
         vm.stopPrank();
         assertEq(qeuro.balanceOf(user2), beforeBalance);
         assertEq(stQEURO.balanceOf(user2), 0);
@@ -480,6 +482,7 @@ contract stQEUROTokenTestSuite is Test {
         vm.store(address(stQEURO), bytes32(uint256(6)), bytes32(0));
         vm.store(address(stQEURO), bytes32(uint256(7)), bytes32(0));
         vm.store(address(stQEURO), bytes32(uint256(8)), bytes32(0));
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
         vm.prank(admin);
         stQEURO.pause();
         vm.prank(user2);
@@ -516,5 +519,183 @@ contract stQEUROTokenTestSuite is Test {
         qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
         assertEq(stQEURO.deposit(DEPOSIT_AMOUNT, user2), preview);
         vm.stopPrank();
+    }
+
+    function _donateAndVest(uint256 amount) internal {
+        qeuro.mint(user1, amount);
+        vm.prank(user1);
+        qeuro.transfer(address(stQEURO), amount);
+        stQEURO.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+    }
+
+    function _depositForUser2(uint256 amount) internal {
+        qeuro.mint(user2, amount);
+        uint256 preview = stQEURO.previewDeposit(amount);
+        vm.startPrank(user2);
+        qeuro.approve(address(stQEURO), amount);
+        uint256 shares = stQEURO.deposit(amount, user2);
+        vm.stopPrank();
+        assertEq(shares, preview);
+        assertGt(shares, 0);
+        assertGe(stQEURO.previewRedeem(shares), amount - amount / 10_000);
+    }
+
+    function test_TinyFirstDepositAndDonationAllowOrdinaryDeposits() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), 1);
+        assertEq(stQEURO.deposit(1, user1), 1);
+        vm.stopPrank();
+        _donateAndVest(1_000e18);
+        uint256 snapshot = vm.snapshotState();
+        uint256[6] memory amounts = [uint256(10e18), 50e18, 100e18, 500e18, 999e18, 5_000e18];
+        for (uint256 i; i < amounts.length; ++i) {
+            _depositForUser2(amounts[i]);
+            assertTrue(vm.revertToState(snapshot));
+        }
+    }
+
+    function test_FirstEntryThroughMintAlsoProtectsDeposits() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), 1);
+        assertEq(stQEURO.mint(1, user1), 1);
+        vm.stopPrank();
+        _donateAndVest(1_000e18);
+        _depositForUser2(10e18);
+        uint256 shares = 1e12;
+        uint256 preview = stQEURO.previewMint(shares);
+        qeuro.mint(user2, preview);
+        vm.startPrank(user2);
+        qeuro.approve(address(stQEURO), preview);
+        assertEq(stQEURO.mint(shares, user2), preview);
+        vm.stopPrank();
+    }
+
+    function test_DonationBeforeFirstEntryAndResetPreserveAvailability() public {
+        _donateAndVest(1_000e18);
+        _depositForUser2(10e18);
+        uint256 shares = stQEURO.balanceOf(user2);
+        vm.prank(user2);
+        stQEURO.redeem(shares, user2, user2);
+        assertEq(stQEURO.totalSupply(), 0);
+        assertEq(qeuro.balanceOf(address(stQEURO)), 0);
+        assertEq(stQEURO.previewDeposit(10e18), 10e18);
+        _depositForUser2(10e18);
+    }
+
+    function testFuzz_DonationPreservesOrdinaryDepositAvailability(uint256 donation, uint256 depositAmount) public {
+        donation = bound(donation, 1, 100_000_000e18);
+        depositAmount = bound(depositAmount, 1e18, 1_000_000e18);
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), 1);
+        stQEURO.deposit(1, user1);
+        vm.stopPrank();
+        _donateAndVest(donation);
+        _depositForUser2(depositAmount);
+    }
+
+    function test_LegacyPricePreservedBeforeWithdrawalToDust() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        _donateAndVest(DONATION_AMOUNT);
+        // Existing proxies have no value in the appended reserve slot.
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
+        uint256 supply = stQEURO.totalSupply();
+        uint256 oldQuote = Math.mulDiv(supply, stQEURO.totalAssets() + 1, supply + 1);
+        assertApproxEqAbs(stQEURO.previewRedeem(supply), oldQuote, 1);
+        uint256 preview = stQEURO.previewRedeem(supply - 1);
+        vm.prank(user1);
+        assertEq(stQEURO.redeem(supply - 1, user1, user1), preview);
+        assertEq(stQEURO.totalSupply(), 1);
+        assertGt(uint256(vm.load(address(stQEURO), bytes32(uint256(9)))), 0);
+        _donateAndVest(1_000e18);
+        _depositForUser2(10e18);
+    }
+
+    function test_LegacyEmergencyExitActivatesReserveWithoutRepricingOtherHolder() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        _depositForUser2(DEPOSIT_AMOUNT);
+        _donateAndVest(DONATION_AMOUNT);
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
+        uint256 beforeQuote = stQEURO.previewRedeem(stQEURO.balanceOf(user2));
+        vm.prank(admin);
+        stQEURO.emergencyWithdraw(user1);
+        assertGt(uint256(vm.load(address(stQEURO), bytes32(uint256(9)))), 0);
+        assertApproxEqAbs(stQEURO.previewRedeem(stQEURO.balanceOf(user2)), beforeQuote, 1);
+    }
+
+    function test_LegacyDepositPreviewMatchesActivationDuringVesting() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        qeuro.mint(address(stQEURO), DONATION_AMOUNT);
+        stQEURO.syncVesting();
+        vm.warp(block.timestamp + 12 hours);
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
+        _depositForUser2(DEPOSIT_AMOUNT);
+    }
+
+    function test_LegacyWithdrawPreviewMatchesReserveActivation() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        _donateAndVest(DONATION_AMOUNT);
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
+        uint256 preview = stQEURO.previewWithdraw(DEPOSIT_AMOUNT / 2);
+        vm.prank(user1);
+        assertEq(stQEURO.withdraw(DEPOSIT_AMOUNT / 2, user1, user1), preview);
+        assertGt(uint256(vm.load(address(stQEURO), bytes32(uint256(9)))), 0);
+    }
+
+    function test_LegacyNearTotalLossDoesNotQuoteMoreThanBacking() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        vm.prank(address(stQEURO));
+        qeuro.transfer(treasury, DEPOSIT_AMOUNT - 2);
+        vm.store(address(stQEURO), bytes32(uint256(9)), bytes32(0));
+        assertLe(stQEURO.previewRedeem(DEPOSIT_AMOUNT), 2);
+        vm.prank(user1);
+        assertEq(stQEURO.redeem(DEPOSIT_AMOUNT, user1, user1), 2);
+        assertEq(stQEURO.totalSupply(), 0);
+    }
+
+    function testFuzz_LossAfterReserveActivationPreservesExitBacking(uint256 remainingAssets) public {
+        remainingAssets = bound(remainingAssets, 0, DEPOSIT_AMOUNT - 1);
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        vm.prank(address(stQEURO));
+        qeuro.transfer(treasury, DEPOSIT_AMOUNT - remainingAssets);
+        assertLe(stQEURO.previewRedeem(DEPOSIT_AMOUNT), remainingAssets);
+        vm.prank(user1);
+        assertEq(stQEURO.redeem(DEPOSIT_AMOUNT, user1, user1), remainingAssets);
+        assertEq(stQEURO.totalSupply(), 0);
+    }
+
+    function test_LossAfterReserveActivationPreservesDepositsAndPartialExits() public {
+        vm.startPrank(user1);
+        qeuro.approve(address(stQEURO), DEPOSIT_AMOUNT);
+        stQEURO.deposit(DEPOSIT_AMOUNT, user1);
+        vm.stopPrank();
+        vm.prank(address(stQEURO));
+        qeuro.transfer(treasury, DEPOSIT_AMOUNT / 2);
+        assertApproxEqAbs(stQEURO.previewRedeem(DEPOSIT_AMOUNT / 2), DEPOSIT_AMOUNT / 4, 1);
+        _depositForUser2(DEPOSIT_AMOUNT);
+        uint256 preview = stQEURO.previewWithdraw(DEPOSIT_AMOUNT / 4);
+        vm.prank(user1);
+        assertEq(stQEURO.withdraw(DEPOSIT_AMOUNT / 4, user1, user1), preview);
+        _donateAndVest(DONATION_AMOUNT);
+        _depositForUser2(DEPOSIT_AMOUNT);
+        assertLe(stQEURO.previewRedeem(stQEURO.totalSupply()), qeuro.balanceOf(address(stQEURO)));
     }
 }

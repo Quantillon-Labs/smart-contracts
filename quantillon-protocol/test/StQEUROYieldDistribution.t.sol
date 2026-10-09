@@ -165,8 +165,30 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         _distribute();
         stToken.syncVesting();
         vm.warp(block.timestamp + stToken.vestingPeriod());
-        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(user)), 52.5e18, 2);
-        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(second)), 52.5e18, 2);
+        // Matched virtual reserves retain a sub-micro-QEURO share of this yield.
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(user)), 52.5e18, 1e12);
+        assertApproxEqAbs(stToken.previewRedeem(stToken.balanceOf(second)), 52.5e18, 1e12);
+    }
+
+    function test_mintAndStakeAfterTinyShareDonation() public {
+        _setUpStaking();
+        vm.startPrank(admin);
+        qeuro.grantRole(qeuro.MINTER_ROLE(), admin);
+        qeuro.mint(user, 1_000e18 + 1);
+        vm.stopPrank();
+        vm.startPrank(user);
+        qeuro.approve(address(stToken), 1);
+        stToken.deposit(1, user);
+        qeuro.transfer(address(stToken), 1_000e18);
+        vm.stopPrank();
+        stToken.syncVesting();
+        vm.warp(block.timestamp + 1 days);
+        vm.startPrank(user);
+        usdc.approve(address(vault), 100e6);
+        (uint256 minted, uint256 shares) = vault.mintAndStakeQEURO(100e6, 0, VAULT_ID, 1);
+        vm.stopPrank();
+        assertGt(shares, 0);
+        assertGe(stToken.previewRedeem(shares), minted - minted / 10_000);
     }
 
     function test_harvestSnapshotReflectsNewStakeButIgnoresOracleAndHedgerCapital() public {

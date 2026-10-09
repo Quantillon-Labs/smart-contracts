@@ -12,6 +12,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
@@ -50,8 +51,7 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        // Patch release: relink TreasuryRecoveryLibrary 1.0.1.
-        return "1.2.5";
+        return "1.3.0";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -71,6 +71,10 @@ contract stQEUROToken is
     uint64 private lastVestingUpdate;
     uint32 public vestingPeriod;
     bool private vestingInitialized;
+
+    // Matched virtual reserves retain 18-decimal shares and sufficient conversion precision.
+    uint256 private constant VIRTUAL_SHARES = 1e12;
+    uint256 private virtualAssets;
 
     TimeProvider public immutable TIME_PROVIDER;
 
@@ -324,6 +328,70 @@ contract stQEUROToken is
     }
 
     /**
+     * @notice Converts assets using the series' matched virtual reserves.
+     * @dev Uses the same reserve quote before and after its first accounting synchronization.
+     * @param assets QEURO asset amount.
+     * @param rounding Direction of integer rounding.
+     * @return shares Corresponding share amount.
+     * @custom:security Virtual shares preserve conversion precision at small real supply.
+     * @custom:validation Checked arithmetic rejects unrepresentable totals.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Arithmetic overflow.
+     * @custom:reentrancy Read-only helper.
+     * @custom:access Internal ERC-4626 conversion.
+     * @custom:oracle None.
+     */
+    function _convertToShares(uint256 assets, Math.Rounding rounding)
+        internal view override returns (uint256 shares)
+    {
+        return Math.mulDiv(assets, totalSupply() + VIRTUAL_SHARES, totalAssets() + _virtualAssetReserve(), rounding);
+    }
+
+    /**
+     * @notice Converts shares using the series' matched virtual reserves.
+     * @dev Uses the same reserve as asset-to-share conversion without changing token decimals.
+     * @param shares Share amount.
+     * @param rounding Direction of integer rounding.
+     * @return assets Corresponding QEURO amount.
+     * @custom:security Keeps deposit and exit conversion symmetric.
+     * @custom:validation Checked arithmetic rejects unrepresentable totals.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Arithmetic overflow.
+     * @custom:reentrancy Read-only helper.
+     * @custom:access Internal ERC-4626 conversion.
+     * @custom:oracle None.
+     */
+    function _convertToAssets(uint256 shares, Math.Rounding rounding)
+        internal view override returns (uint256 assets)
+    {
+        return Math.mulDiv(shares, totalAssets() + _virtualAssetReserve(), totalSupply() + VIRTUAL_SHARES, rounding);
+    }
+
+    /**
+     * @notice Quotes the backing-bounded virtual asset reserve for this series.
+     * @dev Empty series start at parity. Existing populated series preserve their legacy
+     *      (assets + 1) / (shares + 1) rate to within one virtual asset base unit. The same
+     *      bound caps the reserve after losses so total redemption cannot exceed backing.
+     * @return reserve Virtual QEURO reserve in underlying base units.
+     * @custom:security Scales reserves before the first supply change on an existing series.
+     * @custom:validation Checked arithmetic and full-precision multiplication.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Arithmetic overflow.
+     * @custom:reentrancy Read-only helper.
+     * @custom:access Internal.
+     * @custom:oracle None.
+     */
+    function _virtualAssetReserve() private view returns (uint256 reserve) {
+        uint256 supply = totalSupply();
+        if (supply == 0) return VIRTUAL_SHARES;
+        uint256 backedReserve = 1 + Math.mulDiv(totalAssets() + 1, VIRTUAL_SHARES - 1, supply + 1);
+        return virtualAssets == 0 ? backedReserve : Math.min(virtualAssets, backedReserve);
+    }
+
+    /**
      * @notice Deposits QEURO into the vault and mints stQEURO shares to a receiver.
      * @dev Wraps the ERC-4626 deposit flow with pause and reentrancy protection.
      * @param assets Amount of QEURO assets to deposit.
@@ -475,6 +543,7 @@ contract stQEUROToken is
         unvestedBalance = 0;
         vestingEnd = 0;
         lastVestingUpdate = uint64(_protocolTime());
+        virtualAssets = VIRTUAL_SHARES;
     }
 
     /**
@@ -517,6 +586,8 @@ contract stQEUROToken is
     }
 
     function _syncVestingAccounting() private {
+        // Snapshot before accounting or share changes so previews and settlement use the same rate.
+        if (virtualAssets == 0) virtualAssets = _virtualAssetReserve();
         uint256 nowTime = _protocolTime();
         uint256 rawBalance = IERC20(asset()).balanceOf(address(this));
         if (!vestingInitialized) {

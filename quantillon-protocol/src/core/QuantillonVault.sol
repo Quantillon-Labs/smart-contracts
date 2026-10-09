@@ -122,7 +122,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.5.0";
+        return "1.5.1";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -1704,6 +1704,9 @@ contract QuantillonVault is
             if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         }
         uint256 previous = defaultStakingVaultId;
+        StakingYieldLibrary.validateRedemptionCoverage(
+            principalUsdcByVaultId, redemptionPriorityVaultIds, vaultId, totalUsdcInExternalVaults
+        );
         defaultStakingVaultId = vaultId;
         emit DefaultStakingVaultUpdated(previous, vaultId);
     }
@@ -1724,6 +1727,9 @@ contract QuantillonVault is
     function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE) {
         StakingYieldLibrary.setPriority(
             stakingVaultAdapterById, stakingVaultActiveById, redemptionPriorityVaultIds, vaultIds
+        );
+        StakingYieldLibrary.validateRedemptionCoverage(
+            principalUsdcByVaultId, redemptionPriorityVaultIds, defaultStakingVaultId, totalUsdcInExternalVaults
         );
     }
 

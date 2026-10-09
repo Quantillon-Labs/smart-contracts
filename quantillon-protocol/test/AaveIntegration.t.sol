@@ -8,6 +8,7 @@ pragma solidity 0.8.24;
 // =============================================================================
 
 import {Test} from "forge-std/Test.sol";
+import {stdStorage, StdStorage} from "forge-std/StdStorage.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -382,6 +383,7 @@ contract MockAaveVault {
  * @notice Tests for the USDC-to-Aave auto-deployment feature
  */
 contract AaveIntegrationTest is Test {
+    using stdStorage for StdStorage;
     // Contracts
     QuantillonVault public vault;
     UserPool public userPool;
@@ -931,6 +933,101 @@ contract AaveIntegrationTest is Test {
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
         vault.setRedemptionPriority(dup);
+    }
+
+    function _fundFirstVault() internal {
+        vm.startPrank(user);
+        usdc.approve(address(vault), 1_000e6);
+        vault.mintQEUROToVault(1_000e6, 0, 1);
+        vm.stopPrank();
+    }
+
+    function test_RoutingCannotOmitFundedVaultAndRevertsAtomically() public {
+        _fundFirstVault();
+        MockAaveVault second = new MockAaveVault(address(usdc));
+        uint256 collateral = vault.getTotalUsdcAvailable();
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(second), true);
+        uint256[] memory onlySecond = new uint256[](1);
+        onlySecond[0] = 2;
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.setRedemptionPriority(onlySecond);
+        vm.stopPrank();
+        assertEq(vault.getTotalUsdcAvailable(), collateral);
+        assertEq(vault.totalUsdcInExternalVaults(), 1_000e6);
+    }
+
+    function test_DefaultFallbackCannotDropFundedVault() public {
+        _fundFirstVault();
+        MockAaveVault second = new MockAaveVault(address(usdc));
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(second), true);
+        vault.setRedemptionPriority(new uint256[](0));
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.setDefaultStakingVaultId(2);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.setDefaultStakingVaultId(0);
+        vm.stopPrank();
+        assertEq(vault.defaultStakingVaultId(), 1);
+    }
+
+    function test_ExplicitCoverageAllowsNewDefaultButRejectsUnsafeFallback() public {
+        _fundFirstVault();
+        MockAaveVault second = new MockAaveVault(address(usdc));
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(second), true);
+        vault.setDefaultStakingVaultId(2);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.setRedemptionPriority(new uint256[](0));
+        uint256[] memory reordered = new uint256[](2);
+        reordered[0] = 2;
+        reordered[1] = 1;
+        vault.setRedemptionPriority(reordered);
+        vm.stopPrank();
+        assertEq(vault.getTotalUsdcAvailable() - vault.totalUsdcHeld(), 1_000e6);
+        assertEq(vault.totalUsdcInExternalVaults(), 1_000e6);
+    }
+
+    function test_RecognizedLossAllowsRemovingAnEmptyPosition() public {
+        _fundFirstVault();
+        vm.mockCall(address(mockAaveVault), abi.encodeWithSignature("totalUnderlying()"), abi.encode(uint256(0)));
+        vm.startPrank(admin);
+        vault.setDefaultStakingVaultId(0);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
+        vault.setRedemptionPriority(new uint256[](0));
+        vault.realizeExternalLoss(1);
+        vault.setRedemptionPriority(new uint256[](0));
+        vm.stopPrank();
+        assertEq(vault.totalUsdcInExternalVaults(), 0);
+    }
+
+    function test_DrainedPositionsCanBeRemovedFromRouting() public {
+        _fundFirstVault();
+        uint256 allCollateral = vault.getTotalUsdcAvailable();
+        vm.prank(address(hedgerPool));
+        vault.withdrawHedgerDeposit(user, allCollateral);
+        assertEq(vault.totalUsdcInExternalVaults(), 0);
+        vm.startPrank(admin);
+        vault.setDefaultStakingVaultId(0);
+        vault.setRedemptionPriority(new uint256[](0));
+        vm.stopPrank();
+    }
+
+    function test_RestoresCoverageOfPreviouslyOmittedPrincipal() public {
+        _fundFirstVault();
+        MockAaveVault second = new MockAaveVault(address(usdc));
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(second), true);
+        vault.setRedemptionPriority(new uint256[](0));
+        vm.stopPrank();
+        // Simulate an existing proxy whose old configuration omitted a funded id.
+        stdstore.target(address(vault)).sig("defaultStakingVaultId()").checked_write(uint256(2));
+        uint256[] memory complete = new uint256[](2);
+        complete[0] = 2;
+        complete[1] = 1;
+        vm.prank(admin);
+        vault.setRedemptionPriority(complete);
+        assertEq(vault.getTotalUsdcAvailable() - vault.totalUsdcHeld(), 1_000e6);
     }
 
     /// @notice recoverToken can move only stray USDC, never the tracked backing:

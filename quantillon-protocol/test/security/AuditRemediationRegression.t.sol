@@ -109,15 +109,17 @@ contract AuditRemediationRegression is DeploymentSmokeTest {
         stQEURO.deposit(1, user1);
         vm.stopPrank();
 
-        // Nonzero shares are also rejected when donation inflation causes excessive
-        // rounding loss. The whole transfer must roll back.
+        // An ordinary deposit retains enough precision and settles at its preview.
         uint256 remaining = qeuroToken.balanceOf(user1);
+        uint256 preview = stQEURO.previewDeposit(remaining);
         vm.startPrank(user1);
         qeuroToken.approve(address(stQEURO), remaining);
-        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
-        stQEURO.deposit(remaining, user1);
+        uint256 shares = stQEURO.deposit(remaining, user1);
         vm.stopPrank();
-        assertEq(qeuroToken.balanceOf(user1), remaining);
+        assertEq(shares, preview);
+        assertGt(shares, 0);
+        assertGe(stQEURO.previewRedeem(shares), remaining - remaining / 10_000);
+        assertEq(qeuroToken.balanceOf(user1), 0);
 
     }
 

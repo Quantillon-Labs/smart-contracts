@@ -47,7 +47,7 @@ contract StakingYieldUpgradeForkTest is Test {
         bytes32 beforeState = _state(id);
         (uint256 haircut, address recipient, uint256 last) = vault.yieldDistributionConfig(id);
         _upgrade();
-        assertEq(vault.version(), "1.5.0");
+        assertEq(vault.version(), "1.5.1");
         assertEq(_state(id), beforeState);
         (uint256 afterHaircut, address afterRecipient, uint256 afterLast) = vault.yieldDistributionConfig(id);
         assertEq(afterHaircut, haircut); assertEq(afterRecipient, recipient); assertEq(afterLast, last);

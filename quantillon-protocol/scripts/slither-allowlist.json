@@ -1,5 +1,11 @@
 [
   {
+    "check": "incorrect-equality",
+    "file": "src/core/stQEUROToken.sol",
+    "function": "_syncVestingAccounting",
+    "reason": "virtualAssets == 0 is the one-time initialization sentinel for a private appended storage slot. Every reserve quote is at least one (or VIRTUAL_SHARES for an empty series), and the final-exit reset writes VIRTUAL_SHARES rather than zero. Token balances cannot clear this slot. Equality selects initialization, not a target asset balance. stQEUROToken tests cover legacy activation, preview/settlement agreement, exits to dust, loss after activation, and empty-series reset."
+  },
+  {
     "check": "reentrancy-no-eth",
     "file": "src/core/QuantillonVault.sol",
     "function": "_creditVaultYield",

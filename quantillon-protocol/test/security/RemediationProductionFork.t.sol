@@ -103,7 +103,7 @@ contract RemediationProductionForkTest is Test {
         factory.registerVault(10_001, "MORPHO1");
         vm.prank(VAULT);
         assertTrue(factory.registerVault(10_002, "MORPHO2") != address(0));
-        assertEq(factory.version(), "1.0.5");
+        assertEq(factory.version(), "1.0.6");
     }
 
     function test_UserPoolUpgradeInitializesRecoveryReserve() public {
@@ -130,6 +130,6 @@ contract RemediationProductionForkTest is Test {
         vm.prank(TIMELOCK);
         pool.recoverToken(USDC, 10e6);
         assertEq(IERC20(USDC).balanceOf(treasury), treasuryBefore + 10e6);
-        assertEq(pool.version(), "1.0.7");
+        assertEq(pool.version(), "1.0.8");
     }
 }

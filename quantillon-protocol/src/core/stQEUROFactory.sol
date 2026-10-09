@@ -33,7 +33,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.5";
+        return "1.0.6";
     }
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant VAULT_FACTORY_ROLE = keccak256("VAULT_FACTORY_ROLE");
@@ -138,6 +138,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
 
     /**
      * @notice Backfills content-based vault-name hashes after a factory implementation upgrade.
+     * @dev Runs once through reinitializer(2), hashing each supplied registered name before enabling registration.
      * @param vaultIds Complete, strictly increasing list of registered vault identifiers.
      * @custom:security Governance-only migration; registration remains disabled until it completes.
      * @custom:validation Requires every id to be registered and the list to be strictly increasing.

@@ -3,21 +3,22 @@ name: Forge Docs
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "quantillon-protocol/**"
+      - ".github/workflows/forge-docs.yml"
   workflow_dispatch:
 
-# Needed for actions/deploy-pages OIDC
+# Pull-request builds only need source access; publishing permissions belong to deploy.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
 
     steps:
       - name: Checkout
@@ -223,11 +224,8 @@ jobs:
           npm install
           node tools/doc-postprocess.mjs ./docs/book
 
-      # REQUIRED by GitHub Pages before uploading the artifact
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
       - name: Upload artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: quantillon-protocol/docs/book
@@ -235,13 +233,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url || steps.deployment-retry2.outputs.page_url }}
     steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       # The Pages deploy service browns out intermittently ("Deployment failed,
       # try again later.", observed 2026-07-02/03/04/06). The site artifact is
       # already built and uploaded, so each attempt is a cheap, idempotent retry

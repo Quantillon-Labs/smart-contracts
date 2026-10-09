@@ -411,6 +411,7 @@ function generateContractReport(contractPath, result) {
  * @param outputFile Path to the output file
  */
 function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented, overallCoverage, outputFile) {
+    const parsingErrors = reports.filter(({ result }) => result.error).length;
     let output = '';
     
     output += ' Quantillon Protocol NatSpec Validation\n';
@@ -423,7 +424,8 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
     output += `Total Functions: ${totalFunctions}\n`;
     output += `Documented Functions: ${totalDocumented}\n`;
     output += `Overall Coverage: ${overallCoverage}%\n`;
-    output += `Missing Documentation: ${totalFunctions - totalDocumented}\n\n`;
+    output += `Missing Documentation: ${totalFunctions - totalDocumented}\n`;
+    output += `Parsing Errors: ${parsingErrors}\n\n`;
     
     // Detailed reports section
     output += ' DETAILED REPORTS\n';
@@ -437,7 +439,7 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
     output += '\n RECOMMENDATIONS\n';
     output += '='.repeat(60) + '\n';
     
-    if (overallCoverage < 100) {
+    if (totalDocumented !== totalFunctions) {
         output += ' Some functions are missing NatSpec documentation.\n';
         output += ' Required tags for complete documentation:\n';
         CONFIG.requiredTags.forEach(tag => {
@@ -449,6 +451,8 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
         output += '   3. Add @param for each function parameter\n';
         output += '   4. Add @return for each return value\n';
         output += '   5. Add all @custom tags for security and validation\n';
+    } else if (parsingErrors > 0 || totalFunctions === 0) {
+        output += ' Fix parsing errors and ensure production functions were scanned.\n';
     } else {
         output += ' All functions have complete NatSpec documentation!\n';
     }
@@ -464,7 +468,7 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
 function main() {
     console.log('🔍 Quantillon Protocol NatSpec Validation\n');
     console.log('=' .repeat(60));
-    console.log(`📁 Project Root: `);
+    console.log(`📁 Project Root: ${PROJECT_ROOT}`);
     console.log(`📁 Script Directory: ${__dirname}`);
     console.log('');
     
@@ -500,6 +504,9 @@ function main() {
     if (totalFunctions > 0) {
         overallCoverage = (totalDocumented / totalFunctions * 100).toFixed(2);
     }
+    const parsingErrors = reports.filter(({ result }) => result.error).length;
+    const incompleteDocumentation = totalDocumented !== totalFunctions;
+    const validationFailed = parsingErrors > 0 || incompleteDocumentation || totalFunctions === 0;
     
     // Generate summary
     console.log('\n📊 SUMMARY');
@@ -509,6 +516,7 @@ function main() {
     console.log(`Documented Functions: ${totalDocumented}`);
     console.log(`Overall Coverage: ${overallCoverage}%`);
     console.log(`Missing Documentation: ${totalFunctions - totalDocumented}`);
+    console.log(`Parsing Errors: ${parsingErrors}`);
     
     // Generate detailed reports
     console.log('\n DETAILED REPORTS');
@@ -530,7 +538,7 @@ function main() {
     console.log('\n RECOMMENDATIONS');
     console.log('=' .repeat(60));
     
-    if (overallCoverage < 100) {
+    if (incompleteDocumentation) {
         console.log(' Some functions are missing NatSpec documentation.');
         console.log(' Required tags for complete documentation:');
         CONFIG.requiredTags.forEach(tag => {
@@ -542,20 +550,21 @@ function main() {
         console.log('   3. Add @param for each function parameter');
         console.log('   4. Add @return for each return value');
         console.log('   5. Add all @custom tags for security and validation');
+    } else if (parsingErrors > 0 || totalFunctions === 0) {
+        console.log(' Fix parsing errors and ensure production functions were scanned.');
     } else {
         console.log(' All functions have complete NatSpec documentation!');
     }
     
-    // Report status without failing the build
-    if (overallCoverage < 100) {
-        console.log('\n  Validation complete - incomplete documentation detected');
+    // CI must not pass incomplete documentation or an incomplete scan.
+    if (validationFailed) {
+        console.error('\n Validation failed - documentation is incomplete or could not be validated');
         console.log(` Check ${ENV.RESULTS_DIR || 'scripts/results'}/natspec-validation-report.txt for detailed results`);
     } else {
         console.log('\n Validation complete - all functions documented');
     }
     
-    // Always exit successfully to not break CI/CD pipelines
-    process.exit(0);
+    process.exit(validationFailed ? 1 : 0);
 }
 
 // Run the validation

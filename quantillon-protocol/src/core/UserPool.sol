@@ -115,7 +115,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.7";
+        return "1.0.8";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -571,6 +571,7 @@ contract UserPool is
 
     /**
      * @notice Backfills aggregate pending USDC liabilities after an implementation upgrade.
+     * @dev Runs once through reinitializer(2), reserving the existing USDC balance before recovery is enabled.
      * @custom:security Governance-only migration; configured-USDC recovery stays disabled until completion.
      * @custom:validation Conservatively reserves the full pre-migration USDC balance.
      * @custom:state-changes Initializes `totalPendingUsdcWithdrawals` and marks the aggregate ready.

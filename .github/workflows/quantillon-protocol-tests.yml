@@ -124,6 +124,17 @@ jobs:
       - name: Storage gate regression tests
         run: python3 -m unittest discover -s scripts -p "test_storage*.py"
 
+      - name: Set up Node.js for documentation validation
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Require complete NatSpec coverage
+        run: make validate-natspec
+
+      - name: NatSpec gate regression tests
+        run: node --test scripts/test_validate-natspec.js
+
       - name: Upgrade-safety gate (size, storage-layout, ABI, version-bump)
         run: make analyze-contract-sizes check-storage-layout check-abi check-version-bump
 
@@ -212,3 +223,6 @@ jobs:
         env:
           FORGE_GAS_REPORT_FILE: ${{ runner.temp }}/forge-gas-report.txt
         run: make ci-base
+
+      - name: NatSpec gate regression tests
+        run: node --test scripts/test_validate-natspec.js

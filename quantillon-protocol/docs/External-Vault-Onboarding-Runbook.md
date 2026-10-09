@@ -127,6 +127,20 @@ cast call "$YIELD_SHIFT" "authorizedYieldSources(address)(bool)" 0xAdapterA --rp
 cast call "$YIELD_SHIFT" "sourceToVaultId(address)(uint256)" 0xAdapterA --rpc-url "$RPC_URL"
 cast call "$YIELD_SHIFT" "enforceSourceVaultBinding()(bool)" --rpc-url "$RPC_URL"
 ```
+## Routing configuration coverage
+
+Starting with QuantillonVault 1.5.1, the effective redemption set must include all tracked external principal. A nonempty priority list is the effective set; an empty list selects only the default vault. Both `setRedemptionPriority` and `setDefaultStakingVaultId` reject a resulting set whose included principal differs from `totalUsdcInExternalVaults`.
+
+When changing the default while the old default remains funded, first configure an explicit priority list containing every funded vault. Then change the default. Retain the old vault in the priority list until its tracked principal is withdrawn or its loss is recognized. Zero reported NAV alone does not allow removal. A complete explicit list can also restore coverage to an existing configuration.
+
+## stQEURO reserve activation
+
+stQEUROToken 1.3.0 uses matched virtual reserves while retaining 18-decimal shares and the existing ERC-4626 interface. New and empty series start at parity. A populated series calibrates its reserve ceiling to its current share price at the first accounting synchronization; that ceiling remains fixed until the series empties. The effective reserve is capped by backing after losses so withdrawals cannot quote more than the real assets. Vesting and the deposit round-trip loss bound remain in force.
+
+For an existing proxy, rehearse the upgrade against a recent pinned block and verify its share precision, balances, supply, metadata, and withdrawal quotes. While the series is unpaused, execute `upgradeToAndCall(newImplementation, abi.encodeCall(syncVesting, ()))` through the authorized controller so reserve activation is atomic with the upgrade. For paused maintenance, use one authorized Safe batch to pause, execute the controller's scheduled upgrade, call `syncVesting` from the Safe holding `GOVERNANCE_ROLE`, and unpause. A paused token rejects a sync from a controller without that role. Verify all roles during rehearsal and recheck the live state before execution.
+
+Calibration preserves the existing exchange rate; it does not reset a series with an already extreme asset-to-share ratio. If ordinary deposit previews are zero or fail the round-trip loss bound before activation, stop that series' rollout and resolve its migration without changing existing holders' claims. Update the factory's token implementation separately for future series; that setting does not upgrade existing token proxies.
+
 ## Adapter withdrawal and migration invariants
 
 An adapter must report the actual USDC withdrawn. A one-unit ERC-4626 rounding shortfall is permitted only when the aggregate flow can still satisfy the payout; principal trackers follow the actual return. Changing the ERC-4626 endpoint inside a current adapter requires zero old shares. Replacing an adapter must be rehearsed atomically while the vault is paused.

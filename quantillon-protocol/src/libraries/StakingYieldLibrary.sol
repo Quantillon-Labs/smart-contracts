@@ -139,7 +139,7 @@ library StakingYieldLibrary {
         uint256 defaultId,
         uint256 totalPrincipal
     ) external view {
-        uint256 included;
+        uint256 included = 0;
         if (priority.length == 0) {
             if (defaultId != 0) included = principal[defaultId];
         } else {

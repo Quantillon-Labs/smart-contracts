@@ -1,5 +1,7 @@
 # Multi-Vault Staking Runtime Flow
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 This note describes the current `vaultId`-based runtime behavior for staking, minting, redemption, and hedger liquidity flows.
 
 ## Core Runtime State

@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -132,6 +132,15 @@ uint256 public constant TWAP_PERIOD = 24 hours
 
 ```solidity
 uint256 public constant MAX_TIME_ELAPSED = 365 days
+```
+
+
+### MIN_UPDATE_INTERVAL
+Minimum interval between permissionless distribution recalculations.
+
+
+```solidity
+uint256 public constant MIN_UPDATE_INTERVAL = 1 hours
 ```
 
 
@@ -547,6 +556,34 @@ Recalculates and applies new yield distribution ratios based on current pool sta
 function updateYieldDistribution() external nonReentrant whenNotPaused;
 ```
 
+### _updateYieldDistribution
+
+Recalculates distribution from current aggregate pool sizes.
+
+Called after the public cadence gate or governance force-update guard.
+
+**Notes:**
+- security: Does not assert per-holder stake-age eligibility.
+
+- validation: Pool integrations must return valid metrics.
+
+- state-changes: Updates shift, timestamp, and history.
+
+- events: YieldDistributionUpdated.
+
+- errors: Propagates pool integration failures.
+
+- reentrancy: Caller holds nonReentrant.
+
+- access: Internal.
+
+- oracle: None.
+
+
+```solidity
+function _updateYieldDistribution() internal;
+```
+
 ### addYield
 
 Add yield from authorized sources
@@ -744,9 +781,9 @@ function _getCurrentPoolMetrics()
 
 ### _getEligiblePoolMetrics
 
-Get eligible pool metrics that only count deposits meeting holding period requirements
+Get current aggregate pool metrics used for allocation
 
-SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations
+Allocation uses aggregate balances and does not claim per-holder stake-age filtering
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -776,8 +813,8 @@ function _getEligiblePoolMetrics()
 
 |Name|Type|Description|
 |----|----|-----------|
-|`userPoolSize`|`uint256`|Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)|
-|`hedgerPoolSize`|`uint256`|Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)|
+|`userPoolSize`|`uint256`|Current aggregate user pool size|
+|`hedgerPoolSize`|`uint256`|Current aggregate hedger pool size|
 |`poolRatio`|`uint256`|Ratio of eligible pool sizes|
 
 
@@ -1621,7 +1658,7 @@ Emergency function to bypass normal update conditions and force distribution
 
 
 ```solidity
-function forceUpdateYieldDistribution() external;
+function forceUpdateYieldDistribution() external nonReentrant whenNotPaused;
 ```
 
 ### getTimeWeightedAverage
@@ -1952,4 +1989,3 @@ struct YieldDependencyConfig {
     address treasury;
 }
 ```
-

@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -198,17 +198,6 @@ Minimum delay before a proposed dev-mode change takes effect
 
 ```solidity
 uint256 private constant DEV_MODE_DELAY = 48 hours
-```
-
-
-### MAX_FUNDING_RATE_ANNUAL_BPS
-Maximum settable annualized hedger funding rate (basis points).
-
-Upper bound for `fundingRateAnnualBps` to bound the hedger carve-out.
-
-
-```solidity
-uint256 private constant MAX_FUNDING_RATE_ANNUAL_BPS = 5000
 ```
 
 
@@ -537,10 +526,9 @@ uint256 private lastPriceUpdateTime
 
 
 ### fundingRateAnnualBps
-Annualized funding rate (basis points) reserved for hedgers from harvested vault yield.
+Retired annual funding value; preserved exclusively for proxy storage compatibility.
 
-Hedger-first carve-out: hedgerShare = fundingRateAnnualBps * notional * dt / (10000 * 365 days).
-Governance-set; 0 at commercial launch. This is an ABSOLUTE funding cost, NOT a share of yield.
+Never read for allocation and never reused as the staking yield haircut.
 
 
 ```solidity
@@ -549,7 +537,7 @@ uint256 internal fundingRateAnnualBps
 
 
 ### lastYieldHarvestByVaultId
-Timestamp of the last yield harvest+distribution per vault id (funding accrual clock).
+Timestamp of the last yield harvest+distribution per vault id (keeper idempotency).
 
 Set lazily on the first `harvestAndDistributeVaultYield` call for a vault id.
 
@@ -560,13 +548,42 @@ mapping(uint256 => uint256) internal lastYieldHarvestByVaultId
 
 
 ### hedgerYieldRecipient
-Recipient of the hedger funding share routed during yield distribution.
+Recipient of the staking yield haircut; there is no hedger base allocation.
 
 Falls back to `treasury` when unset (address(0)).
 
 
 ```solidity
 address internal hedgerYieldRecipient
+```
+
+
+### executionPricing
+Optional volume-dependent execution pricing; appended for proxy storage compatibility.
+
+Zero before coordinated activation. All ordinary mint/redeem routes use this module.
+
+
+```solidity
+IExecutionPricing public executionPricing
+```
+
+
+### hedgerStakingYieldHaircutBps
+Governance share of gross earned staking yield, in bps; zero on upgrade.
+
+
+```solidity
+uint256 public hedgerStakingYieldHaircutBps
+```
+
+
+### signedExecutionEnabled
+Whether the configured module requires atomic signed settlement contexts.
+
+
+```solidity
+bool public signedExecutionEnabled
 ```
 
 
@@ -1139,7 +1156,6 @@ Applies configured mint fee and slippage floor against `minQeuroOut`.
 ```solidity
 function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 minQeuroOut)
     internal
-    view
     returns (uint256 fee, uint256 netAmount, uint256 qeuroToMint);
 ```
 **Parameters**
@@ -2005,6 +2021,41 @@ function setStakingVault(uint256 vaultId, address adapter, bool active) external
 |`active`|`bool`|Activation flag controlling whether vault id is eligible for routing.|
 
 
+### realizeExternalLoss
+
+Records a loss of externally deployed principal.
+
+The loss is socialised through the vault collateral account; hedger margin is
+untouched and the existing collateralization/liquidation rules apply.
+
+**Notes:**
+- security: Governance-only accounting correction.
+
+- validation: Requires a configured adapter and a lower reported underlying value.
+
+- state-changes: Reduces tracked external principal and aggregate external collateral.
+
+- events: Emits `ExternalVaultLossRealized`.
+
+- errors: InvalidVault, ZeroAddress, or InvalidCondition.
+
+- reentrancy: Adapter read is view-only.
+
+- access: Governance role.
+
+- oracle: No oracle dependency.
+
+
+```solidity
+function realizeExternalLoss(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|External vault identifier.|
+
+
 ### setDefaultStakingVaultId
 
 Sets default vault id used for mint routing and fallback redemption priority.
@@ -2124,6 +2175,7 @@ function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata v
 Credits harvested user yield into a specific stQEURO vault as real QEURO backing.
 
 Converts harvested user-side USDC into newly minted QEURO sent directly to the target stQEURO vault.
+No protocol yield fee applies; configured execution costs are paid from the yield.
 
 **Notes:**
 - security: Restricted to `YIELD_DISTRIBUTOR_ROLE`; validates oracle, collateralization, and vault bindings.
@@ -2140,7 +2192,7 @@ Converts harvested user-side USDC into newly minted QEURO sent directly to the t
 
 - access: Restricted to addresses with `YIELD_DISTRIBUTOR_ROLE`.
 
-- oracle: Requires fresh validated EUR/USD and USDC/USD oracle reads.
+- oracle: Requires validated EUR/USD and fresh execution depth/capacity when pricing is enabled.
 
 
 ```solidity
@@ -2172,6 +2224,7 @@ Credits already-held USDC into an stQEURO vault as freshly minted QEURO backing.
 Shared core used by `creditVaultYield` (after pulling USDC from the caller) and by
 `harvestAndDistributeVaultYield` (after realizing adapter yield into this contract).
 Assumes `usdcAmount` USDC is already held by this contract; performs no transfer-in.
+Reserves execution exposure before minting and excludes execution costs from reference backing.
 
 **Notes:**
 - security: Caller must enforce access control, pause, and reentrancy guards.
@@ -2188,7 +2241,7 @@ Assumes `usdcAmount` USDC is already held by this contract; performs no transfer
 
 - access: Internal.
 
-- oracle: Requires fresh validated EUR/USD and USDC/USD oracle reads.
+- oracle: Requires validated EUR/USD and fresh execution depth/capacity when pricing is enabled.
 
 
 ```solidity
@@ -2210,45 +2263,43 @@ function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns
 
 ### setFundingRateAnnualBps
 
-Sets the annualized hedger funding rate used to size the hedger yield carve-out.
+Retired annual-funding setter retained for selector compatibility.
 
-Expressed in basis points of the deployed notional, accrued pro-rata to elapsed time.
-Set to 0 for commercial launch (Quantillon-as-sole-hedger bootstrap); a non-zero value
-reserves an absolute funding amount for hedgers ahead of the staker/treasury split.
+Always reverts; use setHedgerStakingYieldHaircutBps for the new percentage-of-yield policy.
 
 **Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`.
+- security: Existing governance restriction remains.
 
-- validation: Reverts when `newRateBps` exceeds `MAX_FUNDING_RATE_ANNUAL_BPS`.
+- validation: This setting is no longer supported.
 
-- state-changes: Updates `fundingRateAnnualBps`.
+- state-changes: None.
 
-- events: Emits `FundingRateUpdated`.
+- events: None.
 
-- errors: Reverts with `AboveLimit` when the rate is too high.
+- errors: InvalidCondition or access-control failure.
 
-- reentrancy: No reentrancy-sensitive external calls.
+- reentrancy: No external calls.
 
-- access: Governance-only.
+- access: GOVERNANCE_ROLE.
 
-- oracle: No oracle dependencies.
+- oracle: None.
 
 
 ```solidity
-function setFundingRateAnnualBps(uint256 newRateBps) external onlyRole(GOVERNANCE_ROLE);
+function setFundingRateAnnualBps(uint256 newRateBps) external view onlyRole(GOVERNANCE_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newRateBps`|`uint256`|New annualized funding rate in basis points (<= MAX_FUNDING_RATE_ANNUAL_BPS).|
+|`newRateBps`|`uint256`|Unused legacy annual funding input.|
 
 
 ### setHedgerYieldRecipient
 
-Sets the recipient of the hedger funding share routed during yield distribution.
+Sets the recipient of the staking yield haircut.
 
-When unset (address(0)), the hedger share falls back to the treasury.
+Nonzero hedger payouts require this recipient to be configured.
 
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
@@ -2280,23 +2331,18 @@ function setHedgerYieldRecipient(address newRecipient) external onlyRole(GOVERNA
 
 ### harvestAndDistributeVaultYield
 
-Harvests external-vault yield and distributes it: hedger funding first, then the
-staked-user share into stQEURO (rising share price), then the remainder to treasury.
+Harvests yield and allocates it by the staking ratio, with a haircut on gross staking yield.
 
-Realizes adapter yield into this contract via `harvestYieldToVault`, carves out the hedger
-funding accrual (`fundingRateAnnualBps * notional * dt / (10000 * 365 days)`), credits the
-residual to stQEURO holders pro-rata to staked/circulating QEURO, and sends the rest to
-treasury. The first call for a vault id only anchors the funding clock.
-MINIMAL V1: the hedger carve-out is capped at the realized yield; the "draw from the user pool"
-path for `realizedYield < hedgerAccrual` (negative residual, falling share price) is
-intentionally out of scope and does not trigger while funding stays below the vault yield.
+The linked library snapshots ownership, realizes yield, routes USDC and records the keeper
+timestamp. The existing credit path converts the post-haircut staker allocation into QEURO.
+Allocation, execution admission and minting are one atomic operation.
 
 **Notes:**
 - security: Restricted to `YIELD_DISTRIBUTOR_ROLE`; protected by `nonReentrant` and pause.
 
 - validation: Reverts when vault id is invalid/inactive or adapter is unset.
 
-- state-changes: Updates the funding clock, protocol USDC/QEURO accounting, and stQEURO backing; moves USDC to the hedger recipient and treasury.
+- state-changes: Updates the keeper harvest timestamp, protocol USDC/QEURO accounting, and stQEURO backing; moves USDC to the hedger recipient and treasury.
 
 - events: Emits `VaultYieldDistributed`.
 
@@ -2306,7 +2352,7 @@ intentionally out of scope and does not trigger while funding stays below the va
 
 - access: Restricted to `YIELD_DISTRIBUTOR_ROLE`.
 
-- oracle: Credit path requires fresh validated EUR/USD and USDC/USD oracle reads.
+- oracle: Requires a fresh validated EUR/USD reference price.
 
 
 ```solidity
@@ -2321,6 +2367,128 @@ function harvestAndDistributeVaultYield(uint256 vaultId)
 |Name|Type|Description|
 |----|----|-----------|
 |`vaultId`|`uint256`|Vault id whose adapter yield is harvested and distributed.|
+
+
+### previewVaultYieldDistribution
+
+Preview USDC distribution using the harvest-time staking ratio; call with eth_call.
+
+Non-view for ABI compatibility. No USDC is transferred.
+
+**Notes:**
+- security: Uses the same calculation and guards as harvest.
+
+- validation: Active single funded strategy required. Conversion checks are separate.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Propagates library validation errors.
+
+- reentrancy: nonReentrant.
+
+- access: Public.
+
+- oracle: Fresh validated EUR/USD price.
+
+
+```solidity
+function previewVaultYieldDistribution(uint256 vaultId)
+    external
+    nonReentrant
+    returns (StakingYieldLibrary.Split memory split);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Selected strategy.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`split`|`StakingYieldLibrary.Split`|Estimated allocations before execution costs.|
+
+
+### setHedgerStakingYieldHaircutBps
+
+Configure the hedger percentage of gross earned staking yield (0 to 100%).
+
+The only configurable deduction from harvested staking yield; never deducts principal.
+
+**Notes:**
+- security: Governance only.
+
+- validation: At most 10,000 bps.
+
+- state-changes: Updates haircut setting.
+
+- events: HedgerStakingYieldHaircutUpdated.
+
+- errors: AboveLimit or access-control failure.
+
+- reentrancy: No external calls.
+
+- access: GOVERNANCE_ROLE.
+
+- oracle: None.
+
+
+```solidity
+function setHedgerStakingYieldHaircutBps(uint256 newBps) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newBps`|`uint256`|Basis points, where 200 means 2% of earned yield.|
+
+
+### yieldDistributionConfig
+
+Read staking-yield distribution settings and the keeper's last-harvest timestamp.
+
+Available from version 1.4.0; the retired annual funding rate is not returned here.
+
+**Notes:**
+- security: Read-only.
+
+- validation: None.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: View only.
+
+- access: Public.
+
+- oracle: None.
+
+
+```solidity
+function yieldDistributionConfig(uint256 vaultId)
+    external
+    view
+    returns (uint256 haircutBps, address hedgerRecipient, uint256 lastHarvest);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Strategy identifier.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`haircutBps`|`uint256`|Percentage of earned staking yield in basis points.|
+|`hedgerRecipient`|`address`|Configured USDC recipient.|
+|`lastHarvest`|`uint256`|Last successful harvest timestamp.|
 
 
 ### harvestConfig
@@ -2363,8 +2531,8 @@ function harvestConfig(uint256 vaultId)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fundingRateBps`|`uint256`|Annualized hedger funding rate (basis points).|
-|`hedgerRecipient`|`address`|Hedger funding recipient (zero address falls back to treasury).|
+|`fundingRateBps`|`uint256`|Always zero: annual funding is retired.|
+|`hedgerRecipient`|`address`|Configured hedger recipient; zero is not a treasury fallback.|
 |`lastHarvest`|`uint256`|Timestamp of the last harvest+distribute for the vault id.|
 
 
@@ -2524,47 +2692,6 @@ function _resolveWithdrawalPriority() internal view returns (uint256[] memory pr
 |Name|Type|Description|
 |----|----|-----------|
 |`priority`|`uint256[]`|Ordered vault ids to use for withdrawal sourcing.|
-
-
-### _withdrawFromExternalVault
-
-Withdraws up to `remaining` USDC principal from one external vault id.
-
-Caps withdrawal at locally tracked principal and requires adapter to return exact requested amount.
-
-**Notes:**
-- security: Internal helper used by controlled redemption liquidity flow.
-
-- validation: Skips inactive/unconfigured/zero-principal vaults; reverts on adapter mismatch.
-
-- state-changes: Decreases per-vault and global principal trackers before adapter withdrawal.
-
-- events: Emits `UsdcWithdrawnFromExternalVault` on successful withdrawal.
-
-- errors: Reverts with `InvalidAmount` if adapter withdrawal result mismatches request.
-
-- reentrancy: Internal helper; adapter interaction occurs after accounting updates.
-
-- access: Internal helper.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`vaultId`|`uint256`|Vault id to withdraw from.|
-|`remaining`|`uint256`|Remaining aggregate withdrawal amount required.|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`withdrawnAmount`|`uint256`|Amount withdrawn from this vault id (0 when skipped/ineligible).|
 
 
 ### withdrawProtocolFees
@@ -3587,6 +3714,196 @@ function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeu
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
+### executeWithQuote
+
+Dispatch one signed operation with the original caller and existing accounting.
+
+Invoked through the consumer; delegatecall retains its storage and original sender.
+
+**Notes:**
+- security: Consumer permissions and accounting checks remain in force.
+
+- validation: Applies the selected operation's bounds; failures revert the entire call.
+
+- state-changes: Updates the calling consumer and downstream contracts as described above.
+
+- events: Underlying operation and token events when applicable.
+
+- errors: Reverts on invalid inputs, permissions or failed downstream calls.
+
+- reentrancy: The consuming operation retains its existing reentrancy guards.
+
+- access: Consumer entrypoint permissions; this helper grants no additional authority.
+
+- oracle: Uses the consumer's configured reference and execution paths where the operation requires pricing.
+
+
+```solidity
+function executeWithQuote(bytes calldata callData, bytes calldata authorization)
+    external
+    whenNotPaused
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Complete ABI-encoded operation, including route and output bounds.|
+|`authorization`|`bytes`|ABI-encoded report or quote authorization required by this entrypoint.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|ABI-encoded return data of the dispatched operation.|
+
+
+### preparePoolQuote
+
+Begin an atomic pool route bound to its original user and complete calldata.
+
+Invoked through the consumer; delegatecall retains its storage and original sender.
+
+**Notes:**
+- security: Consumer permissions and accounting checks remain in force.
+
+- validation: Applies the selected operation's bounds; failures revert the entire call.
+
+- state-changes: Updates the calling consumer and downstream contracts as described above.
+
+- events: Underlying operation and token events when applicable.
+
+- errors: Reverts on invalid inputs, permissions or failed downstream calls.
+
+- reentrancy: The consuming operation retains its existing reentrancy guards.
+
+- access: Consumer entrypoint permissions; this helper grants no additional authority.
+
+- oracle: Uses the consumer's configured reference and execution paths where the operation requires pricing.
+
+
+```solidity
+function preparePoolQuote(address user, bytes calldata callData, bytes calldata authorization)
+    external
+    whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Original payer whose nonce and settlement are bound.|
+|`callData`|`bytes`|Complete ABI-encoded operation, including route and output bounds.|
+|`authorization`|`bytes`|ABI-encoded report or quote authorization required by this entrypoint.|
+
+
+### finishPoolQuote
+
+Finish the atomic pool route after its conversion has been consumed.
+
+Invoked through the consumer; delegatecall retains its storage and original sender.
+
+**Notes:**
+- security: Consumer permissions and accounting checks remain in force.
+
+- validation: Applies the selected operation's bounds; failures revert the entire call.
+
+- state-changes: Updates the calling consumer and downstream contracts as described above.
+
+- events: Underlying operation and token events when applicable.
+
+- errors: Reverts on invalid inputs, permissions or failed downstream calls.
+
+- reentrancy: The consuming operation retains its existing reentrancy guards.
+
+- access: Consumer entrypoint permissions; this helper grants no additional authority.
+
+- oracle: Uses the consumer's configured reference and execution paths where the operation requires pricing.
+
+
+```solidity
+function finishPoolQuote() external;
+```
+
+### emergencyRedeemQEURO
+
+Run the governed budgeted emergency redemption path.
+
+Invoked through the consumer; delegatecall retains its storage and original sender.
+
+**Notes:**
+- security: Consumer permissions and accounting checks remain in force.
+
+- validation: Applies the selected operation's bounds; failures revert the entire call.
+
+- state-changes: Updates the calling consumer and downstream contracts as described above.
+
+- events: Underlying operation and token events when applicable.
+
+- errors: Reverts on invalid inputs, permissions or failed downstream calls.
+
+- reentrancy: The consuming operation retains its existing reentrancy guards.
+
+- access: Consumer entrypoint permissions; this helper grants no additional authority.
+
+- oracle: Uses the consumer's configured reference and execution paths where the operation requires pricing.
+
+
+```solidity
+function emergencyRedeemQEURO(uint256 amount, uint256 minimum) external whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount in the token units of the selected operation.|
+|`minimum`|`uint256`|Minimum acceptable output in the output token's raw units.|
+
+
+### _executeSignedExtension
+
+Forward only explicitly declared quote entrypoints to the statically linked extension.
+
+The extension preserves msg.sender, validates mode/access, and delegates only signed selectors.
+
+
+```solidity
+function _executeSignedExtension() private;
+```
+
+### configureExecutionPricing
+
+Configure the execution pricing module while settlement is paused.
+
+Existing admission must be fully acknowledged before changing modules.
+
+**Notes:**
+- security: Governance only; cannot discard outstanding admission.
+
+- validation: Requires paused vault, correct module binding and zero pending exposure.
+
+- state-changes: Updates executionPricing.
+
+- events: ExecutionPricingConfigured.
+
+- errors: Propagates access, pause, binding or pending-exposure errors.
+
+- reentrancy: Calls trusted read-only module checks.
+
+- access: GOVERNANCE_ROLE while paused.
+
+- oracle: No price read.
+
+
+```solidity
+function configureExecutionPricing(address module) external onlyRole(GOVERNANCE_ROLE) whenPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`module`|`address`|Vault-bound module, or zero to deactivate after reconciliation.|
+
+
 ### proposeDevMode
 
 Toggles dev mode to disable price caching requirements
@@ -3816,6 +4133,12 @@ Emitted when an external staking vault adapter is configured.
 event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
 ```
 
+### ExternalVaultLossRealized
+
+```solidity
+event ExternalVaultLossRealized(uint256 indexed vaultId, uint256 previousPrincipal, uint256 currentUnderlying);
+```
+
 ### DefaultStakingVaultUpdated
 
 ```solidity
@@ -3918,6 +4241,69 @@ event OracleUpdated(address indexed oldOracle, address indexed newOracle);
 event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
 ```
 
+### VaultYieldBreakdown
+Retired hedger base (always zero) and staking haircut, in USDC (6 decimals).
+
+
+```solidity
+event VaultYieldBreakdown(uint256 indexed vaultId, uint256 hedgerBase, uint256 stakingYieldHaircut);
+```
+
+### HedgerStakingYieldHaircutUpdated
+Governance changed the percentage of gross staking yield paid to the hedger.
+
+
+```solidity
+event HedgerStakingYieldHaircutUpdated(uint256 oldBps, uint256 newBps);
+```
+
+### ExecutionPricingConfigured
+Emitted when governance configures the execution pricing module.
+
+
+```solidity
+event ExecutionPricingConfigured(address indexed module);
+```
+
+## Errors
+### InsufficientCollateralization
+Collateralization is below the minimum required to mint.
+
+Included in the vault ABI for errors propagated by its linked pricing library.
+
+
+```solidity
+error InsufficientCollateralization();
+```
+
+### NoActiveHedgerLiquidity
+Minting requires available liquidity from an active hedger.
+
+Included in the vault ABI for errors propagated by its linked pricing library.
+
+
+```solidity
+error NoActiveHedgerLiquidity();
+```
+
+### PercentageTooHigh
+Retired yield-fee validation error retained for ABI compatibility.
+
+
+```solidity
+error PercentageTooHigh();
+```
+
+### NotInitialized
+Retained ABI error for staking recipients that have not initialized their share supply.
+
+Emitted by the linked yield settlement library.
+
+
+```solidity
+error NotInitialized();
+```
+
 ## Structs
 ### LiquidationCommitParams
 
@@ -3967,4 +4353,3 @@ struct RedeemCommitPayload {
     uint256 externalWithdrawalAmount;
 }
 ```
-

@@ -1,5 +1,5 @@
 # IMockMorphoVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/vaults/MorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/vaults/MorphoStakingVaultAdapter.sol)
 
 
 ## Functions
@@ -123,5 +123,3 @@ function totalUnderlyingOf(address account) external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Underlying USDC-equivalent amount for `account`.|
-
-

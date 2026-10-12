@@ -1,5 +1,5 @@
 # MorphoStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/vaults/MorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/vaults/MorphoStakingVaultAdapter.sol)
 
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
@@ -288,4 +288,3 @@ function setMorphoVault(address newMorphoVault) external onlyRole(GOVERNANCE_ROL
 ```solidity
 event MorphoVaultUpdated(address indexed oldVault, address indexed newVault);
 ```
-

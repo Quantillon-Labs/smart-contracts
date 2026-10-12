@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -131,20 +131,24 @@ function _onlyTimelock() internal view;
 
 ### _protocolTime
 
-Returns canonical protocol time from timelock's shared TimeProvider
+Returns canonical protocol time
 
-Falls back to block timestamp only before timelock is configured.
+Base implementation returns `block.timestamp`. Contracts that hold their own
+`TIME_PROVIDER` override this and read it directly. Deliberately makes no
+external call: the timelock is an upgrade authority, not a time source, and it
+is not guaranteed to expose `currentTime()` (a stock OpenZeppelin
+TimelockController does not).
 
 **Notes:**
-- security: Uses timelock-backed canonical time when available; fallback preserves liveness during bootstrap
+- security: No external call; cannot revert or be griefed by the timelock
 
-- validation: Validates timelock address and code presence before external call
+- validation: None required
 
 - state-changes: None
 
 - events: None
 
-- errors: None - failures fall back to `block.timestamp`
+- errors: None
 
 - reentrancy: Read-only helper; no state mutation
 
@@ -154,8 +158,14 @@ Falls back to block timestamp only before timelock is configured.
 
 
 ```solidity
-function _protocolTime() internal view returns (uint256);
+function _protocolTime() internal view virtual returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Canonical protocol time in seconds|
+
 
 ### __SecureUpgradeable_init
 
@@ -216,7 +226,7 @@ Configures the timelock contract for secure upgrade management
 
 
 ```solidity
-function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE);
+function setTimelock(address _timelock) external;
 ```
 **Parameters**
 
@@ -859,4 +869,3 @@ struct EmergencyDisableStorage {
     mapping(uint256 => mapping(address => bool)) hasApproved;
 }
 ```
-

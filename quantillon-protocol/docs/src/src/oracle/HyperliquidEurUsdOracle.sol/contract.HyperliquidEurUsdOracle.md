@@ -1,5 +1,5 @@
 # HyperliquidEurUsdOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/HyperliquidEurUsdOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/oracle/HyperliquidEurUsdOracle.sol)
 
 **Inherits:**
 [IHyperliquidOracle](/src/interfaces/IHyperliquidOracle.sol/interface.IHyperliquidOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -209,6 +209,33 @@ Maximum accepted staleness of the published mid, in seconds
 
 ```solidity
 uint256 public maxPriceStaleness
+```
+
+
+### maxReferenceDivergenceBps
+Normal-hours divergence bound against the independent reference.
+
+
+```solidity
+uint16 public maxReferenceDivergenceBps
+```
+
+
+### maxReferenceDivergenceOffHoursBps
+FX-closed-hours divergence bound against the independent reference.
+
+
+```solidity
+uint16 public maxReferenceDivergenceOffHoursBps
+```
+
+
+### maxReferenceAge
+Maximum age of the independent reference in seconds.
+
+
+```solidity
+uint32 public maxReferenceAge
 ```
 
 
@@ -487,6 +514,46 @@ function _validateEurUsd(uint256 price, uint256 timestamp) internal view returns
 |`isValid`|`bool`|True if the price can advance the baseline|
 
 
+### _referenceWithinBounds
+
+Checks market price against the independent Chainlink reference.
+
+Applies freshness and FX-hours divergence bounds; feed failures fail closed.
+
+**Notes:**
+- security: Prevents an unbounded market publisher from setting protocol price.
+
+- validation: Rejects stale, invalid, or divergent references.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None; returns false on reference failure.
+
+- reentrancy: Read-only external probe.
+
+- access: Internal.
+
+- oracle: Chainlink EUR/USD.
+
+
+```solidity
+function _referenceWithinBounds(uint256 price) internal view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|Market EUR/USD price in 18 decimals.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True when the reference is fresh and within the configured bound.|
+
+
 ### _readUsdcForEvent
 
 Reads USDC/USD from the delegated source for event enrichment only
@@ -731,7 +798,7 @@ function getEurUsdDetails()
 |`lastValidPrice`|`uint256`|Last validated price stored|
 |`lastUpdate`|`uint256`|Snapshot timestamp reported by SlippageStorage|
 |`isStale`|`bool`|True if the published mid is stale|
-|`withinBounds`|`bool`|True if currentPrice is within configured bounds|
+|`withinBounds`|`bool`|True only when the published price itself passed all freshness, configured-bound, deviation, and reference checks|
 
 
 ### getOracleConfig
@@ -961,6 +1028,35 @@ Clears the breaker and attempts to re-seed the deviation baseline from the curre
 function resetCircuitBreaker() external override onlyRole(EMERGENCY_ROLE);
 ```
 
+### forceReseedBaseline
+
+Reseeds the deviation baseline from a fresh, independently bounded market mid.
+
+Skips only the previous-baseline deviation check; freshness, absolute bounds, and the
+independent reference check remain mandatory.
+
+**Notes:**
+- security: Restricted to EMERGENCY_ROLE and requires an enabled reference check.
+
+- validation: Reverts when the market mid or reference is stale, invalid, or divergent.
+
+- state-changes: Updates the baseline and clears the circuit breaker.
+
+- events: Emits PriceUpdated and CircuitBreakerReset.
+
+- errors: Reverts with InvalidPrice or InvalidOraclePrice when recovery data is unsafe.
+
+- reentrancy: Read-only source calls before one local state update.
+
+- access: EMERGENCY_ROLE.
+
+- oracle: Uses SlippageStorage and the independent Chainlink reference.
+
+
+```solidity
+function forceReseedBaseline() external onlyRole(EMERGENCY_ROLE);
+```
+
 ### triggerCircuitBreaker
 
 Manually triggers the circuit breaker (use last valid price)
@@ -1021,6 +1117,44 @@ function setMaxPriceStaleness(uint256 newMaxStaleness) external override onlyRol
 |Name|Type|Description|
 |----|----|-----------|
 |`newMaxStaleness`|`uint256`|New staleness window in seconds (1..HARD_MAX_STALENESS)|
+
+
+### setReferenceCheck
+
+Configures the independent EUR/USD reference check.
+
+A zero normal-hours bound disables the cross-check.
+
+**Notes:**
+- security: Restricted to ORACLE_MANAGER_ROLE and bounded to conservative limits.
+
+- validation: Zero disables the check; enabled values require a nonzero age.
+
+- state-changes: Updates reference divergence and age settings.
+
+- events: Emits PriceReferenceCheckUpdated.
+
+- errors: Reverts on invalid configuration.
+
+- reentrancy: No external calls.
+
+- access: ORACLE_MANAGER_ROLE.
+
+- oracle: No oracle reads.
+
+
+```solidity
+function setReferenceCheck(uint16 normalBps, uint16 offHoursBps, uint32 referenceAge)
+    external
+    onlyRole(ORACLE_MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`normalBps`|`uint16`|Maximum normal-hours divergence in basis points.|
+|`offHoursBps`|`uint16`|Maximum FX-closed-hours divergence in basis points.|
+|`referenceAge`|`uint32`|Maximum accepted reference age in seconds.|
 
 
 ### updateSlippageSource
@@ -1337,6 +1471,14 @@ Emitted when the maximum staleness window is updated
 event MaxStalenessUpdated(uint256 oldStaleness, uint256 newStaleness);
 ```
 
+### PriceReferenceCheckUpdated
+Emitted when independent reference validation is configured
+
+
+```solidity
+event PriceReferenceCheckUpdated(uint16 normalBps, uint16 offHoursBps, uint32 referenceAge);
+```
+
 ### TreasuryUpdated
 Emitted when the treasury address is updated
 
@@ -1352,4 +1494,3 @@ Emitted when ETH is recovered from the contract
 ```solidity
 event ETHRecovered(address indexed to, uint256 amount);
 ```
-

@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -446,6 +446,33 @@ mapping(address => uint256) public pendingUsdcWithdrawals
 ```
 
 
+### totalPendingUsdcWithdrawals
+Aggregate USDC reserved for pending user withdrawals.
+
+
+```solidity
+uint256 public totalPendingUsdcWithdrawals
+```
+
+
+### pendingUsdcLiabilitiesInitialized
+Whether legacy pending-withdrawal liabilities have been included in the aggregate.
+
+
+```solidity
+bool public pendingUsdcLiabilitiesInitialized
+```
+
+
+### signedRouteActive
+Transaction-local guard for the quote wrapper, appended without moving existing storage.
+
+
+```solidity
+bool private signedRouteActive
+```
+
+
 ## Functions
 ### version
 
@@ -577,6 +604,40 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 |`_TIME_PROVIDER`|`TimeProvider`|TimeProvider contract for centralized time management|
 
 
+### _protocolTime
+
+Returns canonical protocol time from this contract's TimeProvider
+
+Overrides the SecureUpgradeable base, which returns `block.timestamp`.
+
+**Notes:**
+- security: Reads the immutable TimeProvider set at construction
+
+- validation: None required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Read-only helper; no state mutation
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _protocolTime() internal view override returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Canonical protocol time in seconds|
+
+
 ### initialize
 
 Initializes the UserPool contract
@@ -626,6 +687,34 @@ function initialize(
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury contract|
 
+
+### initializePendingUsdcLiabilitiesV2
+
+Backfills aggregate pending USDC liabilities after an implementation upgrade.
+
+Runs once through reinitializer(2), reserving the existing USDC balance before recovery is enabled.
+
+**Notes:**
+- security: Governance-only migration; configured-USDC recovery stays disabled until completion.
+
+- validation: Conservatively reserves the full pre-migration USDC balance.
+
+- state-changes: Initializes `totalPendingUsdcWithdrawals` and marks the aggregate ready.
+
+- events: Emits initializer framework events where applicable.
+
+- errors: Reverts when already initialized.
+
+- reentrancy: Performs only a balance read on the configured USDC token.
+
+- access: Restricted to GOVERNANCE_ROLE.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function initializePendingUsdcLiabilitiesV2() external onlyRole(GOVERNANCE_ROLE) reinitializer(2);
+```
 
 ### _setUserPoolContractReferences
 
@@ -2178,6 +2267,50 @@ SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 
+### executeWithQuote
+
+Dispatch one signed operation with the original caller and existing accounting.
+
+Invoked through the consumer; delegatecall retains its storage and original sender.
+
+**Notes:**
+- security: Consumer permissions and accounting checks remain in force.
+
+- validation: Applies the selected operation's bounds; failures revert the entire call.
+
+- state-changes: Updates the calling consumer and downstream contracts as described above.
+
+- events: Underlying operation and token events when applicable.
+
+- errors: Reverts on invalid inputs, permissions or failed downstream calls.
+
+- reentrancy: The consuming operation retains its existing reentrancy guards.
+
+- access: Consumer entrypoint permissions; this helper grants no additional authority.
+
+- oracle: Uses the consumer's configured reference and execution paths where the operation requires pricing.
+
+
+```solidity
+function executeWithQuote(bytes calldata callData, bytes calldata authorization)
+    external
+    whenNotPaused
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Complete ABI-encoded operation, including route and output bounds.|
+|`authorization`|`bytes`|ABI-encoded report or quote authorization required by this entrypoint.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|ABI-encoded return data of the dispatched operation.|
+
+
 ## Events
 ### UserDeposit
 Emitted when a user deposits USDC and receives QEURO
@@ -2428,4 +2561,3 @@ struct BatchWithdrawalCommitPayload {
     uint256 totalWithdrawn;
 }
 ```
-

@@ -8,6 +8,7 @@
 - [Integration Examples](Integration-Examples.md)
 - [Architecture Overview](Architecture.md)
 - [Oracle Architecture](Oracle-Architecture.md)
+- [Signed Quote Migration (Candidate)](Signed-Quote-Migration.md)
 - [Security Guide](Security.md)
 - [Dapp Compatibility](Dapp-Compatibility.md)
 - [Deployment Guide](Deployment.md)

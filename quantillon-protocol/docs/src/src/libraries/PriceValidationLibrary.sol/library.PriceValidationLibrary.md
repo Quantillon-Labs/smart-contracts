@@ -1,5 +1,5 @@
 # PriceValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/PriceValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/libraries/PriceValidationLibrary.sol)
 
 **Title:**
 PriceValidationLibrary
@@ -78,5 +78,3 @@ function checkPriceDeviation(
 |----|----|-----------|
 |`shouldRevert`|`bool`|True if deviation check should cause revert|
 |`deviationBps`|`uint256`|Calculated deviation in basis points|
-
-

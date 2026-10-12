@@ -1,5 +1,7 @@
 # Quantillon Protocol Architecture
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 ## Current production controls
 
 See [Production Protocol Reference](Production-Protocol-Reference.md) for the dated configuration. The oracle supplies valuation; ExecutionPricing supplies directional quotes, buffers and hedge admission. Its spread reserve is excluded from backing. A valid oracle mid alone is not an executable mint/redeem quote. Core role administration belongs to the TimelockController; peripheral administration remains with the Safe.

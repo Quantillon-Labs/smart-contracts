@@ -1,8 +1,8 @@
 # MetaMorphoStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/vaults/MetaMorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/vaults/MetaMorphoStakingVaultAdapter.sol)
 
 **Inherits:**
-AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
+AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 MetaMorphoStakingVaultAdapter
@@ -48,6 +48,40 @@ uint256 public principalDeposited
 
 
 ## Functions
+### version
+
+Semantic version of this non-upgradeable adapter.
+
+Version changes accompany adapter behavior changes.
+
+**Notes:**
+- security: Read-only metadata.
+
+- validation: None.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: None.
+
+- access: Public.
+
+- oracle: None.
+
+
+```solidity
+function version() external pure override returns (string memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`string`|Semantic version string.|
+
+
 ### constructor
 
 Initializes MetaMorpho adapter dependencies and roles.
@@ -218,9 +252,44 @@ function harvestYieldToVault()
 |`realizedYield`|`uint256`|USDC yield harvested and transferred to the caller (6 decimals).|
 
 
+### writeDownPrincipal
+
+Writes down tracked principal to the current ERC-4626 underlying value.
+
+This records an externally observed loss so future withdrawals cannot rely on
+unavailable principal. It never transfers funds or changes share ownership.
+
+**Notes:**
+- security: Governance-only loss recognition.
+
+- validation: Requires current underlying to be below tracked principal.
+
+- state-changes: Decreases `principalDeposited`.
+
+- events: PrincipalWrittenDown.
+
+- errors: InvalidCondition when no loss is present.
+
+- reentrancy: Protected by `nonReentrant`.
+
+- access: GOVERNANCE_ROLE.
+
+- oracle: No oracle dependency.
+
+
+```solidity
+function writeDownPrincipal() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 writtenDown);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`writtenDown`|`uint256`|Amount removed from tracked principal.|
+
+
 ### totalUnderlying
 
-Returns the USDC value of this adapter's MetaMorpho shares.
+Returns the USDC value of MetaMorpho shares plus idle USDC.
 
 Read helper used by QuantillonVault for exposure accounting; delegates to `_totalUnderlying`.
 
@@ -290,7 +359,7 @@ function setMetaMorphoVault(address newMetaMorphoVault) external onlyRole(GOVERN
 
 Returns the USDC-equivalent value of this adapter's MetaMorpho shares.
 
-Converts the adapter's ERC-4626 share balance to assets via `convertToAssets`.
+Converts the adapter's ERC-4626 shares and adds idle USDC, including any rounding buffer.
 
 **Notes:**
 - security: Internal read-only helper.
@@ -321,9 +390,14 @@ function _totalUnderlying() internal view returns (uint256);
 
 
 ## Events
+### PrincipalWrittenDown
+
+```solidity
+event PrincipalWrittenDown(uint256 previousPrincipal, uint256 currentPrincipal);
+```
+
 ### MetaMorphoVaultUpdated
 
 ```solidity
 event MetaMorphoVaultUpdated(address indexed oldVault, address indexed newVault);
 ```
-

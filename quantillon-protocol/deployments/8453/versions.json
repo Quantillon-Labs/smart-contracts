@@ -145,29 +145,34 @@
       "QTITokenGovernanceLibrary": "0x1612218e4c1f548f7017a559221D7e0AE391260A",
       "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
       "TreasuryRecoveryLibrary": "0x43fbb1e8BA34FB9fB23c0b7F1Ec600645De7184c"
-    }
+    },
+    "hasSelfGovernanceRole": true,
+    "selfGovernanceRoleGrantedAt": 1791787785,
+    "selfGovernanceRoleGrantBlock": 52499219,
+    "selfGovernanceRoleGrantTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27"
   },
   "QuantillonVault": {
-    "implementation": "0x4d1014C50Cb3AAfB5D45AECd5d47e05CFC5e5290",
-    "version": "1.5.0",
-    "gitCommit": "d0232f8e3d5a072e18447345380d753ae91089cb",
-    "runtimeCodeHash": "0x25504369507d47b842083f65a5e6abd1ddd383b06c9dcafd693ddfe1fd9f8b04",
-    "deployedAt": 1790677457,
-    "activatedAt": 1790760073,
-    "activationBlock": 51985363,
-    "activationTransactionHash": "0xc41087befce4ef0832398af3abfd45a91860eff5f97f2af6bd36df993d3255b3",
-    "runtimeVerifiedAt": 1790760207,
+    "implementation": "0xb3d4aF7093f4C69013a974a99d9b7dfC9B65bAd3",
+    "version": "1.5.1",
+    "gitCommit": "885076d37a2727de68703c9756d9387e1103ac1b",
+    "runtimeCodeHash": "0x8f0e2014df8cdd877a0d9fefc9fbba39f44f7c79fb9807b07665fe20852281c7",
+    "deployedAt": 1791559433,
+    "activatedAt": 1791787785,
+    "activationBlock": 52499219,
+    "activationTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27",
+    "runtimeVerifiedAt": 1791787967,
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
     "hedgerYieldRecipient": "0x1d7fF432a93d0085Fb69474c7E567f859829e6cd",
-    "implementationDeployedAt": 1790677457,
-    "implementationDeploymentBlock": 51944055,
-    "implementationDeploymentTransactionHash": "0x22847f740b2bf65211121c3fd38db8deec296d1b854820905c0f79bf6164c2ea",
+    "implementationDeployedAt": 1791559433,
+    "implementationDeploymentBlock": 52385043,
+    "implementationDeploymentTransactionHash": "0xdd364c564f246e7fdebc63c276f3ea567e200542a15d5d0b4cab73a3dea2d869",
     "linkedLibraries": {
       "ExecutionPricingLibrary": "0x21049b609d283fC50D3C5E0F87F8A3f40B0c5125",
       "SecureUpgradeLibrary": "0x88eC9B417bd2e945945A535f145Fc99045C2a0fE",
       "TreasuryRecoveryLibrary": "0x508AE6807E85CAE22B8F834124615B2BDEDE7B3D",
-      "StakingYieldLibrary": "0x5dc57a0ba352E357afEbF9386fc3520CAD686058"
-    }
+      "StakingYieldLibrary": "0xcf5987582db052c3aA7793fb912Fb7133a6f16Bf"
+    },
+    "runtimeRecordedAtBlock": 52499310
   },
   "SlippageStorage": {
     "implementation": "0xc21711cC8340d2Cd2Dbc059F039f753a0e478d05",
@@ -264,16 +269,34 @@
     "linkedLibraries": {
       "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b"
     },
-    "note": "Current proxy implementation, version and runtime hash verified on Base at the recorded block."
+    "note": "Current proxy implementation, version and runtime hash verified on Base at the recorded block.",
+    "tokenImplementation": "0x9c23a7eb82E83edC0451E93e1d66c5ee870F56DF",
+    "tokenImplementationVersion": "1.3.0",
+    "tokenImplementationUpdatedAt": 1791787785,
+    "tokenImplementationUpdateBlock": 52499219,
+    "tokenImplementationUpdateTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27"
   },
   "stQEUROToken": {
     "proxy": "0x17CD8ed967d17072297CcAe3D379C9e86aeBEb1d",
-    "implementation": "0x7EBA1D23Fb33D99b9Fe2f74Dab16D7554b794Fe5",
-    "version": "1.2.5",
-    "sourceReferenceCommit": "99b07596382536430815378b783a8835adf10fbc",
-    "runtimeCodeHash": "0x23cceef345761c9607c7d04d711fedff918698410a4f54cd3dad9c51ee57e2cf",
-    "runtimeRecordedAtBlock": 52032759,
-    "note": "Current proxy implementation, version and runtime hash verified on Base at the recorded block."
+    "implementation": "0x9c23a7eb82E83edC0451E93e1d66c5ee870F56DF",
+    "version": "1.3.0",
+    "sourceReferenceCommit": "885076d37a2727de68703c9756d9387e1103ac1b",
+    "runtimeCodeHash": "0x89cdf85fabce04c25aa8f24a166d30b60bc8e8ad4ea5e7a63dcc4d0ef13011e2",
+    "runtimeRecordedAtBlock": 52499310,
+    "note": "Current vaultId-2 proxy implementation and factory token template, verified on Base at the recorded block.",
+    "gitCommit": "885076d37a2727de68703c9756d9387e1103ac1b",
+    "deployedAt": 1791559663,
+    "implementationDeployedAt": 1791559663,
+    "implementationDeploymentBlock": 52385158,
+    "implementationDeploymentTransactionHash": "0x7eb623e9841cf037761bfd05525ec89fe0bf76b3ecaf435faf654a5d350baac4",
+    "activatedAt": 1791787785,
+    "activationBlock": 52499219,
+    "activationTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27",
+    "runtimeVerifiedAt": 1791787967,
+    "linkedLibraries": {
+      "SecureUpgradeLibrary": "0x88eC9B417bd2e945945A535f145Fc99045C2a0fE",
+      "TreasuryRecoveryLibrary": "0x508AE6807E85CAE22B8F834124615B2BDEDE7B3D"
+    }
   },
   "YieldShiftCalculationLibrary": {
     "implementation": "0x2d3639C5876B60A8899Db9Dc566d3Ec4A761d3f1",
@@ -405,18 +428,19 @@
     "note": "Current publication route, version and runtime hash verified on Base at the recorded block."
   },
   "StakingYieldLibrary": {
-    "implementation": "0x5dc57a0ba352E357afEbF9386fc3520CAD686058",
-    "version": "1.5.0",
-    "gitCommit": "d0232f8e3d5a072e18447345380d753ae91089cb",
-    "runtimeCodeHash": "0xceaaef0c59259f13e05889097af0d8616f8344d7b3127d6eccb767562eab06aa",
-    "deployedAt": 1790677453,
-    "activatedAt": 1790760073,
-    "activationBlock": 51985363,
-    "activationTransactionHash": "0xc41087befce4ef0832398af3abfd45a91860eff5f97f2af6bd36df993d3255b3",
-    "runtimeVerifiedAt": 1790760207,
-    "implementationDeployedAt": 1790677453,
-    "implementationDeploymentBlock": 51944053,
-    "implementationDeploymentTransactionHash": "0x8d7e43c2904fad158d1df4432bc75f85bfd74b7a7f8d20b9d1e06ddfc2ff71d7"
+    "implementation": "0xcf5987582db052c3aA7793fb912Fb7133a6f16Bf",
+    "version": "1.6.0",
+    "gitCommit": "885076d37a2727de68703c9756d9387e1103ac1b",
+    "runtimeCodeHash": "0x31e9c63bb1d1e23b6c0f6d5ce675b714525f3caf17265e9326e7569e30644854",
+    "deployedAt": 1791559333,
+    "activatedAt": 1791787785,
+    "activationBlock": 52499219,
+    "activationTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27",
+    "runtimeVerifiedAt": 1791787967,
+    "implementationDeployedAt": 1791559333,
+    "implementationDeploymentBlock": 52384993,
+    "implementationDeploymentTransactionHash": "0xbe4f2a5a737d3162c2bcccce95fbd1f84231d0812e4fb5bce6fe57e48f110089",
+    "runtimeRecordedAtBlock": 52499310
   },
   "TreasuryRecoveryLibrary": {
     "implementation": "0x508AE6807E85CAE22B8F834124615B2BDEDE7B3D",

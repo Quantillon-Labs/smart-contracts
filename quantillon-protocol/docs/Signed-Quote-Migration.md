@@ -1,6 +1,6 @@
 # Signed quote migration (candidate)
 
-This page describes the candidate implementation on `feat/signed-quotes-migration`. It is not a deployment record. Dev, preproduction and Base mainnet each require their own verified activation. The existing publisher remains necessary until every consumer has migrated.
+This page describes the candidate implementation on `feat/signed-quotes-migration`. On 12 October 2026, the candidate was installed in preproduction only using the dedicated `feat/signed-quotes-preprod` integration branch. The isolated fork runs vault 1.6.0, UserPool 1.3.0 and HedgerPool 1.5.0, with signed execution and reference modules. Dev and Base mainnet remain unchanged. The production publisher remains necessary until its consumers and release gates have migrated. This preproduction installation is not a production activation record.
 
 ## Three separate responsibilities
 
@@ -91,3 +91,7 @@ Eliminating idle periodic publication removes its recurring gas expense. User se
 Before activation, governance must grant the reference signer on the source, grant the execution module the source's emergency-controller role, and grant separate execution and capacity signers on the pricing module. Bind the oracle adapter to the new reference source, upgrade the required vault/UserPool/HedgerPool implementations with their verified linked libraries, and check all bindings and roles against the release receipt. These operations belong to the governed cutover after old exposure is reconciled; module deployment alone does not satisfy that cutover.
 
 The deployment script logs module addresses, not public Safe import payloads. Keep broadcaster receipts and any governed transaction staging artifacts in private operator storage. Do not run `--broadcast` as part of unit tests or documentation builds.
+
+## Preproduction validation
+
+The integration passed direct mint/redemption, UserPool deposit/withdrawal, mint-and-stake share issuance, replay rejection, expiry rejection, signed keeper harvesting and a coordinated reset with fresh quote domains. Reference-backed dashboard and keeper previews use read-only simulation. A 70-second idle check confirmed no publisher transaction and no persistent reference update while valuation remained available. Hedge capacity remains simulated; no real Hyperliquid fill or production risk calibration is implied. Private installation receipts and keys are not published.

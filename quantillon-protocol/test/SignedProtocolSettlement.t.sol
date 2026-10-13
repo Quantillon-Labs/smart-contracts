@@ -226,6 +226,35 @@ contract SignedProtocolSettlementTest is QuantillonVaultMintCollateralizationAnd
         assertFalse(pricing.usedNonces(bootstrapUser, 52));
     }
 
+    function test_EmergencyLiquidationUsesProRataCollateralAndRecordsHedgeReduction() public {
+        _activate();
+        vm.prank(admin); vault.pause();
+        pricing.configureEmergencyBudget(100e18);
+        vm.prank(admin); vault.unpause();
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 100e18);
+        bytes memory auth = _authorization(bootstrapUser, T.Action.Mint, data, 100e6, 100e18, 71);
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 100e6);
+        vault.executeWithQuote(data, auth);
+        vm.stopPrank();
+        // The fixture changes the governed threshold to enter liquidation at
+        // exactly the current ratio, without bypassing the vault's payout code.
+        vm.prank(admin); vault.updateCollateralizationThresholds(1100e18, 1100e18);
+        pricing.setMode(T.Mode.EmergencyRedeem);
+        uint256 collateral = vault.getTotalUsdcAvailable();
+        uint256 before = usdc.balanceOf(bootstrapUser);
+        vm.prank(bootstrapUser); vm.expectRevert(); vault.emergencyRedeemQEURO(100e18, collateral + 1);
+        assertEq(pricing.emergencyBudget(), 100e18);
+        assertEq(pricing.admittedSell(), 0);
+        vm.prank(bootstrapUser); vault.emergencyRedeemQEURO(100e18, collateral);
+        assertEq(usdc.balanceOf(bootstrapUser) - before, collateral);
+        assertEq(hedgerPool.totalMargin(), 0);
+        assertEq(qeuro.totalSupply(), 0);
+        assertEq(pricing.admittedSell(), 100e18);
+        assertEq(pricing.emergencyBudget(), 0);
+        assertFalse(pricing.active());
+    }
+
     function test_EmergencyRedemptionAfterSignerOutageIsBudgetedAndAtomic() public {
         _activate();
         vm.prank(admin); vault.pause();

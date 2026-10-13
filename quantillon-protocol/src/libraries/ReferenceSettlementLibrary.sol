@@ -90,7 +90,7 @@ library ReferenceSettlementLibrary {
      * @custom:access Public.
      * @custom:oracle No fresh observation is created; reference getters expose existing source data.
      */
-    function version() external pure returns (string memory) { return "1.0.0"; }
+    function version() external pure returns (string memory) { return "1.1.0"; }
 
     /**
      * @notice Deliver a signed reference and execute one permitted hedger operation atomically.
@@ -108,8 +108,33 @@ library ReferenceSettlementLibrary {
      * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
      */
     function executeWithReference(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result) {
+        return _execute(callData, authorization);
+    }
+
+    /**
+     * @notice Deliver a reference and withdraw margin with explicit permissionable parameters.
+     * @dev Keeps calldata construction in the linked library to respect the consumer's EIP-170 limit.
+     * @param positionId Position owned by the original caller.
+     * @param amount USDC margin to withdraw.
+     * @param authorization Signed valuation report.
+     * @custom:security Retains the consumer's owner, pause and collateral checks.
+     * @custom:validation Report and withdrawal are validated atomically.
+     * @custom:state-changes Reference and margin accounting, or none on revert.
+     * @custom:events Underlying reference and margin events.
+     * @custom:errors Propagates reference and margin errors.
+     * @custom:reentrancy Underlying withdrawal guard remains active.
+     * @custom:access Original hedger permissions.
+     * @custom:oracle Uses the governed reference source.
+     * @return ABI-encoded result of the underlying withdrawal (empty on success).
+     */
+    function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization) external returns (bytes memory) {
+        return _execute(abi.encodeWithSignature("removeMargin(uint256,uint256)", positionId, amount), authorization);
+    }
+
+    function _execute(bytes memory callData, bytes calldata authorization) private returns (bytes memory result) {
         if (callData.length < 4) revert E.InvalidBinding();
-        bytes4 selector = bytes4(callData[:4]);
+        bytes4 selector;
+        assembly ("memory-safe") { selector := mload(add(callData, 32)) }
         if (selector != bytes4(keccak256("enterHedgePosition(uint256,uint256)"))
             && selector != bytes4(keccak256("exitHedgePosition(uint256)"))
             && selector != bytes4(keccak256("removeMargin(uint256,uint256)"))

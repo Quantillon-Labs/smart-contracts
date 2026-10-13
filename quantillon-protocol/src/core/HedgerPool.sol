@@ -71,7 +71,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.5.0";
+        return "1.6.0";
     }
 
     /**
@@ -92,6 +92,26 @@ contract HedgerPool is
     function executeWithReference(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result) {
         return ReferenceSettlementLibrary.executeWithReference(callData, authorization);
     }
+    /**
+     * @notice Withdraw margin with a signed reference in one atomic transaction.
+     * @dev Typed parameters let Roles constrain the position and amount without authorizing arbitrary calldata.
+     * @param positionId Position owned by the caller.
+     * @param amount USDC margin to withdraw, in 6 decimals.
+     * @param authorization ABI-encoded reference report and signature.
+     * @custom:security Preserves caller identity and all removeMargin guards.
+     * @custom:validation Validated reference, ownership, collateralization and withdrawal bounds.
+     * @custom:state-changes Reference and margin accounting revert together on failure.
+     * @custom:events ReferenceAccepted and margin withdrawal events.
+     * @custom:errors Propagates source validation and removeMargin errors.
+     * @custom:reentrancy removeMargin retains its nonReentrant guard.
+     * @custom:access Position owner; adds no withdrawal authority.
+     * @custom:oracle Governed signed reference source, submitted within this transaction.
+     * @return ABI-encoded result of the underlying withdrawal (empty on success).
+     */
+    function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization) external returns (bytes memory) {
+        return ReferenceSettlementLibrary.removeMarginWithReference(positionId, amount, authorization);
+    }
+
     using SafeERC20 for IERC20;
     using Address for address payable;
     using VaultMath for uint256;

@@ -4,6 +4,11 @@ pragma solidity 0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IHedgerPool {
+    /// @notice Execute an allowed operation with a validated signed valuation report, preserving caller permissions.
+    function executeWithReference(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result);
+    /// @notice Atomically refresh the signed reference and withdraw caller-owned USDC margin.
+    function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization) external returns (bytes memory);
+
     struct HedgerMigrationRequest {
         uint8 action;
         address newHedger;

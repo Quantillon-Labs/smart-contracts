@@ -9,6 +9,15 @@ pragma solidity 0.8.24;
  * @custom:security-contact team@quantillon.money
  */
 interface IQuantillonVault {
+    /// @notice Whether the governed signed execution module is enabled.
+    function signedExecutionEnabled() external view returns (bool);
+    /// @notice Execute a permitted operation with its exact signed authorization and normal protocol guards.
+    function executeWithQuote(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result);
+    /// @notice Begin an authenticated UserPool settlement bound to its original user.
+    function preparePoolQuote(address user, bytes calldata callData, bytes calldata authorization) external;
+    /// @notice Finalize the authenticated UserPool settlement.
+    function finishPoolQuote() external;
+
     /**
      * @notice Initializes the vault
      * @dev Sets up the vault with initial configuration and assigns roles to admin

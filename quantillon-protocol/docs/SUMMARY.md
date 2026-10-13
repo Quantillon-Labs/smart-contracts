@@ -98,3 +98,5 @@
     - [SlippageStorage](src/oracle/SlippageStorage.sol/contract.SlippageStorage.md)
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)
     - [StorkOracle](src/oracle/StorkOracle.sol/contract.StorkOracle.md)
+
+- [Signed quotes preprod consolidation](Signed-Quotes-Consolidation.md)

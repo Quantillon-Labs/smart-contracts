@@ -95,3 +95,31 @@ The deployment script logs module addresses, not public Safe import payloads. Ke
 ## Preproduction validation
 
 The integration passed direct mint/redemption, UserPool deposit/withdrawal, mint-and-stake share issuance, replay rejection, expiry rejection, signed keeper harvesting and a coordinated reset with fresh quote domains. Reference-backed dashboard and keeper previews use read-only simulation. A 70-second idle check confirmed no publisher transaction and no persistent reference update while valuation remained available. Hedge capacity remains simulated; no real Hyperliquid fill or production risk calibration is implied. Private installation receipts and keys are not published.
+
+
+## Production activation authority and rehearsal
+
+The dedicated production candidate was rehearsed on a private Base fork pinned
+to block 52,554,188. The deployed TimelockController requires 43,200 seconds;
+execution before this delay was rejected. Vault 1.6.0, UserPool 1.3.0 and HedgerPool
+1.6.0 were activated with their linked libraries, the signed reference source and
+signed pricing module. This is a migration rehearsal, not live deployment or a
+real Hyperliquid execution test.
+
+The existing proxies assign operational GOVERNANCE_ROLE and EMERGENCY_ROLE to
+the Safe, while the timelock executes upgrades. Keep that division in the
+transaction plan. Initialize UserPool pending liabilities only when its explicit
+initialization flag is false. Preserve hedger cost-basis accounting.
+
+The typed production Roles permission restricts `removeMarginWithReference` to
+position 1, a positive amount and CALL with no ETH. Dynamic reference bytes still
+require the pool's normal authorization checks. The paired backend verifies the
+exact permission event, storage and condition runtime; no generic reference-call
+permission is granted.
+
+Before reopening admission, install the paired Dapp/services/watchdog release,
+initialize the immutable real-venue reconciliation baseline during the pause,
+and check the active module, source, signing authorities and signed readiness.
+There is no mandatory seven-day shadow window or completed-hedge quota. After
+activation, a software rollback must not silently replace contract bindings or
+discard signed settlements, journaled transactions or executed venue fills.

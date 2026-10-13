@@ -20,16 +20,25 @@ Fresh validation: 186 tests across seven signed/reference suites; EIP-170,
 append-only storage, additive ABI, version tracing, 100% NatSpec and generated
 documentation checks. These are candidate checks, not production activation evidence.
 
-Before activation: migrate the production Roles policy for the typed selector,
-verify the exact reviewed permission history and runtime/storage bindings, rehearse
-the paired upgrade and rollback, reconcile existing exposure, and complete real-fill attribution, initial
-parameter selection and independent review before scheduling. User decision on
-13 October: no mandatory shadow duration or completed-hedge quota; production
-switches with the executed activation after the 12-hour governance delay. Stage
-services and frontend beforehand, verify confirmed bindings at cutover, and keep
-admissions closed on failed readiness. Timelock expiry alone does not execute the
-upgrade. The preprod impersonation scripts, mock feeds,
-local signer keys and fixture permissions must never be used on Base.
+Production preparation subsequently added live fill evidence/allocation, typed Roles
+permission support and private service/Dapp staging in the paired Dapp branch.
+An isolated Base fork at block **52,554,188** repeated deployment, the actual
+TimelockController's **43,200-second** delay, refusal before eligibility and
+activation of these three proxy versions. The Safe performs operational pause
+and configuration; the timelock performs the upgrades. Existing UserPool pending
+liability initialization must be preserved rather than run a second time.
+No extra Solidity runtime change was needed for this backend preparation.
+
+Before production activation, validate preprod, complete independent review and
+initial parameter/signer selection, deploy inactive production modules, stage
+artifacts against their actual addresses and submit the reviewed permissions and
+upgrade proposals. User decision on 13 October: no mandatory shadow duration or
+completed-hedge quota. Cut over services, Dapp and contracts with the explicit
+activation after the 12-hour governance delay, keeping admission closed until
+bindings and readiness are verified. Timelock expiry alone does not execute the
+upgrade. See `docs/migrations/signed-quotes-production-preparation.md` in the Dapp
+repository for the executable rehearsal and staged cutover sequence. Fork keys,
+mock feeds and fixture transaction artifacts must never be used on Base.
 
 The historical preprod evidence below retains its original scope.
 

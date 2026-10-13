@@ -1,5 +1,5 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IQuantillonVault.sol)
 
 **Title:**
 IQuantillonVault
@@ -16,6 +16,147 @@ security-contact: team@quantillon.money
 
 
 ## Functions
+### signedExecutionEnabled
+
+Whether signed execution is enabled by governance.
+
+Reads the vault's configured execution mode.
+
+**Notes:**
+- security: Read-only; does not grant settlement authority.
+
+- validation: No input validation required.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Read-only.
+
+- access: Public.
+
+- oracle: Does not read a price.
+
+
+```solidity
+function signedExecutionEnabled() external view returns (bool);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True when signed settlement is enabled.|
+
+
+### executeWithQuote
+
+Execute a permitted operation with its exact signed authorization.
+
+Delegates to the signed settlement extension with the original caller.
+
+**Notes:**
+- security: Preserves settlement accounting and caller binding.
+
+- validation: Checks signatures, nonce, expiry, amounts and aggregate capacity.
+
+- state-changes: Consumes the quote and settles the operation atomically.
+
+- events: QuoteSettled and underlying settlement events.
+
+- errors: Reverts on invalid authorization or protocol guards.
+
+- reentrancy: Retains the consuming operation's reentrancy guard.
+
+- access: Caller bound by the signed quote.
+
+- oracle: Signed execution and independently checked reference reports.
+
+
+```solidity
+function executeWithQuote(bytes calldata callData, bytes calldata authorization)
+    external
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Encoded permitted vault operation, bound by the quote hash.|
+|`authorization`|`bytes`|Encoded quote, reference and capacity reports with signatures.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|ABI-encoded return data of the underlying operation.|
+
+
+### preparePoolQuote
+
+Prepare an authenticated UserPool settlement for its original user.
+
+Establishes the signed context consumed by the pool route in the same transaction.
+
+**Notes:**
+- security: Only the configured UserPool may establish this context.
+
+- validation: Validates authorization and original user binding.
+
+- state-changes: Establishes the active pool settlement context.
+
+- events: Underlying report acceptance events.
+
+- errors: Reverts on unauthorized callers, paused state or invalid authorization.
+
+- reentrancy: The signed context cannot be reused by another route.
+
+- access: Configured UserPool.
+
+- oracle: Signed reference and capacity reports.
+
+
+```solidity
+function preparePoolQuote(address user, bytes calldata callData, bytes calldata authorization) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Original UserPool user bound by the quote.|
+|`callData`|`bytes`|Encoded UserPool operation bound by the quote hash.|
+|`authorization`|`bytes`|Encoded signed quote, reference and capacity authorization.|
+
+
+### finishPoolQuote
+
+Finalize the authenticated UserPool settlement.
+
+Requires the prepared conversion to have been consumed.
+
+**Notes:**
+- security: Only the configured UserPool can finalize its active context.
+
+- validation: Verifies completion of the prepared settlement.
+
+- state-changes: Clears the active signed settlement context.
+
+- events: QuoteSettled for the completed operation.
+
+- errors: Reverts on unauthorized callers or incomplete settlement.
+
+- reentrancy: Clears the context within the atomic pool operation.
+
+- access: Configured UserPool.
+
+- oracle: Uses the reference accepted during preparation.
+
+
+```solidity
+function finishPoolQuote() external;
+```
+
 ### initialize
 
 Initializes the vault

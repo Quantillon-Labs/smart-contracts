@@ -1,5 +1,5 @@
 # ReferenceSettlementLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/libraries/ReferenceSettlementLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/ReferenceSettlementLibrary.sol)
 
 **Title:**
 ReferenceSettlementLibrary
@@ -85,3 +85,55 @@ function executeWithReference(bytes calldata callData, bytes calldata authorizat
 |Name|Type|Description|
 |----|----|-----------|
 |`result`|`bytes`|ABI-encoded return data of the dispatched operation.|
+
+
+### removeMarginWithReference
+
+Deliver a reference and withdraw margin with explicit permissionable parameters.
+
+Keeps calldata construction in the linked library to respect the consumer's EIP-170 limit.
+
+**Notes:**
+- security: Retains the consumer's owner, pause and collateral checks.
+
+- validation: Report and withdrawal are validated atomically.
+
+- state-changes: Reference and margin accounting, or none on revert.
+
+- events: Underlying reference and margin events.
+
+- errors: Propagates reference and margin errors.
+
+- reentrancy: Underlying withdrawal guard remains active.
+
+- access: Original hedger permissions.
+
+- oracle: Uses the governed reference source.
+
+
+```solidity
+function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization)
+    external
+    returns (bytes memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position owned by the original caller.|
+|`amount`|`uint256`|USDC margin to withdraw.|
+|`authorization`|`bytes`|Signed valuation report.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes`|ABI-encoded result of the underlying withdrawal (empty on success).|
+
+
+### _execute
+
+
+```solidity
+function _execute(bytes memory callData, bytes calldata authorization) private returns (bytes memory result);
+```

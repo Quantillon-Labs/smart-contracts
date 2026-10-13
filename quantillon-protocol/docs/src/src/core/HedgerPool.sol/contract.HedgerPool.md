@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -429,6 +429,50 @@ function executeWithReference(bytes calldata callData, bytes calldata authorizat
 |Name|Type|Description|
 |----|----|-----------|
 |`result`|`bytes`|The selected operation's return data.|
+
+
+### removeMarginWithReference
+
+Withdraw margin with a signed reference in one atomic transaction.
+
+Typed parameters let Roles constrain the position and amount without authorizing arbitrary calldata.
+
+**Notes:**
+- security: Preserves caller identity and all removeMargin guards.
+
+- validation: Validated reference, ownership, collateralization and withdrawal bounds.
+
+- state-changes: Reference and margin accounting revert together on failure.
+
+- events: ReferenceAccepted and margin withdrawal events.
+
+- errors: Propagates source validation and removeMargin errors.
+
+- reentrancy: removeMargin retains its nonReentrant guard.
+
+- access: Position owner; adds no withdrawal authority.
+
+- oracle: Governed signed reference source, submitted within this transaction.
+
+
+```solidity
+function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization)
+    external
+    returns (bytes memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position owned by the caller.|
+|`amount`|`uint256`|USDC margin to withdraw, in 6 decimals.|
+|`authorization`|`bytes`|ABI-encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes`|ABI-encoded result of the underlying withdrawal (empty on success).|
 
 
 ### onlyVault

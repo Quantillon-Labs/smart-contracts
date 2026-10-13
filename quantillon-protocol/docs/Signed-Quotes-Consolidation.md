@@ -1,3 +1,35 @@
+# Signed quotes: consolidated candidate for production
+
+## Production branch promotion — 13 October 2026
+
+`feat/signed-quotes-migration` now contains the source and test changes validated
+on preprod through `08387433`. The promotion preserves the original candidate
+history. It does not upgrade Base, change deployment manifests, send governance
+transactions or publish the production documentation site. Paired Dapp evidence
+is in `docs/migrations/signed-quotes-production-sync-2026-10-13.md` in the frontend repository.
+
+Candidate versions are Vault **1.6.0**, UserPool **1.3.0**, HedgerPool **1.6.0** and
+ReferenceSettlementLibrary **1.1.0**. The typed margin withdrawal and normal,
+paused, capacity-constrained, emergency and liquidation settlement tests are
+included. The six newly declared interface functions now have complete NatSpec.
+This documentation completion changes no runtime bytecode: canonical artifacts
+were compared before and after, and only matching-version dependency hashes were
+refreshed. No interface selector or storage field was changed by that completion.
+
+Fresh validation: 186 tests across seven signed/reference suites; EIP-170,
+append-only storage, additive ABI, version tracing, 100% NatSpec and generated
+documentation checks. These are candidate checks, not production activation evidence.
+
+Before activation: migrate the production Roles policy for the typed selector,
+verify the exact reviewed permission history and runtime/storage bindings, rehearse
+the paired upgrade and rollback, reconcile existing exposure, and complete real-fill
+calibration and independent review. The preprod impersonation scripts, mock feeds,
+local signer keys and fixture permissions must never be used on Base.
+
+The historical preprod evidence below retains its original scope.
+
+---
+
 # Signed quotes: preprod consolidation (2026-10-13)
 
 Scope: the dedicated `feat/signed-quotes-preprod` branch. This change does not authorize a production or dev deployment.

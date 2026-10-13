@@ -1,5 +1,5 @@
 # MorphoStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/core/vaults/MorphoStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/vaults/MorphoStakingVaultAdapter.sol)
 
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)

@@ -1,8 +1,95 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/54366a1075ba6db39540a3d83709a310c26d1723/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
+### executeWithReference
+
+Execute an allowed hedger operation with a signed valuation report.
+
+Submits the reference and delegates only a permitted selector, preserving the caller.
+
+**Notes:**
+- security: Grants no additional caller permissions.
+
+- validation: Validates the report, selector and underlying operation.
+
+- state-changes: Reference and operation state change atomically.
+
+- events: ReferenceAccepted and underlying operation events.
+
+- errors: Reverts on invalid reports, selectors or operation guards.
+
+- reentrancy: Retains the underlying operation's reentrancy guard.
+
+- access: Underlying hedger operation permissions.
+
+- oracle: Governed signed reference source.
+
+
+```solidity
+function executeWithReference(bytes calldata callData, bytes calldata authorization)
+    external
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Encoded permitted HedgerPool operation.|
+|`authorization`|`bytes`|Encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|ABI-encoded return data of the underlying operation.|
+
+
+### removeMarginWithReference
+
+Withdraw caller-owned USDC margin with an atomic reference refresh.
+
+Explicit parameters allow Roles to constrain position and amount.
+
+**Notes:**
+- security: Preserves ownership, collateral and pause checks.
+
+- validation: Validates the reference and withdrawal limits.
+
+- state-changes: Reference and margin accounting revert together on failure.
+
+- events: ReferenceAccepted and margin withdrawal events.
+
+- errors: Propagates reference and withdrawal errors.
+
+- reentrancy: Retains removeMargin's reentrancy guard.
+
+- access: Position owner.
+
+- oracle: Governed signed reference source.
+
+
+```solidity
+function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization)
+    external
+    returns (bytes memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position owned by the original caller.|
+|`amount`|`uint256`|USDC margin to withdraw, in six decimals.|
+|`authorization`|`bytes`|Encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes`|ABI-encoded withdrawal result, empty on success.|
+
+
 ### manageHedgerMigration
 
 Proposes (0), accepts (1), executes (2), or cancels (3) a live ownership transfer.

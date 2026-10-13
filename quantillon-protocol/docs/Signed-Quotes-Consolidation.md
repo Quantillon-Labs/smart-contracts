@@ -27,3 +27,29 @@ Tests exercise the actual HedgerPool proxy against the reference source, includi
 - Scoped upgrade rehearsed on an isolated fork of preprod (port 18550), retaining margin, exposure, oracle, pricing module, owner, time provider and pause state.
 - A real typed withdrawal of one USDC base unit succeeded on that isolated fork: total margin decreased by one and the owner's USDC balance increased by one. No test withdrawal was sent to the served preprod instance.
 - Three source-closure baselines (`QuantillonRebalancerModule`, `YieldShift`, `YieldShiftOptimizationLibrary`) were refreshed only after verifying their deployed bytecode was identical to the previous preprod artifacts. Interface additions changed dependency hashes without changing their runtime. The reference settlement library is now explicitly covered by the version gate.
+
+## Stateful preprod simulation (13 October, subsequent delivery)
+
+The dedicated preprod branch now runs the normal hedging engine against a durable
+local venue. Orders, fills, fees, margin nonces and allocation to signed or emergency
+settlements survive worker restarts. The fork uses a sealed historical-origin cache;
+initialization may read the approved Base proxy, but ordinary sealed execution cannot.
+All transactions are on chain 31338. External orders and bridges remain disabled.
+
+The served local Safe has a dedicated Roles module. Browser tests exercised a USDC
+collateral addition and the typed reference withdrawal, with exact Safe balance
+checks. This supersedes the earlier served-instance testing limitation above; it
+is not a production permission migration.
+
+`SignedProtocolSettlement.t.sol` additionally covers pause/resume without nonce
+consumption, concurrent quotes against admitted capacity, emergency budget rollback,
+and pro-rata liquidation against the real router. Browser tests exercise emergency
+redemption with the quote signer stopped, liquidation redemption, stake/unstake and
+positive fixture-yield conversion followed by a simulated hedge and reconciliation.
+No contract bytecode was changed for these additional simulation tests, so the
+previously deployed versions remain Vault 1.6.0, UserPool 1.3.0 and HedgerPool 1.6.0.
+
+Operational scenarios and reset instructions are in the Dapp repository at
+`docs/migrations/preprod-isolated-simulation.md`. Synthetic funding/APY data does not
+model Hyperliquid funding cashflows or exchange liquidations. Real-fill calibration,
+independent review and governed production activation remain separate release gates.

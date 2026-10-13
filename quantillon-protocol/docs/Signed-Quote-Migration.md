@@ -123,3 +123,7 @@ and check the active module, source, signing authorities and signed readiness.
 There is no mandatory seven-day shadow window or completed-hedge quota. After
 activation, a software rollback must not silently replace contract bindings or
 discard signed settlements, journaled transactions or executed venue fills.
+
+### Public CI and private deployment entrypoint
+
+The encrypted `scripts/deployment/DeploySignedQuoteModules.s.sol` entrypoint inherits the secret-free implementation in `scripts/utils/SignedQuoteDeployment.s.sol`. Tests import that implementation so an ordinary GitHub checkout can compile and validate environment guards and inactive deployments without the git-crypt key. No deployment credentials or transaction payloads are published.

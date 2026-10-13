@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {DeploySignedQuoteModules} from "../scripts/deployment/DeploySignedQuoteModules.s.sol";
+import {SignedQuoteDeployment as DeploySignedQuoteModules} from "../scripts/utils/SignedQuoteDeployment.s.sol";
 import {SignedExecutionPricing} from "../src/oracle/SignedExecutionPricing.sol";
 import {SignedReferenceSource} from "../src/oracle/SignedReferenceSource.sol";
 import {SignedQuoteTypes as T} from "../src/libraries/SignedQuoteTypes.sol";

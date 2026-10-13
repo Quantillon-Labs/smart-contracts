@@ -191,4 +191,62 @@ contract SignedProtocolSettlementTest is QuantillonVaultMintCollateralizationAnd
         vm.stopPrank();
         assertEq(pool.totalUserDeposits(), 0);
     }
+    function test_PauseResumeDoesNotConsumeQuoteOrTransferFunds() public {
+        _activate();
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 100e18);
+        bytes memory auth = _authorization(bootstrapUser, T.Action.Mint, data, 100e6, 100e18, 41);
+        uint256 balance = usdc.balanceOf(bootstrapUser);
+        vm.prank(bootstrapUser); usdc.approve(address(vault), 100e6);
+        vm.prank(admin); vault.pause();
+        vm.prank(bootstrapUser); vm.expectRevert(); vault.executeWithQuote(data, auth);
+        assertEq(usdc.balanceOf(bootstrapUser), balance);
+        assertEq(source.sequence(), 0);
+        assertEq(pricing.outstanding(), 0);
+        assertFalse(pricing.usedNonces(bootstrapUser, 41));
+        vm.prank(admin); vault.unpause();
+        vm.prank(bootstrapUser); vault.executeWithQuote(data, auth);
+        assertTrue(pricing.usedNonces(bootstrapUser, 41));
+        vm.prank(bootstrapUser); vm.expectRevert(); vault.executeWithQuote(data, auth);
+        assertEq(qeuro.balanceOf(bootstrapUser), 100e18);
+    }
+
+    function test_ConcurrentQuotesCannotReuseUnacknowledgedCapacity() public {
+        _activate();
+        bytes memory first = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 900e6, 900e18);
+        bytes memory second = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 200e6, 200e18);
+        bytes memory auth1 = _authorization(bootstrapUser, T.Action.Mint, first, 900e6, 900e18, 51);
+        bytes memory auth2 = _authorization(bootstrapUser, T.Action.Mint, second, 200e6, 200e18, 52);
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 1100e6);
+        vault.executeWithQuote(first, auth1);
+        vm.expectRevert(); vault.executeWithQuote(second, auth2);
+        vm.stopPrank();
+        assertEq(pricing.outstanding(), 900e18);
+        assertEq(qeuro.balanceOf(bootstrapUser), 900e18);
+        assertFalse(pricing.usedNonces(bootstrapUser, 52));
+    }
+
+    function test_EmergencyRedemptionAfterSignerOutageIsBudgetedAndAtomic() public {
+        _activate();
+        vm.prank(admin); vault.pause();
+        pricing.configureEmergencyBudget(100e18);
+        vm.prank(admin); vault.unpause();
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 100e18);
+        bytes memory auth = _authorization(bootstrapUser, T.Action.Mint, data, 100e6, 100e18, 61);
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 100e6);
+        vault.executeWithQuote(data, auth);
+        vm.stopPrank();
+        pricing.setMode(T.Mode.EmergencyRedeem);
+        // No signer call, fresh quote, or periodic publisher is needed here.
+        vm.prank(bootstrapUser); vm.expectRevert(); vault.emergencyRedeemQEURO(100e18, 101e6);
+        assertEq(pricing.emergencyBudget(), 100e18);
+        assertEq(qeuro.balanceOf(bootstrapUser), 100e18);
+        vm.prank(bootstrapUser); vault.emergencyRedeemQEURO(100e18, 0);
+        assertEq(pricing.emergencyBudget(), 0);
+        assertEq(qeuro.balanceOf(bootstrapUser), 0);
+        assertEq(vault.totalMinted(), 0);
+        assertFalse(pricing.active());
+    }
+
 }

@@ -22,8 +22,13 @@ documentation checks. These are candidate checks, not production activation evid
 
 Before activation: migrate the production Roles policy for the typed selector,
 verify the exact reviewed permission history and runtime/storage bindings, rehearse
-the paired upgrade and rollback, reconcile existing exposure, and complete real-fill
-calibration and independent review. The preprod impersonation scripts, mock feeds,
+the paired upgrade and rollback, reconcile existing exposure, and complete real-fill attribution, initial
+parameter selection and independent review before scheduling. User decision on
+13 October: no mandatory shadow duration or completed-hedge quota; production
+switches with the executed activation after the 12-hour governance delay. Stage
+services and frontend beforehand, verify confirmed bindings at cutover, and keep
+admissions closed on failed readiness. Timelock expiry alone does not execute the
+upgrade. The preprod impersonation scripts, mock feeds,
 local signer keys and fixture permissions must never be used on Base.
 
 The historical preprod evidence below retains its original scope.
@@ -83,5 +88,5 @@ previously deployed versions remain Vault 1.6.0, UserPool 1.3.0 and HedgerPool 1
 
 Operational scenarios and reset instructions are in the Dapp repository at
 `docs/migrations/preprod-isolated-simulation.md`. Synthetic funding/APY data does not
-model Hyperliquid funding cashflows or exchange liquidations. Real-fill calibration,
-independent review and governed production activation remain separate release gates.
+model Hyperliquid funding cashflows or exchange liquidations. Real-fill integration, initial parameter review and governed production
+activation remain separate release gates; no timed calibration window is required.

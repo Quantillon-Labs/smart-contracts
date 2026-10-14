@@ -1,20 +1,30 @@
-# Signed quote migration (candidate)
+# Signed quotes: active environments and production migration
 
-This page describes the candidate implementation on `feat/signed-quotes-migration`. On 12 October 2026, the candidate was installed in preproduction only using the dedicated `feat/signed-quotes-preprod` integration branch. The isolated fork runs vault 1.6.0, UserPool 1.3.0 and HedgerPool 1.5.0, with signed execution and reference modules. Dev and Base mainnet remain unchanged. The production publisher remains necessary until its consumers and release gates have migrated. This preproduction installation is not a production activation record.
+Status verified **14 October 2026**: `feat/signed-quotes-dev` and `feat/signed-quotes-preprod` have been merged into `dev` and `preprod` in both repositories. Signed execution is active in both local environments. `main` / Base production remains on legacy execution and its periodic publisher. The production candidate branch is not a production activation record.
+
+| Environment | Chain / source branch | Execution and test model |
+| --- | --- | --- |
+| Dev | Fresh independent Anvil 31337 / `dev` | Signed execution, synthetic hedge capacity, mock USDC and staking |
+| Preprod | Isolated pinned Base fork 31338 / `preprod` | Signed execution, persistent simulated orders/fills/margin and failure scenarios |
+| Production | Base 8453 / `main` | Legacy execution; no activated quote API/signer |
+
+Both local environments use Vault **1.6.0**, UserPool **1.3.0**, HedgerPool **1.6.0**, ReferenceSettlementLibrary **1.1.0**, and the signed execution/reference modules. Source versions alone do not prove installed proxy implementations; verify the environment's private deployment receipt and onchain bindings. `deployments/8453` continues to describe Base, not local addresses.
+
+Use the [dev contract runbook](https://github.com/Quantillon-Labs/smart-contracts/blob/dev/DEV.md), [preprod contract runbook](https://github.com/Quantillon-Labs/smart-contracts/blob/preprod/PREPROD.md), and paired [Dapp environment guide](https://github.com/Quantillon-Labs/frontend-dapp/blob/dev/docs/migrations/signed-quotes.md). The Dapp guide records backend modes, ports, validation and the remaining simulation differences. Local success is not evidence of real exchange fills or authorization for production activation.
 
 ## Three separate responsibilities
 
-| Data | Candidate authority | Onchain consumer |
+| Data | Signing authority | Onchain consumer |
 | --- | --- | --- |
 | Exact execution amounts | Execution quote signer | `SignedExecutionPricing` and the existing vault accounting |
 | EUR/USD valuation | Reference signer, checked against an independent reference | `SignedReferenceSource`, market oracle and router |
-| Hedge admission | Capacity signer, after venue and canonical Base reconciliation | Cumulative admission and acknowledgment counters |
+| Hedge admission | Capacity signer, after venue and canonical environment-chain reconciliation | Cumulative admission and acknowledgment counters |
 
 A trade's size-dependent execution rate must never revalue all outstanding QEURO. Signing `amountOut` does not bypass collateralization, protocol fees, execution spread, route validation or hedge-capacity limits.
 
-Normal minting buys EUR exposure using asks. Redemption reduces that exposure using bids. The quote engine retains the reference clamps, walks the book with integer arithmetic and includes the configured execution buffer. The venue hedge follows Base settlement and remains non-atomic.
+Normal minting buys EUR exposure using asks. Redemption reduces that exposure using bids. The quote engine retains the reference clamps, walks the book with integer arithmetic and includes the configured execution buffer. A real venue hedge follows chain settlement and remains non-atomic. Dev uses synthetic capacity; preprod exercises a stateful simulated hedge, not a real exchange order.
 
-## Candidate contracts
+## Contracts and entrypoints
 
 `SignedExecutionPricing` and `SignedReferenceSource` are new non-upgradeable modules. QuantillonVault, UserPool and HedgerPool require governed implementation upgrades. Linked settlement libraries must be included in deployment verification and bytecode-size checks.
 
@@ -25,9 +35,10 @@ The vault's existing `configureExecutionPricing(address)` detects the signed mod
 | `QuantillonVault.executeWithQuote(bytes,bytes)` | One permitted vault operation with a signed authorization |
 | `UserPool.executeWithQuote(bytes,bytes)` | One pool deposit or withdrawal, retaining user tracking |
 | `HedgerPool.executeWithReference(bytes,bytes)` | Atomic reference delivery with enter, exit, remove-margin or emergency-close |
+| `HedgerPool.removeMarginWithReference(uint256,uint256,bytes)` | Typed atomic withdrawal used by scoped Safe/Zodiac roles |
 | `QuantillonVault.emergencyRedeemQEURO(uint256,uint256)` | Explicitly governed, budgeted emergency redemption |
 
-The HedgerPool wrapper does not change ownership or roles. Add-margin stays available directly without a quote or reference signer. Safe and Zodiac policies must explicitly support the bounded wrapper before callers switch; generic arbitrary-call permission is not a substitute.
+The HedgerPool wrapper does not change ownership or roles. Add-margin stays available directly without a quote or reference signer. Dev and preprod use dedicated local Safe/Zodiac roles. The typed withdrawal permission binds position 1, a positive amount, CALL and no ETH; it does not grant arbitrary `executeWithReference` calls. Add-margin approval is restricted to the current pool and cleared in the atomic workflow. Production policies must be reviewed and transitioned separately before callers switch.
 
 ## Signature and calldata binding
 
@@ -52,7 +63,7 @@ bytes32 referenceHash;
 
 The authorization is ABI-encoded as `(Quote,bytes,ReferenceReport,bytes,CapacityReport,bytes)` inside the shared `Authorization` struct. Reference-only authorization is `abi.encode(ReferenceReport, signature)`. The fixed wire vector is tested in both Node and Solidity for exact tuple encoding, signature recovery and chain-domain separation.
 
-Reference signatures use domain name `Quantillon Reference` and the reference-source address. They carry price, original observation time, sequence and source epoch. Exact replay is idempotent; it cannot refresh the observation timestamp. An authenticated older report may accompany a still-valid quote, but it cannot replace a newer cached reference. Capacity reports carry cumulative acknowledged buys and sells, margin capacity, observation time, sequence, execution epoch and the canonical Base block/hash inspected by the signer.
+Reference signatures use domain name `Quantillon Reference` and the reference-source address. They carry price, original observation time, sequence and source epoch. Exact replay is idempotent; it cannot refresh the observation timestamp. An authenticated older report may accompany a still-valid quote, but it cannot replace a newer cached reference. Capacity reports carry cumulative acknowledged buys and sells, margin capacity, observation time, sequence, execution epoch and the canonical environment-chain block/hash inspected by the signer.
 
 ## Accounting and concurrency
 
@@ -62,23 +73,23 @@ Out-of-order capacity delivery retains the latest accepted margin limit, origina
 
 Exact output stays signed, while backing and reference-valued fees use the latest accepted reference. A quote can therefore fail current collateral or impact checks before its deadline; the deadline is an expiry bound, not an unconditional execution guarantee.
 
-The candidate counts unresolved buys plus unresolved sells toward its gross admission limit. They do not cancel each other merely because their net exposure is zero. This is more conservative than the previous directional policy and must be included in capacity calibration.
+The signed module counts unresolved buys plus unresolved sells toward its gross admission limit. They do not cancel each other merely because their net exposure is zero. This is more conservative than the previous directional policy and must be included in capacity calibration.
 
 Offchain reservations serialize all quote workers sharing a deployment. Reserved public order-book depth represents Quantillon's risk budget; it does not reserve liquidity on Hyperliquid. Release requires canonical nonce, epoch, time and settlement evidence. Unknown consumed nonces and reorganized settlements retain their budget.
 
 ## Expiration and failure behavior
 
-The API targets twenty seconds from the original market observation, while the contract enforces a maximum of thirty seconds. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
+The source API default is twenty seconds; active dev and preprod explicitly configure thirty seconds from the original market observation. The contract enforces a thirty-second maximum. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
 
 Normal signed settlement fails closed on stale market data, invalid reference, exhausted capacity, bad signatures, expired authorization or pause. Emergency redemption is a separate mode, with a non-renewing budget and independent-reference checks. Switching modes alone does not replenish that budget. The existing market adapter's freshness policy also applies; emergency behavior must be rehearsed against the actual router and adapter.
 
 Keeper yield conversion uses a distinct bounded-rate authorization because the exact harvested amount is known only during the transaction. The signed maximum must not be exceeded. Zero-harvest behavior, role checks, staking allocation and vesting must remain unchanged. Public quote issuance does not grant keeper authority.
 
-## Release and rollback requirements
+## Production release and rollback requirements
 
-Complete keeper, margin/Safe, liquidation, indexer, rewards, dashboard, watchdog and reset integrations before retiring the periodic writer. Test operations after inactivity beyond every former freshness window. Dev and preproduction resets must restore candidate implementations, links, roles, bindings and isolated durable state.
+For production, validate keeper, margin/Safe, liquidation, indexer, rewards, dashboard, watchdog and reset integrations before retiring its periodic writer. Dev/preprod already use signed consumers and have disabled their periodic publishers. Test operations after inactivity beyond every former freshness window. Dev and preproduction resets restore signed implementations, links, roles, bindings and isolated durable state; both coordinated paths were verified on 14 October.
 
-Updated user decision (13 October 2026): validate the preprod-to-production candidate before scheduling the upgrade. There is no mandatory seven-day shadow window or minimum real-hedge sample quota. Finish code, real-fill attribution, permissions, review, rehearsal and staging first. After the requested 12-hour governance delay, execute the governed activation and coordinate the prepared Dapp/backend switch against confirmed onchain bindings in the same cutover. Elapsed timelock time does not execute the upgrade automatically. Brief admission pause, reconciliation and immediate validation remain part of cutover; no additional observation period is imposed. Stop the recurring publisher once its replaced consumers pass those checks. Keep admissions closed if versions or bindings do not match. Dev rollout is separate. Update deployment addresses and versions from actual receipts, never from planned values. Generate contract reference pages from NatSpec with `make docs`.
+Updated user decision (13 October 2026): validate the preprod-to-production candidate before scheduling the upgrade. There is no mandatory seven-day shadow window or minimum real-hedge sample quota. Finish code, real-fill attribution, permissions, review, rehearsal and staging first. After the requested 12-hour governance delay, execute the governed activation and coordinate the prepared Dapp/backend switch against confirmed onchain bindings in the same cutover. Elapsed timelock time does not execute the upgrade automatically. Brief admission pause, reconciliation and immediate validation remain part of cutover; no additional observation period is imposed. Stop the recurring publisher once its replaced consumers pass those checks. Keep admissions closed if versions or bindings do not match. Dev and preprod activation is complete and separate from these production gates. Update deployment addresses and versions from actual receipts, never from planned values. Generate contract reference pages from NatSpec with `make docs`.
 
 Before any signed settlement, rollback may restore verified legacy bindings with fresh reports. After signed settlements, stop issuance, invalidate outstanding quotes and reconcile real venue fills and onchain admission before replacing the module. Restoring an old database does not undo a settlement.
 
@@ -92,10 +103,16 @@ Before activation, governance must grant the reference signer on the source, gra
 
 The deployment script logs module addresses, not public Safe import payloads. Keep broadcaster receipts and any governed transaction staging artifacts in private operator storage. Do not run `--broadcast` as part of unit tests or documentation builds.
 
-## Preproduction validation
+## Local validation and reset evidence
 
-The integration passed direct mint/redemption, UserPool deposit/withdrawal, mint-and-stake share issuance, replay rejection, expiry rejection, signed keeper harvesting and a coordinated reset with fresh quote domains. Reference-backed dashboard and keeper previews use read-only simulation. A 70-second idle check confirmed no publisher transaction and no persistent reference update while valuation remained available. Hedge capacity remains simulated; no real Hyperliquid fill or production risk calibration is implied. Private installation receipts and keys are not published.
+The preprod integration passed direct mint/redemption, UserPool deposit/withdrawal, mint-and-stake share issuance, replay rejection, expiry rejection, signed keeper harvesting and a coordinated reset with fresh quote domains. Reference-backed dashboard and keeper previews use read-only simulation. A 70-second idle check confirmed no publisher transaction and no persistent reference update while valuation remained available. Hedge capacity remains simulated; no real Hyperliquid fill or production risk calibration is implied. Private installation receipts and keys are not published.
 
+
+The 14 October rollout also verified fresh coordinated resets in both environments, authenticated direct/UserPool mint and redemption, replay refusal, mint-and-stake and browser settlement. Dev subsequently gained its own Safe 1.4.1 / Roles 2.1.1 fixture and delegated add-margin/typed withdrawal workflow, including reset and browser validation. See the [dated rollout and follow-up](https://github.com/Quantillon-Labs/frontend-dapp/blob/dev/docs/migrations/signed-quotes-rollout-2026-10-14.md).
+
+Reset rotates signing authorities or domain identity even when deterministic contract addresses repeat; clears derived reservations, simulator state where applicable, and writer journals with the chain; preserves profiles/configuration; rebuilds the paired frontend/services; and verifies signed readiness before reopening. Automatic resets use installed commits, never an implicit branch promotion. Local signed mode uses immediate transaction mining plus two-second empty blocks; this advances chain time without making stale market observations fresh.
+
+Preprod supplies persistent order/fill/fee/margin reconciliation and admin failure scenarios. Dev synthetic acknowledgment follows local supply and cannot reproduce those venue failure states. The shared contract features and Safe workflow are available in both, but these test models are intentionally different. No external trading or bridging is enabled.
 
 ## Production activation authority and rehearsal
 

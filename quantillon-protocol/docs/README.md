@@ -1,5 +1,7 @@
 # Quantillon Protocol Documentation
 
+**Environment status — 14 October 2026:** dev and preprod use signed execution; production remains legacy. Start with [Signed Quote Migration](Signed-Quote-Migration.md) for local signed routes, versions, reset requirements and remaining production gates. Base address tables are production records, not dev/preprod bindings.
+
 Current production behavior and settings: [Production Protocol Reference](https://smartcontracts.quantillon.money/Production-Protocol-Reference.html).
 
 

@@ -1,5 +1,7 @@
 # Signed quotes: consolidated candidate for production
 
+> **Historical checkpoint.** This consolidation record predates the 14 October dev/preprod activation and dev delegation follow-up. For current versions, deployed branches and production gates, use [Signed Quote Migration](Signed-Quote-Migration.md).
+
 ## Production branch promotion — 13 October 2026
 
 `feat/signed-quotes-migration` now contains the source and test changes validated

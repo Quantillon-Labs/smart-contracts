@@ -1,5 +1,7 @@
 # Quantillon Protocol Quick Start
 
+> **Execution mode:** the direct conversion examples below describe legacy Base production. Dev/preprod have activated signed execution: use `executeWithQuote` with an authorization bound to the current environment, and typed reference delivery for margin withdrawal. See [signed routes and encoding](Signed-Quote-Migration.md); changing only the RPC URL in a legacy example is insufficient.
+
 This example targets the current Base deployment and **ethers v6**, using integer arithmetic and a wallet signer. It mints QEURO and deposits QEURO into the direct ERC-4626 stQEURO series. The optional UserPool contract is a different staking path.
 
 Install `ethers@6` in your integration project. Obtain current ABIs from the compiled `out/<Contract>.sol/<Contract>.json` artifact's `abi` field; signature baseline files are not JSON ABIs. Use the [address inventory](API-Reference.md#contract-addresses) and check [Production Protocol Reference](Production-Protocol-Reference.md) before integrating. Library syntax follows the [ethers v6 guide](https://docs.ethers.org/v6/getting-started/).

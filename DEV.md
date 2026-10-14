@@ -1,5 +1,9 @@
 # Development deployment
 
+Dev also installs a local Safe 1.4.1 and Zodiac Roles 2.1.1 with its dedicated `hedge-ops-dev` role. Delegated margin addition and typed `removeMarginWithReference` are available for the local position; missing or stale bindings fail closed. The reset reinstalls these permissions. Dev synthetic capacity does not reproduce preprod’s persistent order/fill scenarios. See the [dev Dapp runbook](https://github.com/Quantillon-Labs/frontend-dapp/blob/dev/ops/dev/README.md).
+
+Current signed interface and cross-environment status: [Signed Quote Migration](quantillon-protocol/docs/Signed-Quote-Migration.md). Both local environments use a 30-second quote lifetime and two-second empty-block mining alongside immediate transaction mining. Production remains legacy.
+
 The `dev` branch is deployed only to the isolated local Anvil chain 31337 at
 127.0.0.1:8549. Operational reset/deployment tooling is maintained in the dapp
 repository's `ops/dev` directory. Run `/var/www/dev/redeploy-cycle.sh` as root;
@@ -8,7 +12,7 @@ never use a standalone Anvil reset beneath the running applications.
 The deployment uses fresh private local test keys, mock USDC/reference feeds and a
 mock staking adapter. `DEV_INITIAL_EUR_USD_PRICE` may override the mock bootstrap
 price only on chain 31337; the coordinator obtains a fresh public EUR market
-observation so normal deviation checks remain active when publication begins.
+observation so normal deviation checks remain active when signed reference delivery begins.
 Automatic resets deploy the selected checkout and never pull another branch.
 
 Credentials, detailed deployment receipts and test wallet keys are private. The

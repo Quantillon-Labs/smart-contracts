@@ -1,5 +1,7 @@
 # Smart Contracts - Quantillon Protocol
 
+**Environment status — 14 October 2026:** dev and preprod use signed quotes on their merged environment branches; main / Base production remains legacy. See [signed execution and environment differences](quantillon-protocol/docs/Signed-Quote-Migration.md) and [this environment’s deployment guide](DEV.md). The Base inventory below is not a local-chain address registry.
+
 Base deployment addresses and active versions (22 September 2026):
 [Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-23-september-2026) ·
 [API address reference](https://smartcontracts.quantillon.money/API-Reference.html#contract-addresses).

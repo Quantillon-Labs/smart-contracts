@@ -1,6 +1,6 @@
 # Quantillon Protocol Smart Contracts
 
-Candidate architecture: [Signed Quote Migration](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html). Activation is subject to the coordinated release gates.
+**Environment status — 14 October 2026:** dev (31337) and preprod (31338) have activated signed quotes. Main / Base production (8453) remains legacy. [Signed execution, environment differences and production gates](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html) documents the active local entrypoints; the Base addresses and legacy integration examples below describe production.
 
 Current production behavior and settings: [Production Protocol Reference](https://smartcontracts.quantillon.money/Production-Protocol-Reference.html).
 
@@ -286,7 +286,7 @@ make gas-analysis
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/LICENSE) file for details.
 
 ## 🔗 Links
 

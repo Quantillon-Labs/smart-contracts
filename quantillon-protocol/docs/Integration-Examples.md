@@ -1,5 +1,7 @@
 # Integration Examples
 
+> **Execution mode:** the direct conversion examples below describe legacy Base production. Dev/preprod have activated signed execution: use `executeWithQuote` with an authorization bound to the current environment, and typed reference delivery for margin withdrawal. See [signed routes and encoding](Signed-Quote-Migration.md); changing only the RPC URL in a legacy example is insufficient.
+
 Use the **ethers v6** setup and contract objects from [Quick Start](Quick-Start.md). These examples illustrate client integration; simulate and test them on an isolated fork before use. They are not a guarantee of current liquidity or transaction success.
 
 ## Normal redemption

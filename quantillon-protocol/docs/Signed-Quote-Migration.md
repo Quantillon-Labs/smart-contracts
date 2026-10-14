@@ -144,3 +144,20 @@ discard signed settlements, journaled transactions or executed venue fills.
 ### Public CI and private deployment entrypoint
 
 The encrypted `scripts/deployment/DeploySignedQuoteModules.s.sol` entrypoint inherits the secret-free implementation in `scripts/utils/SignedQuoteDeployment.s.sol`. Tests import that implementation so an ordinary GitHub checkout can compile and validate environment guards and inactive deployments without the git-crypt key. No deployment credentials or transaction payloads are published.
+
+
+## Emergency freshness compatibility
+
+The signed candidate requires HyperliquidEurUsdOracle **1.0.7**. Its ordinary
+market snapshot window is unchanged. In the governed signed source's explicit
+emergency mode it accepts that source's independent-reference age policy up to
+8100 seconds. Original observation timestamps are preserved. Invalid or expired
+independent rounds still fail at the source; adapter bounds, reference comparison,
+USDC checks and circuit breakers still apply. A legacy source lacking the signed
+emergency getters cannot extend its snapshot window.
+
+Upgrade the adapter through its existing authority before activating the signed
+source. Rehearse redemption through the actual source, adapter, router and vault
+with fresh, old-but-valid and expired independent rounds. Merely rebinding an
+older adapter is insufficient. No deployed address/version manifest is updated
+until the corresponding governed deployment has actually occurred.

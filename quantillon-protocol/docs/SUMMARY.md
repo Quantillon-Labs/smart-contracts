@@ -9,6 +9,7 @@
 - [Architecture Overview](Architecture.md)
 - [Oracle Architecture](Oracle-Architecture.md)
 - [Signed quotes: environments and migration](Signed-Quote-Migration.md)
+- [Signed Quotes Consolidation](Signed-Quotes-Consolidation.md)
 - [Security Guide](Security.md)
 - [Dapp Compatibility](Dapp-Compatibility.md)
 - [Deployment Guide](Deployment.md)

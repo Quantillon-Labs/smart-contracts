@@ -14,34 +14,26 @@ Automatic resets deploy the selected checkout and never pull another branch.
 Credentials, detailed deployment receipts and test wallet keys are private. The
 local `.env` symlink and generated deployment files are not source changes.
 
-## Signed-quotes candidate — 14 October 2026
+## Signed quotes activated — 14 October 2026
 
-`feat/signed-quotes-dev` is the dedicated candidate in both `smart-contracts`
-and `frontend-dapp`. The contracts candidate starts from dev `f3765f67` and
-merges the shared signed-quotes candidate `435062e9`. Its contract source,
-interfaces and tests match that candidate; it preserves dev's mock-price
-bootstrap, Anvil endpoint, private configuration symlink and recorded deployment
-inventory. Contract versions remain those of the shared candidate.
+`feat/signed-quotes-dev` is merged into `dev` in both contracts and dapp.
+The served checkouts are `/var/www/dev/smart-contracts` and
+`/var/www/dev/quantillon-dapp`. The coordinated reset deploys Vault 1.6.0,
+UserPool 1.3.0, HedgerPool 1.6.0 and the signed pricing/reference modules.
 
-The paired worktrees are `/var/www/quantillon-signed-quotes/dev-contracts` and
-`/var/www/quantillon-signed-quotes/dev-dapp`. Pushes to the candidate branches run
-their test workflows. Creating these branches does not install the candidate in
-the running dev environment. Activation still requires the coordinated dev
-deployment/reset procedure and environment-specific signed-quote bindings.
+The dapp reset now installs Multicall3 for browser reads, the real ChainlinkOracle
+implementation over explicit local mock feeds, new signing keys and dev-only
+quote API/signer configuration. It disables the legacy periodic publisher, checks
+runtime provenance and signed readiness, and tests direct and UserPool settlement,
+replay refusal, mint-and-stake and unstaking before reopening the instance.
+The signed emergency haircut covers the inherited maximum impact (500 bps).
 
-## Execution paths and deployment records
+Dev capacity is synthetic; fixture feed refreshes retain the public observation's
+original timestamp. These are local tests, not real exchange fills or independent
+production reference data. See the dapp's `ops/dev/README.md` for reset, isolation
+and monitoring details. Automatic resets use installed commits without pulling.
 
-The installed reset entrypoint uses `/var/www/dev/quantillon-dapp/ops/dev/reset.py`
-and `/var/www/dev/smart-contracts`. It does not select this candidate worktree.
-Install the reviewed paired revisions into those environment checkouts before a
-coordinated activation. The dapp tooling resolves a sibling `smart-contracts`
-directory; running it directly from the staged `dev-dapp` worktree does not select
-the staged `dev-contracts` directory.
-
-The ordinary reset deploys and seeds the legacy bootstrap. Signed module
-deployment, signer configuration, oracle/pricing bindings and signed readiness
-require the paired signed-quotes activation procedure; a new branch alone does
-not add those steps to `ops/dev/reset.py`.
+## Deployment records
 
 `quantillon-protocol/deployments/8453/` contains historical Base records, not the
 dev chain's deployment inventory. Actual chain-31337 addresses, fixtures, reset

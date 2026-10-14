@@ -28,3 +28,29 @@ The paired worktrees are `/var/www/quantillon-signed-quotes/dev-contracts` and
 their test workflows. Creating these branches does not install the candidate in
 the running dev environment. Activation still requires the coordinated dev
 deployment/reset procedure and environment-specific signed-quote bindings.
+
+## Execution paths and deployment records
+
+The installed reset entrypoint uses `/var/www/dev/quantillon-dapp/ops/dev/reset.py`
+and `/var/www/dev/smart-contracts`. It does not select this candidate worktree.
+Install the reviewed paired revisions into those environment checkouts before a
+coordinated activation. The dapp tooling resolves a sibling `smart-contracts`
+directory; running it directly from the staged `dev-dapp` worktree does not select
+the staged `dev-contracts` directory.
+
+The ordinary reset deploys and seeds the legacy bootstrap. Signed module
+deployment, signer configuration, oracle/pricing bindings and signed readiness
+require the paired signed-quotes activation procedure; a new branch alone does
+not add those steps to `ops/dev/reset.py`.
+
+`quantillon-protocol/deployments/8453/` contains historical Base records, not the
+dev chain's deployment inventory. Actual chain-31337 addresses, fixtures, reset
+status and deployment receipts are private under `/etc/quantillon/dev`.
+
+## Test CI
+
+`quantillon-protocol-tests.yml` runs for pushes to, and pull requests targeting,
+`dev` or `feat/signed-quotes-dev` only. It retains the common contract tests and
+upgrade gates; these do not reset the served dev instance. Manual dispatch runs
+the full analysis suite on the selected branch. This branch has no cron:
+GitHub schedules execute on the default branch, not on each environment branch.

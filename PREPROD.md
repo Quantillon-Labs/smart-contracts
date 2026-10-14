@@ -1,11 +1,11 @@
 # Preproduction deployment
 
-The environment branch is `preprod`; this signed-quotes candidate is
-`feat/signed-quotes-preprod`. Preprod uses an isolated Anvil fork of Base on
+The environment branch is `preprod`; `feat/signed-quotes-preprod` was merged
+and activated on 14 October 2026. Preprod uses an isolated Anvil fork of Base on
 chain **31338**, RPC `http://127.0.0.1:8550`. External venue execution and bridges
 are simulated or disabled. Fork keys and fixtures must never be used on Base.
 
-## Candidate and installed state
+## Installed signed execution
 
 The shared signed-quotes implementation comes from `435062e9`: Vault 1.6.0,
 UserPool 1.3.0, HedgerPool 1.6.0 and ReferenceSettlementLibrary 1.1.0, with the
@@ -13,10 +13,10 @@ signed execution and reference modules. This checkout retains preprod's guarded
 execution wrapper and RPC alias. Source versions and branch names do not prove
 which implementations are installed in the running fork.
 
-The candidate contracts checkout is
-`/var/www/quantillon-signed-quotes/preprod-contracts`; its paired dapp checkout is
-`/var/www/quantillon-signed-quotes/preprod-dapp`. The installed environment lives
-under `/var/www/preprod`. Operational reset and simulation instructions are in
+The installed checkouts are `/var/www/preprod/smart-contracts` and
+`/var/www/preprod/quantillon-dapp`. A complete coordinated reset, signed
+settlement/replay tests and simulated hedge recovery were verified on 14 October.
+Operational reset and simulation instructions are in
 the paired dapp's `ops/preprod/README.md` and
 `docs/migrations/preprod-isolated-simulation.md`.
 

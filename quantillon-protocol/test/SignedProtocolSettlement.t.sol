@@ -2,6 +2,8 @@
 pragma solidity 0.8.24;
 
 import {QuantillonVaultMintCollateralizationAndLiquidationThresholdTest} from "./QuantillonVault_MintCollateralizationAndLiquidationThreshold.t.sol";
+import {HyperliquidEurUsdOracle} from "../src/oracle/HyperliquidEurUsdOracle.sol";
+import {OracleRouter} from "../src/oracle/OracleRouter.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -24,8 +26,10 @@ contract SignedProtocolSettlementTest is QuantillonVaultMintCollateralizationAnd
     SignedExecutionPricing private pricing;
     UserPool private pool;
 
+    uint256 private independentObservedAt;
+
     function peekEurUsdPrice() external view returns (uint256, uint256, bool) {
-        return (1e18, block.timestamp, true);
+        return (1e18, independentObservedAt == 0 ? block.timestamp : independentObservedAt, true);
     }
 
     function _activate() private {
@@ -276,6 +280,43 @@ contract SignedProtocolSettlementTest is QuantillonVaultMintCollateralizationAnd
         assertEq(qeuro.balanceOf(bootstrapUser), 0);
         assertEq(vault.totalMinted(), 0);
         assertFalse(pricing.active());
+    }
+
+    function test_EmergencyRedemptionThroughRealOraclePreservesIndependentAge() public {
+        _activate();
+        vm.prank(admin); vault.pause();
+        pricing.configureEmergencyBudget(100e18);
+        vm.prank(admin); vault.unpause();
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 100e18);
+        bytes memory auth = _authorization(bootstrapUser, T.Action.Mint, data, 100e6, 100e18, 91);
+        vm.startPrank(bootstrapUser);
+        usdc.approve(address(vault), 100e6);
+        vault.executeWithQuote(data, auth);
+        vm.stopPrank();
+        independentObservedAt = block.timestamp;
+        pricing.setMode(T.Mode.EmergencyRedeem);
+
+        TimeProvider time = TimeProvider(address(new ERC1967Proxy(address(new TimeProvider()),
+            abi.encodeCall(TimeProvider.initialize, (admin, admin, admin)))));
+        HyperliquidEurUsdOracle market = HyperliquidEurUsdOracle(address(new ERC1967Proxy(
+            address(new HyperliquidEurUsdOracle(time)), abi.encodeCall(HyperliquidEurUsdOracle.initialize,
+                (admin, address(source), 1, address(oracle), admin)))));
+        OracleRouter router = OracleRouter(address(new ERC1967Proxy(address(new OracleRouter()),
+            abi.encodeCall(OracleRouter.initialize, (admin, address(oracle), address(market), admin, OracleRouter.OracleType.MARKET)))));
+        vm.prank(admin); vault.updateOracle(address(router));
+        uint256[4] memory ages = [uint256(0), 901, 3601, 8100];
+        for (uint256 i; i < ages.length; ++i) {
+            vm.warp(independentObservedAt + ages[i]);
+            assertEq(source.getSlippageBySource(1).timestamp, independentObservedAt);
+            (, bool valid) = router.getEurUsdPrice(); assertTrue(valid);
+            vm.prank(bootstrapUser); vault.emergencyRedeemQEURO(10e18, 9e6);
+        }
+        assertEq(qeuro.balanceOf(bootstrapUser), 60e18);
+        assertEq(pricing.emergencyBudget(), 60e18);
+        vm.warp(independentObservedAt + 8101);
+        vm.prank(bootstrapUser); vm.expectRevert(); vault.emergencyRedeemQEURO(10e18, 0);
+        assertEq(pricing.emergencyBudget(), 60e18, "expired round cannot consume budget");
+        assertEq(qeuro.balanceOf(bootstrapUser), 60e18);
     }
 
 }

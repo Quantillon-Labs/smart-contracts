@@ -1,23 +1,20 @@
-name: Quantillon Protocol Tests
+name: Quantillon Protocol Tests (preprod)
 
 on:
   push:
     branches:
-      - main
-      - feat/signed-quotes-migration
+      - preprod
       - feat/signed-quotes-preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"
   pull_request:
     branches:
-      - main
+      - preprod
+      - feat/signed-quotes-preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"
-  schedule:
-    # Nightly heavy CI run (UTC)
-    - cron: "0 3 * * *"
   workflow_dispatch:
 
 jobs:
@@ -144,7 +141,7 @@ jobs:
         run: make check-deployed-versions
 
   ci-heavy:
-    name: Full CI Suite (nightly)
+    name: Full CI Suite (manual)
     runs-on: ubuntu-latest
     needs: test-shards
     if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')

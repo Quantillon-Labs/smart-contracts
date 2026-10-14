@@ -8,7 +8,7 @@
 - [Integration Examples](Integration-Examples.md)
 - [Architecture Overview](Architecture.md)
 - [Oracle Architecture](Oracle-Architecture.md)
-- [Signed Quote Migration (Candidate)](Signed-Quote-Migration.md)
+- [Signed quotes: environments and migration](Signed-Quote-Migration.md)
 - [Security Guide](Security.md)
 - [Dapp Compatibility](Dapp-Compatibility.md)
 - [Deployment Guide](Deployment.md)
@@ -99,4 +99,4 @@
     - [IStorkFeed](src/oracle/StorkOracle.sol/interface.IStorkFeed.md)
     - [StorkOracle](src/oracle/StorkOracle.sol/contract.StorkOracle.md)
 
-- [Signed quotes preprod consolidation](Signed-Quotes-Consolidation.md)
+- [Signed quotes consolidation (historical)](Signed-Quotes-Consolidation.md)

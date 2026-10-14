@@ -1,6 +1,8 @@
 # Quantillon Protocol API Reference
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+Signed entrypoints are documented in [Contracts and entrypoints](Signed-Quote-Migration.md#contracts-and-entrypoints), with execution/reference ABI encoding and chain-domain rules. Dev/preprod callers must not use the legacy unquoted conversion examples when `signedExecutionEnabled` is true. Generated NatSpec describes the source interfaces; it does not prove production activation.
+
+> **Environment scope — 14 October 2026:** dev/preprod use [signed execution and reference delivery](Signed-Quote-Migration.md). Base production remains legacy. Mainnet addresses and legacy execution examples below describe Base; use the signed guide for local entrypoints, bindings and reset requirements.
 
 ## Technical API Reference
 

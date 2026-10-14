@@ -1,6 +1,6 @@
 # Oracle Architecture
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> **Environment scope — 14 October 2026:** dev/preprod use [signed execution and reference delivery](Signed-Quote-Migration.md). Base production remains legacy. Mainnet addresses and legacy execution examples below describe Base; use the signed guide for local entrypoints, bindings and reset requirements.
 
 The reference-price path for QEURO valuation: a dual-source `OracleRouter` whose **active** EUR/USD source
 is the Hyperliquid `xyz:EUR` perpetual mid (the venue where the protocol hedge executes), with the

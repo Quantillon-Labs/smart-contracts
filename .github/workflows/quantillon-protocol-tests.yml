@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feat/signed-quotes-migration
+      - feat/signed-quotes-preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"

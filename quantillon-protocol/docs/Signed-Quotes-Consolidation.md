@@ -99,3 +99,12 @@ Operational scenarios and reset instructions are in the Dapp repository at
 `docs/migrations/preprod-isolated-simulation.md`. Synthetic funding/APY data does not
 model Hyperliquid funding cashflows or exchange liquidations. Real-fill integration, initial parameter review and governed production
 activation remain separate release gates; no timed calibration window is required.
+
+## Shared candidate alignment — 14 October 2026
+
+The preprod and production signed-quotes branches now share the same contract
+source, documented interfaces, deployment helper, version assertions and test CI.
+The synchronization changes no core implementation, storage layout or contract
+version. The eight signed/reference/version suites passed all 198 tests locally.
+The deployment entrypoint remains encrypted; the helper is testable in a locked
+checkout. This source synchronization does not upgrade either running instance.

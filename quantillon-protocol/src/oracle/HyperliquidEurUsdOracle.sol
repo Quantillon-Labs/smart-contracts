@@ -5,6 +5,8 @@ pragma solidity 0.8.24;
 // IMPORTS - Quantillon interfaces and OpenZeppelin security
 // =============================================================================
 
+import {SignedReferenceSource} from "./SignedReferenceSource.sol";
+
 import {IVersioned} from "../interfaces/IVersioned.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IHyperliquidOracle} from "../interfaces/IHyperliquidOracle.sol";
@@ -118,8 +120,8 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        // Patch release: relink TreasuryRecoveryLibrary 1.0.1.
-        return "1.0.6";
+        // Patch release: preserve independent-reference freshness in signed emergency mode.
+        return "1.0.7";
     }
 
     // =============================================================================
@@ -336,7 +338,9 @@ contract HyperliquidEurUsdOracle is
     /**
      * @notice Validates the published mid timestamp against future-dating and staleness
      * @dev SlippageStorage timestamps are on-chain write times, so they cannot be in the future
-     *      except under clock skew; rejects zero (never published) and anything older than maxPriceStaleness.
+     *      except under clock skew; rejects zero and future observations. Normal snapshots use maxPriceStaleness.
+     *      An explicitly emergency SignedReferenceSource uses its independent age policy, capped at 8100 seconds.
+     *      This does not refresh timestamps or bypass price, independent-reference or circuit-breaker checks.
      * @param reportedTime The snapshot timestamp to validate
      * @return True if the timestamp is fresh and not future-dated
      * @custom:security Bounds acceptable data age for valuation reads
@@ -352,8 +356,15 @@ contract HyperliquidEurUsdOracle is
         if (reportedTime == 0) return false;
         uint256 nowTime = TIME_PROVIDER.currentTime();
         if (reportedTime > nowTime) return false;
-        if (nowTime > reportedTime + maxPriceStaleness) return false;
-        return true;
+        if (nowTime - reportedTime <= maxPriceStaleness) return true;
+        // Only the governed source's explicit emergency mode can use independent
+        // feed ages. Legacy sources without these getters retain the market cap.
+        try SignedReferenceSource(address(slippageStorage)).emergency() returns (bool enabled) {
+            if (!enabled) return false;
+            try SignedReferenceSource(address(slippageStorage)).maxReferenceAge() returns (uint256 age) {
+                return age > 0 && age <= 8100 && nowTime - reportedTime <= age;
+            } catch { return false; }
+        } catch { return false; }
     }
 
     /**

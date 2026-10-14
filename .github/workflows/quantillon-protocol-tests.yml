@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+      - feat/signed-quotes-migration
+      - feat/signed-quotes-preprod
+      - feat/signed-quotes-dev
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"

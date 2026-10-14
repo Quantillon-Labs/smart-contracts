@@ -1,5 +1,5 @@
 # AaveStakingVaultAdapter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/vaults/AaveStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/vaults/AaveStakingVaultAdapter.sol)
 
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
@@ -292,4 +292,3 @@ function setAaveVault(address newAaveVault) external onlyRole(GOVERNANCE_ROLE);
 ```solidity
 event AaveVaultUpdated(address indexed oldVault, address indexed newVault);
 ```
-

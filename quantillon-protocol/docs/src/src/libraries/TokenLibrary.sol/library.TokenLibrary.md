@@ -1,5 +1,5 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/TokenLibrary.sol)
 
 **Title:**
 TokenLibrary
@@ -99,5 +99,3 @@ function validateBurn(address from, uint256 amount, uint256 balance) internal pu
 |`from`|`address`|Address to burn from|
 |`amount`|`uint256`|Amount to burn|
 |`balance`|`uint256`|Current balance|
-
-

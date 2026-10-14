@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {SignedQuoteErrors} from "../libraries/SignedQuoteErrors.sol";
+import {SignedUserPoolLibrary} from "../libraries/SignedUserPoolLibrary.sol";
+
+
 import {IVersioned} from "../interfaces/IVersioned.sol";
 
 // =============================================================================
@@ -115,7 +119,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.8";
+        return "1.3.0";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -1972,4 +1976,29 @@ contract UserPool is
         (bool success, ) = payable(treasury).call{value: balance}("");
         if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }
+    /// @notice Transaction-local guard for the quote wrapper, appended without moving existing storage.
+    bool private signedRouteActive;
+
+    /**
+     * @notice Dispatch one signed operation with the original caller and existing accounting.
+     * @dev Invoked through the consumer; delegatecall retains its storage and original sender.
+     * @param callData Complete ABI-encoded operation, including route and output bounds.
+     * @param authorization ABI-encoded report or quote authorization required by this entrypoint.
+     * @return result ABI-encoded return data of the dispatched operation.
+     * @custom:security Consumer permissions and accounting checks remain in force.
+     * @custom:validation Applies the selected operation's bounds; failures revert the entire call.
+     * @custom:state-changes Updates the calling consumer and downstream contracts as described above.
+     * @custom:events Underlying operation and token events when applicable.
+     * @custom:errors Reverts on invalid inputs, permissions or failed downstream calls.
+     * @custom:reentrancy The consuming operation retains its existing reentrancy guards.
+     * @custom:access Consumer entrypoint permissions; this helper grants no additional authority.
+     * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
+     */
+    function executeWithQuote(bytes calldata callData, bytes calldata authorization) external whenNotPaused returns (bytes memory result) {
+        if (signedRouteActive) revert SignedQuoteErrors.ActiveSettlement();
+        signedRouteActive = true;
+        result = SignedUserPoolLibrary.execute(address(vault), callData, authorization);
+        signedRouteActive = false;
+    }
+
 }

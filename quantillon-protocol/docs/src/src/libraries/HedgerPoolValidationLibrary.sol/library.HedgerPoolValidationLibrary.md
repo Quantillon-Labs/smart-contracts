@@ -1,5 +1,5 @@
 # HedgerPoolValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/HedgerPoolValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/HedgerPoolValidationLibrary.sol)
 
 **Title:**
 HedgerPoolValidationLibrary
@@ -402,5 +402,3 @@ function validateFee(uint256 fee, uint256 maxFee) internal pure;
 |----|----|-----------|
 |`fee`|`uint256`|The fee amount to validate|
 |`maxFee`|`uint256`|The maximum allowed fee|
-
-

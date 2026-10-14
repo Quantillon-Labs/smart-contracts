@@ -1,5 +1,7 @@
 # Oracle Architecture
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 The reference-price path for QEURO valuation: a dual-source `OracleRouter` whose **active** EUR/USD source
 is the Hyperliquid `xyz:EUR` perpetual mid (the venue where the protocol hedge executes), with the
 `ChainlinkOracle` retained as a one-transaction fallback. Live on Base mainnet since 2026-06-25.

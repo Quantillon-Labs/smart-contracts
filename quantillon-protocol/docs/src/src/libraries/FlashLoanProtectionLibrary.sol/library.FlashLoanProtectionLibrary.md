@@ -1,5 +1,5 @@
 # FlashLoanProtectionLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/FlashLoanProtectionLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/FlashLoanProtectionLibrary.sol)
 
 **Title:**
 FlashLoanProtectionLibrary
@@ -82,5 +82,3 @@ function validateBalanceChange(uint256 balanceBefore, uint256 balanceAfter, uint
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`bool`|bool True if balance change is acceptable|
-
-

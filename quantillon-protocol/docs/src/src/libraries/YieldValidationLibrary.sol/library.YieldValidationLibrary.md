@@ -1,5 +1,5 @@
 # YieldValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/YieldValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/YieldValidationLibrary.sol)
 
 **Title:**
 YieldValidationLibrary
@@ -166,5 +166,3 @@ function validateTreasuryAddress(address treasury) internal pure;
 |Name|Type|Description|
 |----|----|-----------|
 |`treasury`|`address`|The treasury address to validate|
-
-

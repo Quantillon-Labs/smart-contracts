@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -890,6 +890,43 @@ function getEurUsdDetails()
 |`withinBounds`|`bool`|true if within acceptable bounds|
 
 
+### peekEurUsdPrice
+
+Reads an independent EUR/USD reference without using the cached baseline.
+
+Used by market-price validation and degraded redemption. The result is view-only and
+applies feed integrity, sequencer, freshness, positivity, and absolute-bound checks.
+
+**Notes:**
+- security: Does not substitute cached prices or bypass sequencer checks.
+
+- validation: Rejects stale, future, malformed, nonpositive, and out-of-range data.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Returns false on feed failure.
+
+- reentrancy: Read-only feed calls.
+
+- access: Public.
+
+- oracle: Reads the configured Chainlink EUR/USD and sequencer feeds.
+
+
+```solidity
+function peekEurUsdPrice() external view returns (uint256 price, uint256 updatedAt, bool isValid);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|Fresh normalized EUR/USD price, or zero when invalid.|
+|`updatedAt`|`uint256`|Feed timestamp.|
+|`isValid`|`bool`|Whether the reference is independently valid.|
+
+
 ### getOracleConfig
 
 Retrieves current configuration parameters
@@ -1598,4 +1635,3 @@ Emitted when the sequencer uptime feed is updated
 ```solidity
 event SequencerFeedUpdated(address indexed feed, uint256 gracePeriod);
 ```
-

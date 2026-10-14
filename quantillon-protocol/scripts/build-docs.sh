@@ -1,24 +1,27 @@
 #!/bin/bash
+set -euo pipefail
 
-# Final solution for building documentation with correct GitHub URLs
-# This script combines Git remote URL change with post-processing
+# Build documentation with a process-scoped source-link override and HTML post-processing.
 
 # Ensure we're in the correct directory
 cd "$(dirname "$0")/.."
 
 echo "Building documentation with correct GitHub URLs..."
 
-# Store the original remote URL
-ORIGINAL_REMOTE=$(git remote get-url origin)
-echo "Original remote URL: $ORIGINAL_REMOTE"
-
-# Temporarily change the remote URL to point to the subdirectory
-echo "Temporarily changing remote URL to point to quantillon-protocol subdirectory..."
-git remote set-url origin "https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol.git"
-
-# Generate and build documentation
+# Scope the source-link override to this build. Worktrees share Git configuration;
+# changing origin here would also change the production checkout's remote.
 echo "Generating documentation..."
-forge doc --build
+env FOUNDRY_PROFILE=docs RUST_MIN_STACK=50331648 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.url \
+    GIT_CONFIG_VALUE_0=https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol.git \
+    forge doc --build
+
+# Forge adds blank lines at EOF. Normalize its output as part of generation so
+# checked-in reference pages remain reproducible and pass whitespace checks.
+python3 - <<'PY'
+from pathlib import Path
+for page in Path("docs/src").rglob("*.md"):
+    page.write_text(page.read_text().rstrip() + "\n")
+PY
 
 # Copy our custom favicon files to override the default forge icons
 echo "Copying custom favicon files..."
@@ -35,10 +38,6 @@ if [ -f "docs/favicon.ico" ]; then
 else
     echo "Warning: favicon.ico not found in docs directory"
 fi
-
-# Restore the original remote URL
-echo "Restoring original remote URL..."
-git remote set-url origin "$ORIGINAL_REMOTE"
 
 echo "Post-processing GitHub URLs in generated HTML files..."
 
@@ -65,4 +64,3 @@ find docs/book -name "*.html" -type f | while read -r file; do
 done
 
 echo "Documentation built successfully with correct GitHub links!"
-echo "Original remote URL restored: $(git remote get-url origin)"

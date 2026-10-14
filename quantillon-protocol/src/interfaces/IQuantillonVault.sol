@@ -10,6 +10,66 @@ pragma solidity 0.8.24;
  */
 interface IQuantillonVault {
     /**
+     * @notice Whether signed execution is enabled by governance.
+     * @dev Reads the vault's configured execution mode.
+     * @return True when signed settlement is enabled.
+     * @custom:security Read-only; does not grant settlement authority.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Read-only.
+     * @custom:access Public.
+     * @custom:oracle Does not read a price.
+     */
+    function signedExecutionEnabled() external view returns (bool);
+    /**
+     * @notice Execute a permitted operation with its exact signed authorization.
+     * @dev Delegates to the signed settlement extension with the original caller.
+     * @param callData Encoded permitted vault operation, bound by the quote hash.
+     * @param authorization Encoded quote, reference and capacity reports with signatures.
+     * @return result ABI-encoded return data of the underlying operation.
+     * @custom:security Preserves settlement accounting and caller binding.
+     * @custom:validation Checks signatures, nonce, expiry, amounts and aggregate capacity.
+     * @custom:state-changes Consumes the quote and settles the operation atomically.
+     * @custom:events QuoteSettled and underlying settlement events.
+     * @custom:errors Reverts on invalid authorization or protocol guards.
+     * @custom:reentrancy Retains the consuming operation's reentrancy guard.
+     * @custom:access Caller bound by the signed quote.
+     * @custom:oracle Signed execution and independently checked reference reports.
+     */
+    function executeWithQuote(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result);
+    /**
+     * @notice Prepare an authenticated UserPool settlement for its original user.
+     * @dev Establishes the signed context consumed by the pool route in the same transaction.
+     * @param user Original UserPool user bound by the quote.
+     * @param callData Encoded UserPool operation bound by the quote hash.
+     * @param authorization Encoded signed quote, reference and capacity authorization.
+     * @custom:security Only the configured UserPool may establish this context.
+     * @custom:validation Validates authorization and original user binding.
+     * @custom:state-changes Establishes the active pool settlement context.
+     * @custom:events Underlying report acceptance events.
+     * @custom:errors Reverts on unauthorized callers, paused state or invalid authorization.
+     * @custom:reentrancy The signed context cannot be reused by another route.
+     * @custom:access Configured UserPool.
+     * @custom:oracle Signed reference and capacity reports.
+     */
+    function preparePoolQuote(address user, bytes calldata callData, bytes calldata authorization) external;
+    /**
+     * @notice Finalize the authenticated UserPool settlement.
+     * @dev Requires the prepared conversion to have been consumed.
+     * @custom:security Only the configured UserPool can finalize its active context.
+     * @custom:validation Verifies completion of the prepared settlement.
+     * @custom:state-changes Clears the active signed settlement context.
+     * @custom:events QuoteSettled for the completed operation.
+     * @custom:errors Reverts on unauthorized callers or incomplete settlement.
+     * @custom:reentrancy Clears the context within the atomic pool operation.
+     * @custom:access Configured UserPool.
+     * @custom:oracle Uses the reference accepted during preparation.
+     */
+    function finishPoolQuote() external;
+
+    /**
      * @notice Initializes the vault
      * @dev Sets up the vault with initial configuration and assigns roles to admin
      * @param admin Admin address receiving roles

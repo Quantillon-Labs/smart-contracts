@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -501,6 +501,40 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 |Name|Type|Description|
 |----|----|-----------|
 |`_TIME_PROVIDER`|`TimeProvider`|TimeProvider contract for centralized time management|
+
+
+### _protocolTime
+
+Returns canonical protocol time from this contract's TimeProvider
+
+Overrides the SecureUpgradeable base, which returns `block.timestamp`.
+
+**Notes:**
+- security: Reads the immutable TimeProvider set at construction
+
+- validation: None required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Read-only helper; no state mutation
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _protocolTime() internal view override returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Canonical protocol time in seconds|
 
 
 ### initialize
@@ -2258,4 +2292,3 @@ struct Receipt {
     uint256 votes; // Number of votes cast (voting power used)
 }
 ```
-

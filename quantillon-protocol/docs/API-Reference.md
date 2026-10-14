@@ -1,5 +1,7 @@
 # Quantillon Protocol API Reference
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 ## Technical API Reference
 
 This document provides detailed technical specifications for all Quantillon Protocol smart contract interfaces.

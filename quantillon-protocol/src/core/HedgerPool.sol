@@ -28,6 +28,7 @@ import {HedgerPoolRedeemMathLibrary} from "../libraries/HedgerPoolRedeemMathLibr
 import {FeeCollector} from "./FeeCollector.sol";
 import {HedgerPoolAccountingLibrary} from "../libraries/HedgerPoolAccountingLibrary.sol";
 import {HedgerPoolMigrationLibrary} from "../libraries/HedgerPoolMigrationLibrary.sol";
+import {ReferenceSettlementLibrary} from "../libraries/ReferenceSettlementLibrary.sol";
 
 /**
  * @title HedgerPool
@@ -70,8 +71,47 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.4.1";
+        return "1.6.0";
     }
+
+    /**
+     * @notice Execute a hedger operation with an atomically refreshed signed reference.
+     * @param callData Complete calldata of the allowed hedger operation.
+     * @param authorization ABI-encoded reference report and signature.
+     * @return result The selected operation's return data.
+     * @dev The linked library preserves msg.sender and uses the governed oracle binding.
+     * @custom:security Only enter, exit, remove-margin and emergency-close selectors are allowed.
+     * @custom:validation Source signature, original observation age and existing operation guards.
+     * @custom:state-changes Reference cache and the selected operation's normal accounting.
+     * @custom:events ReferenceAccepted and existing operation events.
+     * @custom:errors Propagates reference validation and operation errors atomically.
+     * @custom:reentrancy The selected operation retains its nonReentrant modifier.
+     * @custom:access The selected operation checks the original caller's permissions.
+     * @custom:oracle Signed reference via the active market oracle; no execution quote consumed.
+     */
+    function executeWithReference(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result) {
+        return ReferenceSettlementLibrary.executeWithReference(callData, authorization);
+    }
+    /**
+     * @notice Withdraw margin with a signed reference in one atomic transaction.
+     * @dev Typed parameters let Roles constrain the position and amount without authorizing arbitrary calldata.
+     * @param positionId Position owned by the caller.
+     * @param amount USDC margin to withdraw, in 6 decimals.
+     * @param authorization ABI-encoded reference report and signature.
+     * @custom:security Preserves caller identity and all removeMargin guards.
+     * @custom:validation Validated reference, ownership, collateralization and withdrawal bounds.
+     * @custom:state-changes Reference and margin accounting revert together on failure.
+     * @custom:events ReferenceAccepted and margin withdrawal events.
+     * @custom:errors Propagates source validation and removeMargin errors.
+     * @custom:reentrancy removeMargin retains its nonReentrant guard.
+     * @custom:access Position owner; adds no withdrawal authority.
+     * @custom:oracle Governed signed reference source, submitted within this transaction.
+     * @return ABI-encoded result of the underlying withdrawal (empty on success).
+     */
+    function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization) external returns (bytes memory) {
+        return ReferenceSettlementLibrary.removeMarginWithReference(positionId, amount, authorization);
+    }
+
     using SafeERC20 for IERC20;
     using Address for address payable;
     using VaultMath for uint256;

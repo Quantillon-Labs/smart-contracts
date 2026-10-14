@@ -49,7 +49,7 @@ library ExecutionPricingLibrary {
      * @custom:access Public read access.
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
-    function version() external pure returns (string memory) { return "1.1.1"; }
+    function version() external pure returns (string memory) { return "1.2.0"; }
 
     /**
      * @notice Calculate and consume a mint quote, reverting below the user's floor.
@@ -116,6 +116,7 @@ library ExecutionPricingLibrary {
      * @notice Check a governance module transition without discarding pending exposure.
      * @param previous Previous configured module.
      * @param next Proposed module, or zero to deactivate.
+     * @return signedExecution Whether the validated module requires signed settlement contexts.
      * @custom:security The vault enforces governance and pause requirements before delegation.
      * @dev Read-only contract interface.
      * @custom:validation Validates the documented preconditions; view interface reads delegate to the target contract.
@@ -126,9 +127,13 @@ library ExecutionPricingLibrary {
      * @custom:access Public read access.
      * @custom:oracle Reference EUR/USD and observed venue depth where required; no oracle dependency for role and version reads.
      */
-    function validateConfiguration(IExecutionPricing previous, address next) external view {
+    function validateConfiguration(IExecutionPricing previous, address next) external view returns (bool signedExecution) {
         if (address(previous) != address(0) && previous.outstanding() != 0) revert Errors.InvalidCondition();
         if (next != address(0) && IExecutionPricing(next).vault() != address(this)) revert Errors.InvalidVault();
+        if (next != address(0)) {
+            (bool ok, bytes memory result) = next.staticcall(abi.encodeWithSignature("supportsSignedExecution()"));
+            signedExecution = ok && result.length == 32 && abi.decode(result, (bool));
+        }
     }
 
     /**

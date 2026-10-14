@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC4626Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -22,6 +22,13 @@ bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
+```
+
+
+### VIRTUAL_SHARES
+
+```solidity
+uint256 private constant VIRTUAL_SHARES = 1e12
 ```
 
 
@@ -58,6 +65,55 @@ string public vaultName
 
 ```solidity
 uint256 public yieldFee
+```
+
+
+### accountedBalance
+
+```solidity
+uint256 private accountedBalance
+```
+
+
+### unvestedBalance
+
+```solidity
+uint256 private unvestedBalance
+```
+
+
+### vestingEnd
+
+```solidity
+uint64 private vestingEnd
+```
+
+
+### lastVestingUpdate
+
+```solidity
+uint64 private lastVestingUpdate
+```
+
+
+### vestingPeriod
+
+```solidity
+uint32 public vestingPeriod
+```
+
+
+### vestingInitialized
+
+```solidity
+bool private vestingInitialized
+```
+
+
+### virtualAssets
+
+```solidity
+uint256 private virtualAssets
 ```
 
 
@@ -132,6 +188,40 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 |Name|Type|Description|
 |----|----|-----------|
 |`_TIME_PROVIDER`|`TimeProvider`|Time provider used by inherited secure upgrade and timelock logic.|
+
+
+### _protocolTime
+
+Returns canonical protocol time from this contract's TimeProvider
+
+Overrides the SecureUpgradeable base, which returns `block.timestamp`.
+
+**Notes:**
+- security: Reads the immutable TimeProvider set at construction
+
+- validation: None required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Read-only helper; no state mutation
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _protocolTime() internal view override returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Canonical protocol time in seconds|
 
 
 ### initialize
@@ -417,6 +507,158 @@ function maxRedeem(address owner) public view override returns (uint256);
 |`<none>`|`uint256`|maxShares Maximum stQEURO shares currently redeemable by `owner`.|
 
 
+### totalAssets
+
+Returns only principal and the currently vested portion of yield.
+
+Unvested underlying remains excluded from ERC-4626 share pricing.
+
+**Notes:**
+- security: Prevents a new depositor from immediately capturing harvested yield.
+
+- validation: None; the raw underlying balance caps the result.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable.
+
+- access: Public view.
+
+- oracle: No oracle dependency.
+
+
+```solidity
+function totalAssets() public view override returns (uint256 assets);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`assets`|`uint256`|Accounted assets available to share holders.|
+
+
+### _convertToShares
+
+Converts assets using the series' matched virtual reserves.
+
+Uses the same reserve quote before and after its first accounting synchronization.
+
+**Notes:**
+- security: Virtual shares preserve conversion precision at small real supply.
+
+- validation: Checked arithmetic rejects unrepresentable totals.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Arithmetic overflow.
+
+- reentrancy: Read-only helper.
+
+- access: Internal ERC-4626 conversion.
+
+- oracle: None.
+
+
+```solidity
+function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256 shares);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`assets`|`uint256`|QEURO asset amount.|
+|`rounding`|`Math.Rounding`|Direction of integer rounding.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`shares`|`uint256`|Corresponding share amount.|
+
+
+### _convertToAssets
+
+Converts shares using the series' matched virtual reserves.
+
+Uses the same reserve as asset-to-share conversion without changing token decimals.
+
+**Notes:**
+- security: Keeps deposit and exit conversion symmetric.
+
+- validation: Checked arithmetic rejects unrepresentable totals.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Arithmetic overflow.
+
+- reentrancy: Read-only helper.
+
+- access: Internal ERC-4626 conversion.
+
+- oracle: None.
+
+
+```solidity
+function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256 assets);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`shares`|`uint256`|Share amount.|
+|`rounding`|`Math.Rounding`|Direction of integer rounding.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`assets`|`uint256`|Corresponding QEURO amount.|
+
+
+### _virtualAssetReserve
+
+Quotes the backing-bounded virtual asset reserve for this series.
+
+Empty series start at parity. Existing populated series preserve their legacy
+(assets + 1) / (shares + 1) rate to within one virtual asset base unit. The same
+bound caps the reserve after losses so total redemption cannot exceed backing.
+
+**Notes:**
+- security: Scales reserves before the first supply change on an existing series.
+
+- validation: Checked arithmetic and full-precision multiplication.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Arithmetic overflow.
+
+- reentrancy: Read-only helper.
+
+- access: Internal.
+
+- oracle: None.
+
+
+```solidity
+function _virtualAssetReserve() private view returns (uint256 reserve);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`reserve`|`uint256`|Virtual QEURO reserve in underlying base units.|
+
+
 ### deposit
 
 Deposits QEURO into the vault and mints stQEURO shares to a receiver.
@@ -605,21 +847,16 @@ function redeem(uint256 shares, address receiver, address owner)
 
 ### _sweepResidualOnEmpty
 
-Sweeps the vault's remaining QEURO to the final exiter once no shares are left.
+Clears remaining QEURO after the final share exit.
 
-ERC-4626 round-down (after yield mints raise the share price) strands a few wei of
-QEURO on the last exit. With `totalSupply() == 0` no share can ever claim them, and
-the stranded wei keep `QuantillonVault.totalMinted()` above zero — which dead-locked
-the sole hedger's exit on 2026-07-15 (see `HedgerPool.QEURO_DUST_THRESHOLD` for the
-tolerance layer). Sweeping returns the vault to an exact-zero state after every full
-exit; the receiver can then redeem the full amount through the protocol.
+Returns up to 1e12 wei of rounding dust to the receiver and sends excess to treasury.
 
 **Notes:**
 - security: Only reachable from `nonReentrant` exit paths; QEURO has no transfer hooks.
 
 - validation: No-op unless the share supply is exactly zero.
 
-- state-changes: Transfers the vault's full remaining QEURO balance to `receiver`.
+- state-changes: Transfers bounded dust to receiver and excess to treasury.
 
 - events: Emits `ResidualSwept` when a nonzero residue is transferred.
 
@@ -647,6 +884,82 @@ function _sweepResidualOnEmpty(address receiver) private returns (uint256 residu
 |----|----|-----------|
 |`residual`|`uint256`|Amount of QEURO swept (0 when shares remain or nothing is left).|
 
+
+### setVestingPeriod
+
+Records a new governance-selected vesting period.
+
+Synchronizes already-observed yield before changing the period used for future surplus.
+
+**Notes:**
+- security: Restricted to governance.
+
+- validation: Rejects periods outside the bounded safety range.
+
+- state-changes: Updates the future yield vesting period.
+
+- events: Emits `VestingPeriodUpdated`.
+
+- errors: ConfigValueTooLow or ConfigValueTooHigh.
+
+- reentrancy: Not applicable.
+
+- access: Governance role.
+
+- oracle: No oracle dependency.
+
+
+```solidity
+function setVestingPeriod(uint256 newPeriod) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newPeriod`|`uint256`|Seconds over which newly observed yield vests (1 day to 30 days).|
+
+
+### syncVesting
+
+Materializes currently vested yield and records newly observed surplus.
+
+Permissionless during normal operation; governance may also sync during paused upgrades.
+
+**Notes:**
+- security: Paused maintenance requires governance authorization.
+
+- validation: Underlying balance deltas are bounded by the token balance.
+
+- state-changes: Updates principal, unvested yield, and vesting timestamps.
+
+- events: Emits `YieldVestingSynced`.
+
+- errors: AccessControlUnauthorizedAccount for non-governance callers while paused.
+
+- reentrancy: Protected by `nonReentrant`.
+
+- access: Public when unpaused; GOVERNANCE_ROLE while paused.
+
+- oracle: No oracle dependency.
+
+
+```solidity
+function syncVesting() external nonReentrant;
+```
+
+### _syncVestingAccounting
+
+
+```solidity
+function _syncVestingAccounting() private;
+```
+
+### _vestedBalanceView
+
+
+```solidity
+function _vestedBalanceView() private view returns (uint256 vested);
+```
 
 ### transfer
 
@@ -987,3 +1300,14 @@ Emitted when the rounding residue left by the final exit is swept to its receive
 event ResidualSwept(address indexed receiver, uint256 amount);
 ```
 
+### VestingPeriodUpdated
+
+```solidity
+event VestingPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
+```
+
+### YieldVestingSynced
+
+```solidity
+event YieldVestingSynced(uint256 vested, uint256 unvested, uint256 accounted);
+```

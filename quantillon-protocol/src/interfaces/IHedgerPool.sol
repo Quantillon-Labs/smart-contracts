@@ -4,6 +4,40 @@ pragma solidity 0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IHedgerPool {
+    /**
+     * @notice Execute an allowed hedger operation with a signed valuation report.
+     * @dev Submits the reference and delegates only a permitted selector, preserving the caller.
+     * @param callData Encoded permitted HedgerPool operation.
+     * @param authorization Encoded reference report and signature.
+     * @return result ABI-encoded return data of the underlying operation.
+     * @custom:security Grants no additional caller permissions.
+     * @custom:validation Validates the report, selector and underlying operation.
+     * @custom:state-changes Reference and operation state change atomically.
+     * @custom:events ReferenceAccepted and underlying operation events.
+     * @custom:errors Reverts on invalid reports, selectors or operation guards.
+     * @custom:reentrancy Retains the underlying operation's reentrancy guard.
+     * @custom:access Underlying hedger operation permissions.
+     * @custom:oracle Governed signed reference source.
+     */
+    function executeWithReference(bytes calldata callData, bytes calldata authorization) external returns (bytes memory result);
+    /**
+     * @notice Withdraw caller-owned USDC margin with an atomic reference refresh.
+     * @dev Explicit parameters allow Roles to constrain position and amount.
+     * @param positionId Position owned by the original caller.
+     * @param amount USDC margin to withdraw, in six decimals.
+     * @param authorization Encoded reference report and signature.
+     * @return ABI-encoded withdrawal result, empty on success.
+     * @custom:security Preserves ownership, collateral and pause checks.
+     * @custom:validation Validates the reference and withdrawal limits.
+     * @custom:state-changes Reference and margin accounting revert together on failure.
+     * @custom:events ReferenceAccepted and margin withdrawal events.
+     * @custom:errors Propagates reference and withdrawal errors.
+     * @custom:reentrancy Retains removeMargin's reentrancy guard.
+     * @custom:access Position owner.
+     * @custom:oracle Governed signed reference source.
+     */
+    function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization) external returns (bytes memory);
+
     struct HedgerMigrationRequest {
         uint8 action;
         address newHedger;

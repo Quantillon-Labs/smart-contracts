@@ -1,5 +1,7 @@
 # Dapp compatibility
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 Contract releases are accepted only after the frontend contract-drift check and dapp tests pass.
 
 1. Build Solidity artifacts and run `scripts/deployment/copy-abis.sh` against a private dapp checkout.

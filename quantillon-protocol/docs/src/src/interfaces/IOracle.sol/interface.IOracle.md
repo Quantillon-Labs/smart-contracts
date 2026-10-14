@@ -1,5 +1,5 @@
 # IOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/interfaces/IOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IOracle.sol)
 
 **Title:**
 IOracle
@@ -289,5 +289,3 @@ function checkPriceFeedConnectivity()
 |`usdcUsdConnected`|`bool`|True if USDC/USD feed responds|
 |`eurUsdLatestRound`|`uint80`|Latest round ID for EUR/USD (0 for non-round-based oracles)|
 |`usdcUsdLatestRound`|`uint80`|Latest round ID for USDC/USD (0 for non-round-based oracles)|
-
-

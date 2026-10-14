@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Title:**
 TreasuryRecoveryLibrary
@@ -93,5 +93,3 @@ function recoverToken(address token, uint256 amount, address contractAddress, ad
 |`amount`|`uint256`|Amount to recover|
 |`contractAddress`|`address`|Address of the calling contract (for own token check)|
 |`treasury`|`address`|Treasury address to send recovered tokens to|
-
-

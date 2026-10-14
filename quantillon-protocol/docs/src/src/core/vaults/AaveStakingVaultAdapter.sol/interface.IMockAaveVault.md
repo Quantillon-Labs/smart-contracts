@@ -1,5 +1,5 @@
 # IMockAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/vaults/AaveStakingVaultAdapter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/vaults/AaveStakingVaultAdapter.sol)
 
 
 ## Functions
@@ -125,5 +125,3 @@ function totalUnderlyingOf(address account) external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Underlying USDC-equivalent amount for `account`.|
-
-

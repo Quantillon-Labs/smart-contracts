@@ -1,8 +1,225 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
+### executeWithReference
+
+Execute an allowed hedger operation with a signed valuation report.
+
+Submits the reference and delegates only a permitted selector, preserving the caller.
+
+**Notes:**
+- security: Grants no additional caller permissions.
+
+- validation: Validates the report, selector and underlying operation.
+
+- state-changes: Reference and operation state change atomically.
+
+- events: ReferenceAccepted and underlying operation events.
+
+- errors: Reverts on invalid reports, selectors or operation guards.
+
+- reentrancy: Retains the underlying operation's reentrancy guard.
+
+- access: Underlying hedger operation permissions.
+
+- oracle: Governed signed reference source.
+
+
+```solidity
+function executeWithReference(bytes calldata callData, bytes calldata authorization)
+    external
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Encoded permitted HedgerPool operation.|
+|`authorization`|`bytes`|Encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|ABI-encoded return data of the underlying operation.|
+
+
+### removeMarginWithReference
+
+Withdraw caller-owned USDC margin with an atomic reference refresh.
+
+Explicit parameters allow Roles to constrain position and amount.
+
+**Notes:**
+- security: Preserves ownership, collateral and pause checks.
+
+- validation: Validates the reference and withdrawal limits.
+
+- state-changes: Reference and margin accounting revert together on failure.
+
+- events: ReferenceAccepted and margin withdrawal events.
+
+- errors: Propagates reference and withdrawal errors.
+
+- reentrancy: Retains removeMargin's reentrancy guard.
+
+- access: Position owner.
+
+- oracle: Governed signed reference source.
+
+
+```solidity
+function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization)
+    external
+    returns (bytes memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position owned by the original caller.|
+|`amount`|`uint256`|USDC margin to withdraw, in six decimals.|
+|`authorization`|`bytes`|Encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes`|ABI-encoded withdrawal result, empty on success.|
+
+
+### manageHedgerMigration
+
+Proposes (0), accepts (1), executes (2), or cancels (3) a live ownership transfer.
+
+Owner proposes, recipient accepts, governance executes while paused; any of these may cancel.
+
+**Notes:**
+- security: Requires all three authorities; proposals expire within seven days.
+
+- validation: Requires active cost-basis accounting and a recipient contract without pool state.
+
+- state-changes: Updates proposal state or moves ownership and pool reward claims.
+
+- events: HedgerMigrationProposed, HedgerMigrationAccepted, HedgerMigrationExecuted, HedgerMigrationCancelled, SingleHedgerRotationApplied.
+
+- errors: Reverts on invalid authority, proposal, expiry, pause or recipient state.
+
+- reentrancy: Protected by the pool guard; no token transfers.
+
+- access: Current hedger, receiving contract or governance according to action.
+
+- oracle: No oracle calls; position economics remain intact.
+
+
+```solidity
+function manageHedgerMigration(HedgerMigrationRequest calldata request) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`request`|`HedgerMigrationRequest`|Action and exact proposal binding; proposing uses a zero proposal ID.|
+
+
+### hedgerMigration
+
+Returns the current transfer proposal, or zeros if none exists.
+
+Dedicated proposal namespace does not change existing position storage.
+
+**Notes:**
+- security: Read only.
+
+- validation: None.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: No external state changes.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function hedgerMigration() external view returns (HedgerMigrationProposal memory proposal);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposal`|`HedgerMigrationProposal`|Current ownership transfer proposal.|
+
+
+### initializeCostBasisAccounting
+
+Activates remaining-cost accounting on a paused, fully settled proxy.
+
+Fresh deployments activate during initialization; an upgraded proxy activates once.
+
+**Notes:**
+- security: Restricted to governance with no active position or outstanding exposure.
+
+- validation: Requires a paused pool, zero counters and QEURO supply at most dust.
+
+- state-changes: Activates remaining-cost accounting.
+
+- events: Emits Initialized.
+
+- errors: Reverts when caller, pause, settlement or initialization checks fail.
+
+- reentrancy: No state-changing external calls.
+
+- access: GOVERNANCE_ROLE.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function initializeCostBasisAccounting() external;
+```
+
+### costBasisAccountingInitialized
+
+Reports whether remaining-cost accounting is active.
+
+False on an upgraded proxy until settlement and activation are complete.
+
+**Notes:**
+- security: Read-only getter.
+
+- validation: None.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: No external calls.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function costBasisAccountingInitialized() external view returns (bool initialized);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`initialized`|`bool`|Whether the accounting model has been activated.|
+
+
 ### initialize
 
 Initializes the HedgerPool contract.
@@ -1432,6 +1649,30 @@ event SingleHedgerRotationApplied(address indexed previousHedger, address indexe
 ```
 
 ## Structs
+### HedgerMigrationRequest
+
+```solidity
+struct HedgerMigrationRequest {
+    uint8 action;
+    address newHedger;
+    uint64 expiresAt;
+    bytes32 proposalId;
+}
+```
+
+### HedgerMigrationProposal
+
+```solidity
+struct HedgerMigrationProposal {
+    bytes32 id;
+    address previousHedger;
+    address newHedger;
+    uint64 expiresAt;
+    uint64 openBlock;
+    bool accepted;
+}
+```
+
 ### HedgerRiskConfig
 
 ```solidity
@@ -1460,4 +1701,3 @@ struct HedgerDependencyConfig {
     address feeCollector;
 }
 ```
-

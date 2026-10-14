@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {VaultYieldSettlementLibrary} from "../libraries/VaultYieldSettlementLibrary.sol";
+import {VaultTransferLibrary} from "../libraries/VaultTransferLibrary.sol";
+import {VaultCollateralLibrary} from "../libraries/VaultCollateralLibrary.sol";
+import {SignedExecutionPricing} from "../oracle/SignedExecutionPricing.sol";
+import {SignedSettlementLibrary} from "../libraries/SignedSettlementLibrary.sol";
+import {SignedQuoteErrors} from "../libraries/SignedQuoteErrors.sol";
+
 import {IVersioned} from "../interfaces/IVersioned.sol";
 
 // =============================================================================
@@ -122,7 +129,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.5.1";
+        return "1.6.0";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -748,16 +755,7 @@ contract QuantillonVault is
     ) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 qeuroMinted, uint256 stQEUROMinted) {
         qeuroMinted = _mintQEUROFlow(msg.sender, address(this), usdcAmount, minQeuroOut, vaultId);
 
-        address stToken = stQEUROTokenByVaultId[vaultId];
-        if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
-        IERC20(address(qeuro)).safeIncreaseAllowance(stToken, qeuroMinted);
-        stQEUROMinted = IstQEURO(stToken).previewDeposit(qeuroMinted);
-        // A positive QEURO deposit must never preview zero stQEURO shares
-        // (would trap the user's QEURO as vault backing with no redeemable position). Also
-        // covers the minStQEUROOut == 0 loss case defensively.
-        if (stQEUROMinted == 0) revert CommonErrorLibrary.InvalidAmount();
-        if (stQEUROMinted < minStQEUROOut) revert CommonErrorLibrary.ExcessiveSlippage();
-        stQEUROMinted = IstQEURO(stToken).deposit(qeuroMinted, msg.sender);
+        stQEUROMinted = SignedSettlementLibrary.stake(address(qeuro), stQEUROTokenByVaultId[vaultId], qeuroMinted, minStQEUROOut);
     }
 
     /**
@@ -785,26 +783,21 @@ contract QuantillonVault is
         uint256 minQeuroOut,
         uint256 targetVaultId
     ) internal returns (uint256 qeuroToMint) {
+        if (signedExecutionEnabled) SignedExecutionPricing(address(executionPricing)).requireContext(msg.sender);
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (payer == address(0) || qeuroRecipient == address(0)) revert CommonErrorLibrary.InvalidAddress();
         _validateMintRouting(targetVaultId);
-        (uint256 eurUsdPrice, bool isValid) = _getValidatedMintPrices();
-        _enforceMintEligibility(eurUsdPrice);
-        _enforcePriceDeviation(eurUsdPrice);
-        (uint256 fee, uint256 netAmount, uint256 computedQeuroToMint) =
-            _computeMintAmounts(usdcAmount, eurUsdPrice, minQeuroOut);
-        qeuroToMint = computedQeuroToMint;
-        _enforceProjectedCollateralizationFloor(netAmount, qeuroToMint, eurUsdPrice, minCollateralizationRatioForMinting);
-
+        VaultYieldSettlementLibrary.Mint memory mint = VaultYieldSettlementLibrary.prepareMint(usdcAmount, minQeuroOut, lastValidEurUsdPrice, lastPriceUpdateBlock);
+        qeuroToMint = mint.quantity;
         MintCommitPayload memory payload;
         payload.payer = payer;
         payload.qeuroRecipient = qeuroRecipient;
         payload.usdcAmount = usdcAmount;
-        payload.fee = fee;
-        payload.netAmount = netAmount;
-        payload.qeuroToMint = qeuroToMint;
-        payload.eurUsdPrice = eurUsdPrice;
-        payload.isValidPrice = isValid;
+        payload.fee = mint.fee;
+        payload.netAmount = mint.backing;
+        payload.qeuroToMint = mint.quantity;
+        payload.eurUsdPrice = mint.price;
+        payload.isValidPrice = true;
         payload.targetVaultId = targetVaultId;
         _dispatchMintCommit(payload);
     }
@@ -850,12 +843,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function _validateMintRouting(uint256 targetVaultId) internal view {
-        if (targetVaultId == 0) return;
-        if (!stakingVaultActiveById[targetVaultId]) revert CommonErrorLibrary.InvalidVault();
-        if (address(stakingVaultAdapterById[targetVaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        // Principal may only be auto-deployed to a vault in the redemption set, so counted
-        // collateral, withdrawal capacity, and deployed principal stay in lockstep.
-        _requireInRedemptionSet(targetVaultId);
+        VaultCollateralLibrary.validateRouting(stakingVaultAdapterById, stakingVaultActiveById, redemptionPriorityVaultIds, defaultStakingVaultId, targetVaultId);
     }
 
     /**
@@ -1030,16 +1018,7 @@ contract QuantillonVault is
         _syncMintWithHedgersOrRevert(netAmount, eurUsdPrice, qeuroToMint);
         emit QEUROminted(payer, usdcAmount, qeuroToMint);
 
-        // INTERACTIONS
-        usdc.safeTransferFrom(payer, address(this), usdcAmount);
-        uint256 executionSpread = usdcAmount - fee - netAmount;
-        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
-        _routeProtocolFees(fee, "minting");
-        qeuro.mint(qeuroRecipient, qeuroToMint);
-
-        if (autoDeployAmount > 0) {
-            _autoDeployToVault(targetVaultId, autoDeployAmount);
-        }
+        VaultTransferLibrary.mint(payer, qeuroRecipient, usdcAmount, fee, netAmount, qeuroToMint, targetVaultId);
     }
     
     /**
@@ -1057,15 +1036,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function _autoDeployToVault(uint256 vaultId, uint256 usdcAmount) internal {
-        if (vaultId == 0 || usdcAmount == 0) return;
-
-        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
-        if (!stakingVaultActiveById[vaultId] || address(adapter) == address(0)) revert CommonErrorLibrary.InvalidVault();
-
-        usdc.safeIncreaseAllowance(address(adapter), usdcAmount);
-        uint256 sharesReceived = adapter.depositUnderlying(usdcAmount);
-        if (sharesReceived == 0) revert CommonErrorLibrary.InvalidAmount();
-        emit UsdcDeployedToExternalVault(vaultId, usdcAmount, principalUsdcByVaultId[vaultId]);
+        VaultTransferLibrary.deploy(vaultId, usdcAmount);
     }
 
     /**
@@ -1098,6 +1069,7 @@ contract QuantillonVault is
         uint256 qeuroAmount,
         uint256 minUsdcOut
     ) external nonReentrant whenNotPaused {
+        if (signedExecutionEnabled) SignedExecutionPricing(address(executionPricing)).requireContext(msg.sender);
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
 
@@ -1116,6 +1088,7 @@ contract QuantillonVault is
 
         // Route to liquidation mode if current CR is at/below configured critical threshold
         if (currentRatio18Dec > 0 && currentRatio18Dec <= criticalCollateralizationRatio) {
+            if (signedExecutionEnabled) SignedExecutionPricing(address(executionPricing)).consumeLiquidation(qeuroAmount);
             _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps, eurUsdPrice, isValid);
             return;
         }
@@ -1217,12 +1190,7 @@ contract QuantillonVault is
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
         emit QEURORedeemed(redeemer, qeuroAmount, netUsdcToReturn);
 
-        // INTERACTIONS
-        qeuro.burn(redeemer, qeuroAmount);
-        usdc.safeTransfer(redeemer, netUsdcToReturn);
-        uint256 executionSpread = usdcToReturn - netUsdcToReturn - fee;
-        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
-        _routeProtocolFees(fee, "redemption");
+        VaultTransferLibrary.redeem(redeemer, qeuroAmount, usdcToReturn, netUsdcToReturn, fee);
     }
 
     /**
@@ -1815,46 +1783,13 @@ contract QuantillonVault is
      */
     // slither-disable-next-line reentrancy-benign
     function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns (uint256 qeuroMinted) {
-        address stToken = stQEUROTokenByVaultId[vaultId];
-        if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
-
-        // Refuse to credit yield into an stQEURO vault that has no shares yet.
-        // Minting QEURO into a zero-supply ERC4626 vault creates assets with no shareholders,
-        // which makes the first staker mint zero shares (or revert with slippage). Yield can
-        // only be credited once there is at least one stQEURO share holder; the first stake
-        // (totalSupply == 0, totalAssets == 0) still mints 1:1 through the normal path.
-        if (IstQEURO(stToken).totalSupply() == 0) revert CommonErrorLibrary.NotInitialized();
-
-        (uint256 eurUsdPrice, bool isValidPrice) = _getValidatedMintPrices();
-        ExecutionPricingLibrary.enforceYieldEligibility(
-            IERC20(address(qeuro)), hedgerPool, lastValidEurUsdPrice, eurUsdPrice, criticalCollateralizationRatio
-        );
-        _enforcePriceDeviation(eurUsdPrice);
-
-        // The harvest haircut is the only configurable yield deduction. The share token's
-        // legacy yieldFee is ignored for both harvests and direct yield credits; execution
-        // costs and all mint eligibility checks still apply. Public mint fees do not apply.
-        (, uint256 netUsdcAmount, uint256 executionQeuro) = ExecutionPricingLibrary.mint(
-            executionPricing, usdcAmount, 0, eurUsdPrice, 0
-        );
-        qeuroMinted = executionQeuro;
-        if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
-
-        // Yield crediting adds fully-backed collateral (1:1), so gate on a 100% floor
-        // rather than the public mint floor so yield stays distributable
-        // when protocol CR sits at the minting equilibrium.
-        _enforceProjectedCollateralizationFloor(netUsdcAmount, qeuroMinted, eurUsdPrice, 100e18);
-
-        _commitPriceCache(eurUsdPrice, isValidPrice);
-
-        totalUsdcHeld += netUsdcAmount;
-        totalMinted += qeuroMinted;
-
-        _syncMintWithHedgersOrRevert(netUsdcAmount, eurUsdPrice, qeuroMinted);
-
-        uint256 executionSpread = usdcAmount - netUsdcAmount;
-        if (executionSpread > 0) usdc.safeTransfer(address(executionPricing), executionSpread);
-        qeuro.mint(stToken, qeuroMinted);
+        if (signedExecutionEnabled) SignedExecutionPricing(address(executionPricing)).requireContext(msg.sender);
+        VaultYieldSettlementLibrary.Credit memory credit = VaultYieldSettlementLibrary.prepare(vaultId, usdcAmount, lastValidEurUsdPrice, lastPriceUpdateBlock);
+        _commitPriceCache(credit.price, true);
+        totalUsdcHeld += credit.backing;
+        totalMinted += credit.quantity;
+        VaultYieldSettlementLibrary.commit(usdcAmount, credit);
+        return credit.quantity;
     }
 
     /**
@@ -1917,12 +1852,17 @@ contract QuantillonVault is
         whenNotPaused
         onlyRole(YIELD_DISTRIBUTOR_ROLE)
     {
+        if (signedExecutionEnabled) SignedExecutionPricing(address(executionPricing)).requireContext(msg.sender);
         uint256 userShare = StakingYieldLibrary.harvestAndSplit(vaultId, lastYieldHarvestByVaultId);
         if (userShare > 0) _creditVaultYield(vaultId, userShare);
     }
 
     /// @notice Retired yield-fee validation error retained for ABI compatibility.
     error PercentageTooHigh();
+
+    /// @notice Retained ABI error for staking recipients that have not initialized their share supply.
+    /// @dev Emitted by the linked yield settlement library.
+    error NotInitialized();
 
     /// @notice Retired hedger base (always zero) and staking haircut, in USDC (6 decimals).
     event VaultYieldBreakdown(uint256 indexed vaultId, uint256 hedgerBase, uint256 stakingYieldHaircut);
@@ -2141,14 +2081,7 @@ contract QuantillonVault is
       * @custom:oracle Not applicable - no oracle dependency
      */
     function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE) {
-        if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
-        
-        // Calculate available fees (excess USDC beyond what's needed for redemptions)
-        uint256 contractBalance = usdc.balanceOf(address(this));
-        if (contractBalance <= totalUsdcHeld) revert CommonErrorLibrary.InsufficientBalance();
-        
-        uint256 feesToWithdraw = contractBalance - totalUsdcHeld;
-        usdc.safeTransfer(to, feesToWithdraw);
+        VaultCollateralLibrary.withdrawFees(usdc, to, totalUsdcHeld);
     }
 
     // =============================================================================
@@ -2333,23 +2266,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral) {
-        // Value each external position at min(trackedPrincipal, adapterUnderlying):
-        //  - the principal cap excludes unharvested positive yield from redemption backing (yield is
-        //    routed to stQEURO via harvestAndDistributeVaultYield -> creditVaultYield, never counted
-        //    here); and
-        //  - the underlying cap reflects a loss the moment the ERC-4626 share price falls, so a
-        //    decline in an external vault immediately lowers reported collateral instead of leaving
-        //    stale principal as phantom backing.
-        // Counting stale principal after a loss would let the first redeemer exit at par against a
-        // depleted position (shifting the shortfall onto later redeemers) and would admit QEURO
-        // mints while real backing sits below the collateralization floor.
-        uint256[] memory priority = redemptionPriorityVaultIds;
-        if (priority.length == 0 && defaultStakingVaultId != 0) {
-            return _externalVaultCollateral(defaultStakingVaultId);
-        }
-        for (uint256 i = 0; i < priority.length; ++i) {
-            externalCollateral += _externalVaultCollateral(priority[i]);
-        }
+        return VaultCollateralLibrary.collateral(stakingVaultAdapterById, principalUsdcByVaultId, redemptionPriorityVaultIds, defaultStakingVaultId);
     }
 
     /**
@@ -2415,14 +2332,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function _isInRedemptionSet(uint256 vaultId) internal view returns (bool inSet) {
-        uint256[] memory priority = redemptionPriorityVaultIds;
-        if (priority.length == 0) {
-            return defaultStakingVaultId != 0 && vaultId == defaultStakingVaultId;
-        }
-        for (uint256 i = 0; i < priority.length; ++i) {
-            if (priority[i] == vaultId) return true;
-        }
-        return false;
+        return VaultCollateralLibrary.inSet(redemptionPriorityVaultIds, defaultStakingVaultId, vaultId);
     }
 
     /**
@@ -2862,6 +2772,95 @@ contract QuantillonVault is
     /// @notice Governance share of gross earned staking yield, in bps; zero on upgrade.
     uint256 public hedgerStakingYieldHaircutBps;
 
+    /// @notice Whether the configured module requires atomic signed settlement contexts.
+    bool public signedExecutionEnabled;
+
+    /**
+     * @notice Dispatch one signed operation with the original caller and existing accounting.
+     * @dev Invoked through the consumer; delegatecall retains its storage and original sender.
+     * @param callData Complete ABI-encoded operation, including route and output bounds.
+     * @param authorization ABI-encoded report or quote authorization required by this entrypoint.
+     * @return result ABI-encoded return data of the dispatched operation.
+     * @custom:security Consumer permissions and accounting checks remain in force.
+     * @custom:validation Applies the selected operation's bounds; failures revert the entire call.
+     * @custom:state-changes Updates the calling consumer and downstream contracts as described above.
+     * @custom:events Underlying operation and token events when applicable.
+     * @custom:errors Reverts on invalid inputs, permissions or failed downstream calls.
+     * @custom:reentrancy The consuming operation retains its existing reentrancy guards.
+     * @custom:access Consumer entrypoint permissions; this helper grants no additional authority.
+     * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
+     */
+    function executeWithQuote(bytes calldata callData, bytes calldata authorization) external whenNotPaused returns (bytes memory result) {
+        _executeSignedExtension();
+    }
+
+    /**
+     * @notice Begin an atomic pool route bound to its original user and complete calldata.
+     * @dev Invoked through the consumer; delegatecall retains its storage and original sender.
+     * @param user Original payer whose nonce and settlement are bound.
+     * @param callData Complete ABI-encoded operation, including route and output bounds.
+     * @param authorization ABI-encoded report or quote authorization required by this entrypoint.
+     * @custom:security Consumer permissions and accounting checks remain in force.
+     * @custom:validation Applies the selected operation's bounds; failures revert the entire call.
+     * @custom:state-changes Updates the calling consumer and downstream contracts as described above.
+     * @custom:events Underlying operation and token events when applicable.
+     * @custom:errors Reverts on invalid inputs, permissions or failed downstream calls.
+     * @custom:reentrancy The consuming operation retains its existing reentrancy guards.
+     * @custom:access Consumer entrypoint permissions; this helper grants no additional authority.
+     * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
+     */
+    function preparePoolQuote(address user, bytes calldata callData, bytes calldata authorization) external whenNotPaused {
+        _executeSignedExtension();
+    }
+
+    /**
+     * @notice Finish the atomic pool route after its conversion has been consumed.
+     * @dev Invoked through the consumer; delegatecall retains its storage and original sender.
+     * @custom:security Consumer permissions and accounting checks remain in force.
+     * @custom:validation Applies the selected operation's bounds; failures revert the entire call.
+     * @custom:state-changes Updates the calling consumer and downstream contracts as described above.
+     * @custom:events Underlying operation and token events when applicable.
+     * @custom:errors Reverts on invalid inputs, permissions or failed downstream calls.
+     * @custom:reentrancy The consuming operation retains its existing reentrancy guards.
+     * @custom:access Consumer entrypoint permissions; this helper grants no additional authority.
+     * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
+     */
+    function finishPoolQuote() external {
+        _executeSignedExtension();
+    }
+
+    /**
+     * @notice Run the governed budgeted emergency redemption path.
+     * @dev Invoked through the consumer; delegatecall retains its storage and original sender.
+     * @param amount Amount in the token units of the selected operation.
+     * @param minimum Minimum acceptable output in the output token's raw units.
+     * @custom:security Consumer permissions and accounting checks remain in force.
+     * @custom:validation Applies the selected operation's bounds; failures revert the entire call.
+     * @custom:state-changes Updates the calling consumer and downstream contracts as described above.
+     * @custom:events Underlying operation and token events when applicable.
+     * @custom:errors Reverts on invalid inputs, permissions or failed downstream calls.
+     * @custom:reentrancy The consuming operation retains its existing reentrancy guards.
+     * @custom:access Consumer entrypoint permissions; this helper grants no additional authority.
+     * @custom:oracle Uses the consumer's configured reference and execution paths where the operation requires pricing.
+     */
+    function emergencyRedeemQEURO(uint256 amount, uint256 minimum) external whenNotPaused {
+        _executeSignedExtension();
+    }
+
+    /// @notice Forward only explicitly declared quote entrypoints to the statically linked extension.
+    /// @dev The extension preserves msg.sender, validates mode/access, and delegates only signed selectors.
+    function _executeSignedExtension() private {
+        address extension = address(SignedSettlementLibrary);
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, 0, calldatasize())
+            let success := delegatecall(gas(), extension, ptr, calldatasize(), 0, 0)
+            returndatacopy(ptr, 0, returndatasize())
+            if iszero(success) { revert(ptr, returndatasize()) }
+            return(ptr, returndatasize())
+        }
+    }
+
     /// @notice Emitted when governance configures the execution pricing module.
     event ExecutionPricingConfigured(address indexed module);
 
@@ -2879,7 +2878,7 @@ contract QuantillonVault is
      * @custom:oracle No price read.
      */
     function configureExecutionPricing(address module) external onlyRole(GOVERNANCE_ROLE) whenPaused {
-        ExecutionPricingLibrary.validateConfiguration(executionPricing, module);
+        signedExecutionEnabled = ExecutionPricingLibrary.validateConfiguration(executionPricing, module);
         executionPricing = IExecutionPricing(module);
         emit ExecutionPricingConfigured(module);
     }

@@ -1,5 +1,5 @@
 # AdminFunctionsLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/AdminFunctionsLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/AdminFunctionsLibrary.sol)
 
 **Title:**
 AdminFunctionsLibrary
@@ -92,5 +92,3 @@ function recoverToken(address contractInstance, address token, uint256 amount, a
 |`amount`|`uint256`|Amount of tokens to recover|
 |`treasury`|`address`|The treasury address to send tokens to|
 |`adminRole`|`bytes32`|The admin role required for this operation|
-
-

@@ -1,5 +1,5 @@
 # MockUSDC
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/mocks/MockUSDC.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/mocks/MockUSDC.sol)
 
 **Inherits:**
 ERC20, Ownable
@@ -66,5 +66,3 @@ function faucet(uint256 amount) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|The amount of tokens to mint to caller|
-
-

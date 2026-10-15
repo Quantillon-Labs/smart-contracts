@@ -170,7 +170,7 @@ contract SignedExecutionPricing is AccessControl, EIP712, IExecutionPricing {
      * @custom:access Public.
      * @custom:oracle No fresh observation is created; reference getters expose existing source data.
      */
-    function version() external pure returns (string memory) { return "1.0.0"; }
+    function version() external pure returns (string memory) { return "1.1.0"; }
     /**
      * @notice Hash an execution quote using this chain and module's EIP-712 domain.
      * @dev Returns the declared configuration or derived value without updating state.
@@ -271,7 +271,7 @@ contract SignedExecutionPricing is AccessControl, EIP712, IExecutionPricing {
         if (q.user != user || q.caller != caller || q.callHash != keccak256(callData) || callData.length < 4) revert E.InvalidBinding();
         _validateSelector(bytes4(callData[:4]), q.action);
         if (q.amountIn == 0 || q.amountOut == 0) revert E.InvalidAmount();
-        if (q.observedAt == 0 || q.observedAt > q.validAfter || q.validAfter - q.observedAt > 5 || q.validUntil <= q.validAfter || q.validUntil - q.observedAt > 30 || block.timestamp < q.validAfter || block.timestamp > q.validUntil) revert E.InvalidTime();
+        if (q.observedAt == 0 || q.observedAt > q.validAfter || q.validAfter - q.observedAt > 5 || q.validUntil <= q.validAfter || q.validUntil - q.observedAt > 45 || block.timestamp < q.validAfter || block.timestamp > q.validUntil) revert E.InvalidTime();
         if (usedNonces[user][q.nonce]) revert E.QuoteConsumed();
         bytes32 hash = quoteDigest(q);
         if (!hasRole(QUOTE_SIGNER_ROLE, ECDSA.recover(hash, auth.signature))) revert E.InvalidSignature();

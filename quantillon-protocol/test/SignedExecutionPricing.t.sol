@@ -122,6 +122,35 @@ contract SignedExecutionPricingTest is Test {
         vm.expectRevert(E.InvalidSignature.selector); vault.execute(data, abi.encode(a));
     }
 
+    function test_QuoteValidFor45SecondsIncludingFinalSecond() public {
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 0);
+        T.Authorization memory a = _auth(data, 100e6, 100e18, 1);
+        a.quote.validUntil = block.timestamp + 45;
+        a.signature = _sign(pricing.quoteDigest(a.quote));
+        vm.warp(block.timestamp + 45);
+        vault.execute(data, abi.encode(a));
+        assertEq(vault.minted(), 100e18);
+    }
+
+    function test_QuoteLongerThan45SecondsRejected() public {
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 0);
+        T.Authorization memory a = _auth(data, 100e6, 100e18, 1);
+        a.quote.validUntil = block.timestamp + 46;
+        a.signature = _sign(pricing.quoteDigest(a.quote));
+        vm.expectRevert(E.InvalidTime.selector);
+        vault.execute(data, abi.encode(a));
+    }
+
+    function test_45SecondQuoteRejectedAfterExpiry() public {
+        bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 0);
+        T.Authorization memory a = _auth(data, 100e6, 100e18, 1);
+        a.quote.validUntil = block.timestamp + 45;
+        a.signature = _sign(pricing.quoteDigest(a.quote));
+        vm.warp(block.timestamp + 46);
+        vm.expectRevert(E.InvalidTime.selector);
+        vault.execute(data, abi.encode(a));
+    }
+
     function test_SignedAmountCannotMintUnbackedQeuro() public {
         bytes memory data = abi.encodeWithSignature("mintQEURO(uint256,uint256)", 100e6, 0);
         T.Authorization memory a = _auth(data, 100e6, 101e18, 1);

@@ -2,7 +2,7 @@
 
 Preprod retains its local Safe/Zodiac `hedge-ops-preprod` role and typed margin withdrawal. Fixture staking uses vault ID 2; dev’s independent fixture uses ID 1. The persistent exchange simulator supports delay, partial fill, rejection, outage, lost acknowledgment and stale book/reference scenarios. See the [preprod Dapp runbook](https://github.com/Quantillon-Labs/frontend-dapp/blob/preprod/ops/preprod/README.md).
 
-Current signed interface and cross-environment status: [Signed Quote Migration](quantillon-protocol/docs/Signed-Quote-Migration.md). Both local environments use a 30-second quote lifetime and two-second empty-block mining alongside immediate transaction mining. Production remains legacy.
+Current signed interface and cross-environment status: [Signed Quote Migration](quantillon-protocol/docs/Signed-Quote-Migration.md). Preprod uses a 45-second quote lifetime with SignedExecutionPricing 1.1.0. Dev keeps its configured lifetime until its matching deployment. Both use two-second empty-block mining alongside immediate transaction mining. Production remains legacy.
 
 The environment branch is `preprod`; `feat/signed-quotes-preprod` was merged
 and activated on 14 October 2026. Preprod uses an isolated Anvil fork of Base on

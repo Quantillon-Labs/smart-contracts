@@ -68,7 +68,7 @@ Offchain reservations serialize all quote workers sharing a deployment. Reserved
 
 ## Expiration and failure behavior
 
-The API targets twenty seconds from the original market observation, while the contract enforces a maximum of thirty seconds. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
+SignedExecutionPricing 1.1.0 enforces a forty-five-second maximum, measured from the original market observation. The matching API defaults to forty-five seconds. Deploy the matching contract before increasing an existing environment beyond thirty seconds; preprod enables forty-five seconds in this release. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
 
 Normal signed settlement fails closed on stale market data, invalid reference, exhausted capacity, bad signatures, expired authorization or pause. Emergency redemption is a separate mode, with a non-renewing budget and independent-reference checks. Switching modes alone does not replenish that budget. The existing market adapter's freshness policy also applies; emergency behavior must be rehearsed against the actual router and adapter.
 

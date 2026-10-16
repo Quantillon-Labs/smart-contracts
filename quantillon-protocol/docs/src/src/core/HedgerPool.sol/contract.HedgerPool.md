@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -14,21 +14,12 @@ Optimized EUR/USD hedging pool for managing currency risk and providing yield
 
 Optimized version with reduced contract size through library extraction and code consolidation
 P&L Calculation Model:
-Hedgers are SHORT EUR (they owe QEURO to users). When EUR/USD price rises, hedgers lose.
-1. TOTAL UNREALIZED P&L (mark-to-market of current position):
-totalUnrealizedPnL = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
-2. NET UNREALIZED P&L (used when margin already reflects realized P&L):
-netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-3. EFFECTIVE MARGIN (true economic value):
-effectiveMargin = margin + netUnrealizedPnL
-4. REALIZED P&L (during partial redemptions):
-When users redeem QEURO, a portion of net unrealized P&L is realized.
-realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
-- If positive (profit): margin increases
-- If negative (loss): margin decreases
-5. LIQUIDATION MODE (CR ≤ 101%):
-In liquidation mode, unrealizedPnL = -margin (all margin at risk).
-effectiveMargin = 0, hedger absorbs pro-rata losses on redemptions.
+Hedgers are SHORT EUR. FilledVolume is the remaining QEURO's original USDC cost.
+unrealizedPnL = FilledVolume - (QEUROBacked * OraclePrice / 1e30).
+effectiveMargin = margin + unrealizedPnL.
+A redemption releases proportional original cost and realizes releasedCost - payout
+into margin. realizedPnL is cumulative history only; it does not value remaining exposure.
+Liquidation redemptions reduce margin and remaining cost proportionally.
 
 **Note:**
 security-contact: team@quantillon.money
@@ -116,6 +107,20 @@ governance decision (margin-rebalancing target, 2026-09).
 
 ```solidity
 uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 250
+```
+
+
+### MAX_CONFIGURABLE_LEVERAGE
+Ceiling for `coreParams.maxLeverage` accepted by `configureRiskAndFees`.
+A position's margin ratio is `10000 / leverage` bps, so the leverage implied by the
+`DEFAULT_MIN_MARGIN_RATIO_BPS` floor is `10000 / 250` = 40x. The setter previously
+capped leverage at 20x, which contradicted that floor: a 2.5% margin ratio was
+permitted by `validateMarginRatio` and by the collateral-based fill capacity, but
+could not be configured or opened. This constant realigns the two bounds.
+
+
+```solidity
+uint256 public constant MAX_CONFIGURABLE_LEVERAGE = 40
 ```
 
 
@@ -335,6 +340,17 @@ mapping(address => uint256) public hedgerLastRewardBlock
 ```
 
 
+### costBasisAccountingInitialized
+Whether remaining-cost accounting has been initialized for this proxy.
+
+Appended storage; existing proxies must activate while paused and fully settled.
+
+
+```solidity
+bool public costBasisAccountingInitialized
+```
+
+
 ## Functions
 ### version
 
@@ -370,6 +386,93 @@ function version() external pure virtual override returns (string memory);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`string`|Semantic version string (e.g. "1.0.0").|
+
+
+### executeWithReference
+
+Execute a hedger operation with an atomically refreshed signed reference.
+
+The linked library preserves msg.sender and uses the governed oracle binding.
+
+**Notes:**
+- security: Only enter, exit, remove-margin and emergency-close selectors are allowed.
+
+- validation: Source signature, original observation age and existing operation guards.
+
+- state-changes: Reference cache and the selected operation's normal accounting.
+
+- events: ReferenceAccepted and existing operation events.
+
+- errors: Propagates reference validation and operation errors atomically.
+
+- reentrancy: The selected operation retains its nonReentrant modifier.
+
+- access: The selected operation checks the original caller's permissions.
+
+- oracle: Signed reference via the active market oracle; no execution quote consumed.
+
+
+```solidity
+function executeWithReference(bytes calldata callData, bytes calldata authorization)
+    external
+    returns (bytes memory result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`callData`|`bytes`|Complete calldata of the allowed hedger operation.|
+|`authorization`|`bytes`|ABI-encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`bytes`|The selected operation's return data.|
+
+
+### removeMarginWithReference
+
+Withdraw margin with a signed reference in one atomic transaction.
+
+Typed parameters let Roles constrain the position and amount without authorizing arbitrary calldata.
+
+**Notes:**
+- security: Preserves caller identity and all removeMargin guards.
+
+- validation: Validated reference, ownership, collateralization and withdrawal bounds.
+
+- state-changes: Reference and margin accounting revert together on failure.
+
+- events: ReferenceAccepted and margin withdrawal events.
+
+- errors: Propagates source validation and removeMargin errors.
+
+- reentrancy: removeMargin retains its nonReentrant guard.
+
+- access: Position owner; adds no withdrawal authority.
+
+- oracle: Governed signed reference source, submitted within this transaction.
+
+
+```solidity
+function removeMarginWithReference(uint256 positionId, uint256 amount, bytes calldata authorization)
+    external
+    returns (bytes memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position owned by the caller.|
+|`amount`|`uint256`|USDC margin to withdraw, in 6 decimals.|
+|`authorization`|`bytes`|ABI-encoded reference report and signature.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes`|ABI-encoded result of the underlying withdrawal (empty on success).|
 
 
 ### onlyVault
@@ -476,6 +579,40 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 |`_TIME_PROVIDER`|`TimeProvider`|The time provider contract for timestamp management|
 
 
+### _protocolTime
+
+Returns canonical protocol time from this contract's TimeProvider
+
+Overrides the SecureUpgradeable base, which returns `block.timestamp`.
+
+**Notes:**
+- security: Reads the immutable TimeProvider set at construction
+
+- validation: None required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Read-only helper; no state mutation
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _protocolTime() internal view override returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Canonical protocol time in seconds|
+
+
 ### initialize
 
 Initializes the HedgerPool with contracts and parameters
@@ -527,6 +664,63 @@ function initialize(
 |`_treasury`|`address`|Address of the treasury contract|
 |`_vault`|`address`|Address of the QuantillonVault contract|
 
+
+### initializeCostBasisAccounting
+
+Activates remaining-cost accounting on a settled, paused proxy.
+
+Existing positions must be reconciled and closed before upgrading. Fresh deployments
+activate in initialize. No active balances are converted by this entry point.
+
+**Notes:**
+- security: Governance-only, one-time activation with no outstanding exposure.
+
+- validation: Requires no active position, margin, exposure, or QEURO above dust.
+
+- state-changes: Sets the accounting initialization flag and initializer version.
+
+- events: Emits Initialized through reinitializer.
+
+- errors: InvalidPosition if settlement or activation preconditions are not met.
+
+- reentrancy: No state-changing external calls.
+
+- access: GOVERNANCE_ROLE while paused.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function initializeCostBasisAccounting() external reinitializer(2) whenPaused;
+```
+
+### _requireCostBasisAccounting
+
+Requires the accounting model to be initialized before reading or settling exposure.
+
+Prevents an existing proxy from interpreting unsettled position balances as remaining cost.
+
+**Notes:**
+- security: Blocks financial accounting until explicit activation.
+
+- validation: Checks the appended initialization flag.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: InvalidPosition before activation.
+
+- reentrancy: No external calls.
+
+- access: Internal.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function _requireCostBasisAccounting() private view;
+```
 
 ### enterHedgePosition
 
@@ -1073,124 +1267,6 @@ function claimHedgingRewards()
 |`totalRewards`|`uint256`|Total rewards claimed|
 
 
-### _accrueAndExtractInterestRewards
-
-Accrues interest-differential rewards and extracts claimable amount
-
-Updates pending rewards and reward timestamp using protocol-wide exposure and configured rate differential.
-
-**Notes:**
-- security: Internal accounting helper; callable only through contract execution flow
-
-- validation: Handles legacy block-based timestamps by migrating to protocol time
-
-- state-changes: Updates `rewardState.pendingRewards`, `rewardState.lastRewardClaim`, and `hedgerLastRewardBlock`
-
-- events: None
-
-- errors: Arithmetic/validation errors from underlying helpers may revert
-
-- reentrancy: No external calls
-
-- access: Internal function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _accrueAndExtractInterestRewards(address hedger, HedgerRewardState storage rewardState)
-    internal
-    returns (uint256 interestDifferential);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger whose reward accounting is being updated|
-|`rewardState`|`HedgerRewardState`|Storage pointer for the hedger reward state|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`interestDifferential`|`uint256`|Amount claimable from accrued interest differential for this claim cycle|
-
-
-### _claimYieldShiftRewards
-
-Claims YieldShift-distributed rewards for a hedger
-
-Reads pending amount and claims once through `yieldShift` when non-zero.
-
-**Notes:**
-- security: Relies on trusted `yieldShift` integration and validates non-zero claimed amount
-
-- validation: Reverts when claim reports success with zero claimed amount
-
-- state-changes: May update external YieldShift accounting/state
-
-- events: No direct events emitted here (caller emits aggregate reward event)
-
-- errors: Reverts with `YieldClaimFailed` if claim returns zero amount
-
-- reentrancy: Performs external calls; used from `nonReentrant` parent flow
-
-- access: Internal function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _claimYieldShiftRewards(address hedger) internal returns (uint256 yieldShiftRewards);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address claiming rewards|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldShiftRewards`|`uint256`|Claimed YieldShift reward amount|
-
-
-### _settleInterestRewards
-
-Queues interest-differential rewards for pull-based withdrawal
-
-Uses pending withdrawal accounting instead of push transfers.
-
-**Notes:**
-- security: Avoids push-transfer reentrancy surface by queuing funds
-
-- validation: No action when `interestDifferential == 0`
-
-- state-changes: Increments `pendingRewardWithdrawals[hedger]`
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _settleInterestRewards(address hedger, uint256 interestDifferential) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger receiving queued rewards|
-|`interestDifferential`|`uint256`|Interest-differential amount to queue|
-
-
 ### withdrawPendingRewards
 
 Withdraw rewards that could not be pushed due to USDC transfer failure (e.g. blacklist)
@@ -1239,10 +1315,9 @@ Calculates total effective hedger collateral (margin + P&L) for the hedger posit
 
 Used by vault to determine protocol collateralization ratio
 Formula breakdown:
-1. totalUnrealizedPnL = FilledVolume - (QEUROBacked × price / 1e30)
-2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-(margin already reflects realized P&L, so we use net unrealized to avoid double-counting)
-3. effectiveCollateral = margin + netUnrealizedPnL
+1. unrealizedPnL = remainingCost - (qeuroBacked * price / 1e30).
+2. effectiveCollateral = margin + unrealizedPnL, floored at zero.
+Realized P&L is already included in margin. An unfilled position retains its margin.
 
 **Notes:**
 - security: View-only helper - no state changes, safe for external calls
@@ -1559,6 +1634,102 @@ function setSingleHedger(address hedger) external;
 |`hedger`|`address`|Address of the single hedger|
 
 
+### correctLegacyMargin
+
+Credits the verified July 2026 legacy residue to the existing Safe position once.
+
+Fixed Base pool, beneficiary, opening block and 388448 micro-USDC; no token movement.
+
+**Notes:**
+- security: Linked helper requires governance and a paused pool, and records replay protection.
+
+- validation: Requires initialized accounting, matching totals and the exact unallocated backing.
+
+- state-changes: Increases position/global margin and nominal exposure only.
+
+- events: LegacyMarginCorrected.
+
+- errors: Reverts on unauthorized, repeated or mismatched correction.
+
+- reentrancy: Protected by nonReentrant; external reads are static.
+
+- access: Governance only, enforced by the linked helper.
+
+- oracle: No price dependency; original-cost accounting is used.
+
+
+```solidity
+function correctLegacyMargin() external nonReentrant;
+```
+
+### manageHedgerMigration
+
+Manages a consensual transfer of the live hedge position to a contract wallet.
+
+Current owner proposes, recipient accepts, governance executes while paused.
+
+**Notes:**
+- security: Three-party authorization, expiry and proposal nonce prevent unilateral transfers/replay.
+
+- validation: Requires active remaining-cost accounting and a clean receiving hedger account.
+
+- state-changes: Moves owner mappings and pool reward state; preserves all position economics.
+
+- events: HedgerMigrationProposed, HedgerMigrationAccepted, HedgerMigrationCancelled, HedgerMigrationExecuted, SingleHedgerRotationApplied.
+
+- errors: MigrationUnauthorized, InvalidMigration, MigrationExpired, MigrationNotAccepted, RecipientHasHedgerState, MigrationRequiresPause.
+
+- reentrancy: Protected by nonReentrant; migration performs no external token calls.
+
+- access: Current hedger, proposed recipient, or governance according to the action.
+
+- oracle: No oracle dependency; no position revaluation.
+
+
+```solidity
+function manageHedgerMigration(HedgerPoolMigrationLibrary.Request calldata request) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`request`|`HedgerPoolMigrationLibrary.Request`|Action and exact proposal fields; proposalId is zero only for Propose.|
+
+
+### hedgerMigration
+
+Reads the currently proposed hedge ownership transfer.
+
+Proposal data resides in a dedicated hashed storage namespace.
+
+**Notes:**
+- security: Read-only.
+
+- validation: None.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: No state changes.
+
+- access: Public.
+
+- oracle: None.
+
+
+```solidity
+function hedgerMigration() external view returns (HedgerPoolMigrationLibrary.Proposal memory);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`HedgerPoolMigrationLibrary.Proposal`|Current proposal; zero fields indicate no pending transfer.|
+
+
 ### fundRewardReserve
 
 Deposit USDC into the reward reserve so hedging rewards can be paid out.
@@ -1759,47 +1930,6 @@ function _unwindFilledVolume(HedgePosition storage position) internal;
 |`position`|`HedgePosition`|Storage reference to the position being unwound|
 
 
-### _isPositionHealthyForFill
-
-Checks if position is healthy enough for new fills
-
-Validates position has sufficient margin ratio after considering unrealized P&L
-
-**Notes:**
-- security: Internal function - validates position health
-
-- validation: Checks effective margin > 0 and margin ratio >= minMarginRatio
-
-- state-changes: None - view function
-
-- events: None
-
-- errors: None
-
-- reentrancy: Not applicable - view function
-
-- access: Internal helper only
-
-- oracle: Uses provided price parameter
-
-
-```solidity
-function _isPositionHealthyForFill(HedgePosition storage p, uint256 price) internal view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`p`|`HedgePosition`|Storage pointer to the position struct|
-|`price`|`uint256`|Current EUR/USD oracle price (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|True if position is healthy and can accept new fills|
-
-
 ### _increaseFilledVolume
 
 Allocates user mint exposure to the hedger position
@@ -1948,56 +2078,27 @@ function _updateEntryPriceAfterFill(HedgePosition storage pos, uint256 prevFille
 
 ### _processRedeem
 
-Processes redemption for a single position - calculates realized P&L
+Realizes the redeemed QEURO's P&L and releases its original cost.
 
-Calculates and records realized P&L during QEURO redemption
-
-New formula: RealizedP&L = QEUROQuantitySold * (entryPrice - OracleCurrentPrice)
-Hedgers are SHORT EUR, so they profit when EUR price decreases
-
-Called by _decreaseFilledVolume for normal (non-liquidation) redemptions
-P&L Calculation Formula:
-1. totalUnrealizedPnL = filledVolume - (qeuroBacked × price / 1e30)
-2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-(avoids double-counting since margin already reflects realized P&L)
-3. realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
-After calculation:
-- If realizedDelta > 0 (profit): margin increases
-- If realizedDelta < 0 (loss): margin decreases
-- realizedPnL accumulates the realized portion
+The realized delta is proportional remaining cost minus the redeemed amount's
+current USDC value. Historical realized P&L is informational only.
 
 **Notes:**
-- security: Internal function - calculates and records realized P&L
+- security: Records each redeemed portion's profit or loss exactly once.
 
-- validation: Validates entry price > 0 and qeuroAmount > 0
+- validation: Caller bounds qeuroAmount to the position's current backing.
 
-- state-changes: Updates pos.realizedPnL and decreases filled volume
+- state-changes: Updates margin, realized history, position size and remaining cost.
 
-- events: Emits `MarginUpdated` when realized P&L changes margin
+- events: None.
 
-- errors: None
+- errors: InvalidAmount if realized P&L exceeds the packed signed range.
 
-- reentrancy: Not applicable - internal function
+- reentrancy: No external untrusted calls.
 
-- access: Internal helper only
+- access: Internal.
 
-- oracle: Uses provided price parameter
-
-- security: Internal function - updates position state and margin
-
-- validation: Validates share > 0, qeuroAmount > 0, price > 0, qeuroBacked > 0
-
-- state-changes: Updates pos.realizedPnL, pos.margin, totalMargin, pos.positionSize
-
-- events: Emits `MarginUpdated` when realized P&L changes margin
-
-- errors: None - early returns for invalid states
-
-- reentrancy: Not applicable - internal function, no external calls
-
-- access: Internal helper only - called by _decreaseFilledVolume
-
-- oracle: Uses provided price parameter (must be fresh oracle data)
+- oracle: Uses the caller's validated price.
 
 
 ```solidity
@@ -2014,12 +2115,12 @@ function _processRedeem(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`posId`|`uint256`|ID of the position being processed|
-|`pos`|`HedgePosition`|Storage pointer to the position struct|
-|`share`|`uint256`|Amount of USDC exposure being released (6 decimals)|
-|`filledBefore`|`uint256`|Filled volume before redemption (used for P&L calculation)|
-|`price`|`uint256`|Current EUR/USD oracle price for redemption (18 decimals)|
-|`qeuroAmount`|`uint256`|QEURO amount being redeemed (18 decimals)|
+|`posId`|`uint256`|Position identifier.|
+|`pos`|`HedgePosition`|Position storage reference.|
+|`share`|`uint256`|Original USDC cost released by this redemption.|
+|`filledBefore`|`uint256`|Original USDC cost of the remaining position before redemption.|
+|`price`|`uint256`|Validated EUR/USD price, 18 decimals.|
+|`qeuroAmount`|`uint256`|Redeemed QEURO, 18 decimals.|
 
 
 ### _applyRealizedPnLToMargin
@@ -2058,41 +2159,41 @@ function _applyRealizedPnLToMargin(uint256, HedgePosition storage pos, int256 re
 |`realizedDelta`|`int256`|Realized P&L amount (positive = profit, negative = loss)|
 
 
-### _validatePositionClosureSafety
+### _checkpointRewards
 
-Validates that closing a position won't cause protocol undercollateralization
+Checkpoints the configured hedger's interest reward before exposure changes.
 
-Checks if protocol remains collateralized after removing this position's margin
+No-op when no hedger is configured.
 
 **Notes:**
-- security: Internal function - prevents protocol undercollateralization from position closures
+- security: Uses the linked accounting library and existing reward storage.
 
-- validation: Checks vault is set, QEURO supply is above dust, protocol is collateralized, and remaining margin > positionMargin
+- validation: Applies the configured reward-period cap and overflow guard.
 
-- state-changes: None - view function
+- state-changes: Updates pending rewards and the hedger's accrual timestamp.
 
-- events: None
+- events: None.
 
-- errors: Reverts with PositionClosureRestricted if closing would cause undercollateralization
+- errors: RewardOverflow when pending accounting exceeds uint128.
 
-- reentrancy: Not applicable - view function, no state changes
+- reentrancy: No external calls.
 
-- access: Internal - only callable within contract
+- access: Internal.
 
-- oracle: Not applicable - uses vault's collateralization check
+- oracle: No oracle dependency.
 
 
 ```solidity
-function _validatePositionClosureSafety(uint256 positionMargin) internal view;
+function _checkpointRewards() private;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionMargin`|`uint256`|Amount of margin in the position being closed|
-
 
 ## Events
+### LegacyMarginCorrected
+
+```solidity
+event LegacyMarginCorrected(bytes32 indexed correctionId, address indexed hedger, uint256 amount);
+```
+
 ### HedgePositionOpened
 
 ```solidity
@@ -2125,6 +2226,34 @@ Emitted when USDC is deposited into the reward reserve
 event RewardReserveFunded(address indexed funder, uint256 amount);
 ```
 
+### HedgerMigrationProposed
+
+```solidity
+event HedgerMigrationProposed(
+    bytes32 indexed proposalId, address indexed previousHedger, address indexed newHedger, uint64 expiresAt
+);
+```
+
+### HedgerMigrationAccepted
+
+```solidity
+event HedgerMigrationAccepted(bytes32 indexed proposalId);
+```
+
+### HedgerMigrationCancelled
+
+```solidity
+event HedgerMigrationCancelled(bytes32 indexed proposalId);
+```
+
+### HedgerMigrationExecuted
+
+```solidity
+event HedgerMigrationExecuted(
+    bytes32 indexed proposalId, address indexed previousHedger, address indexed newHedger
+);
+```
+
 ### SingleHedgerRotationApplied
 
 ```solidity
@@ -2154,6 +2283,61 @@ event EmergencyPositionClosed(
 |`positionId`|`uint256`|Closed position id|
 |`marginWithdrawn`|`uint256`|Margin (USDC, 6 decimals) returned to the hedger from the vault|
 |`outstandingQeuro`|`uint256`|QEURO still outstanding at closure time (18 decimals); non-zero means under-backed|
+
+## Errors
+### PositionClosureRestricted
+
+```solidity
+error PositionClosureRestricted();
+```
+
+### LegacyCorrectionUnauthorized
+
+```solidity
+error LegacyCorrectionUnauthorized();
+```
+
+### LegacyCorrectionStateMismatch
+
+```solidity
+error LegacyCorrectionStateMismatch();
+```
+
+### LegacyCorrectionAlreadyApplied
+
+```solidity
+error LegacyCorrectionAlreadyApplied();
+```
+
+### ConfigValueTooHigh
+
+```solidity
+error ConfigValueTooHigh();
+```
+
+### ConfigValueTooLow
+
+```solidity
+error ConfigValueTooLow();
+```
+
+### FeeTooHigh
+
+```solidity
+error FeeTooHigh();
+```
+
+### InsufficientBalance
+
+```solidity
+error InsufficientBalance();
+```
+
+### YieldClaimFailed
+
+```solidity
+error YieldClaimFailed();
+```
 
 ## Structs
 ### CoreParams
@@ -2206,13 +2390,13 @@ struct HedgerDependencyConfig {
 struct HedgePosition {
     address hedger;
     uint96 positionSize;
-    uint96 filledVolume;
+    uint96 filledVolume; // Remaining original USDC cost of qeuroBacked
     uint96 margin;
     uint96 entryPrice;
     uint32 entryTime;
     uint32 lastUpdateTime;
     int128 unrealizedPnL;
-    int128 realizedPnL; // Cumulative realized P&L from closed portions
+    int128 realizedPnL; // Informational history; already reflected in margin
     uint16 leverage;
     bool isActive;
     uint128 qeuroBacked; // Exact QEURO amount backed by this position (18 decimals)
@@ -2228,4 +2412,3 @@ struct HedgerRewardState {
     uint64 lastRewardClaim;
 }
 ```
-

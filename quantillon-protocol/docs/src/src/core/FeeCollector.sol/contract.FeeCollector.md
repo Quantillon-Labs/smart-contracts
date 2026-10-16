@@ -1,5 +1,5 @@
 # FeeCollector
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/FeeCollector.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/FeeCollector.sol)
 
 **Inherits:**
 AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -558,7 +558,7 @@ Validates recipient address against whitelist and performs secure ETH transfer
 **Notes:**
 - security: Multiple validation layers prevent arbitrary sends:
 - Recipient must be one of three pre-authorized fund addresses
-- Addresses are validated to be non-zero and non-contract
+- Addresses are validated to be non-zero; contract wallets are supported
 - Only GOVERNANCE_ROLE can update these addresses
 - This is NOT an arbitrary send as recipient is strictly controlled
 
@@ -1128,4 +1128,3 @@ Emitted when fund addresses are updated
 ```solidity
 event FundAddressesUpdated(address treasury, address devFund, address communityFund);
 ```
-

@@ -1,5 +1,5 @@
 # StorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/StorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/StorkOracle.sol)
 
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -1514,4 +1514,3 @@ event DevModeProposed(bool pending, uint256 activatesAt);
 |----|----|-----------|
 |`pending`|`bool`|The proposed dev-mode value|
 |`activatesAt`|`uint256`|Timestamp at which the change can be applied|
-

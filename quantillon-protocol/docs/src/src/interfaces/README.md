@@ -2,6 +2,7 @@
 
 # Contents
 - [IChainlinkOracle](IChainlinkOracle.sol/interface.IChainlinkOracle.md)
+- [IExecutionPricing](IExecutionPricing.sol/interface.IExecutionPricing.md)
 - [IExternalStakingVault](IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 - [IHedgerPool](IHedgerPool.sol/interface.IHedgerPool.md)
 - [IHyperliquidOracle](IHyperliquidOracle.sol/interface.IHyperliquidOracle.md)

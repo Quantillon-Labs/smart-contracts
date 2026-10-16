@@ -240,7 +240,7 @@ library HedgerPoolAccountingLibrary {
      * @custom:access Linked library helper.
      * @custom:oracle No oracle lookup.
      */
-    function version() external pure returns (string memory) { return "1.3.0"; }
+    function version() external pure returns (string memory) { return "1.3.1"; }
 
     /**
      * @notice Books interest earned up to the current exposure change.

@@ -1,5 +1,5 @@
 # IStorkFeed
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/StorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/StorkOracle.sol)
 
 Stork Network oracle feed interface
 
@@ -90,4 +90,3 @@ struct TemporalNumericValue {
 |----|----|-----------|
 |`value`|`int256`|The price value (can be negative for some feeds)|
 |`timestamp`|`uint256`|The timestamp when the value was last updated|
-

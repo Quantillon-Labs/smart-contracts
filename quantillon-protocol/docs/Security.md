@@ -1,5 +1,7 @@
 # Quantillon Protocol Security Guide
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 ## Overview
 
 The Quantillon Protocol implements comprehensive security measures to protect user funds and ensure protocol integrity. This document outlines security best practices, the vulnerability disclosure process, and risk management guidelines.

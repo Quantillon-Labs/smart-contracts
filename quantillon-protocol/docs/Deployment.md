@@ -1,5 +1,7 @@
 # Quantillon Protocol — Deployment Guide
 
+> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+
 For the current deployed behavior, versions and role ownership, use [Production Protocol Reference](Production-Protocol-Reference.md). Dated release sections below describe their respective upgrade bundles, not the latest state after subsequent upgrades.
 
 

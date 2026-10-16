@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/VaultMath.sol)
 
 **Title:**
 VaultMath
@@ -208,5 +208,3 @@ function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
 |Name|Type|Description|
 |----|----|-----------|
 |`scaledValue`|`uint256`|Scaled value with proper rounding|
-
-

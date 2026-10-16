@@ -1,5 +1,7 @@
 # Quantillon Protocol Smart Contracts
 
+Candidate architecture: [Signed Quote Migration](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html). Activation is subject to the coordinated release gates.
+
 Current production behavior and settings: [Production Protocol Reference](https://smartcontracts.quantillon.money/Production-Protocol-Reference.html).
 
 

@@ -1,5 +1,5 @@
 # SlippageStorage
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/SlippageStorage.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/SlippageStorage.sol)
 
 **Inherits:**
 [ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -184,6 +184,33 @@ Max per-write deviation (bps) vs the source's last stored mid. 0 = deviation che
 
 ```solidity
 uint16 public maxMidDeviationBps
+```
+
+
+### maxMidDriftBps
+Maximum cumulative mid-price drift allowed during one rolling window.
+
+
+```solidity
+uint16 public maxMidDriftBps
+```
+
+
+### midDriftWindow
+Rolling window for cumulative mid-price drift in seconds.
+
+
+```solidity
+uint32 public midDriftWindow
+```
+
+
+### _midDriftAnchors
+Cumulative drift anchors by source id.
+
+
+```solidity
+mapping(uint8 sourceId => MidDriftAnchor) private _midDriftAnchors
 ```
 
 
@@ -565,6 +592,87 @@ function setMidPriceGuards(uint128 minMid, uint128 maxMid, uint16 devBps) extern
 |`devBps`|`uint16`|Max per-write deviation vs the source's last mid; 0 disables it|
 
 
+### setMidDriftGuard
+
+Configures cumulative mid-price drift protection.
+
+Applies the same rolling-window semantics to single and batch updates.
+
+**Notes:**
+- security: Restricted to MANAGER_ROLE and bounded by protocol limits.
+
+- validation: Zero disables the guard; nonzero windows must be within one hour.
+
+- state-changes: Updates cumulative drift configuration.
+
+- events: Emits ConfigUpdated for both values.
+
+- errors: Reverts with ConfigValueTooHigh for invalid values.
+
+- reentrancy: No external calls.
+
+- access: MANAGER_ROLE.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setMidDriftGuard(uint16 maxDriftBps, uint32 windowSeconds) external onlyRole(MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`maxDriftBps`|`uint16`|Maximum drift from the rolling anchor in basis points.|
+|`windowSeconds`|`uint32`|Rolling window in seconds.|
+
+
+### _midWithinDriftGuard
+
+Checks cumulative movement against the active rolling anchor.
+
+Returns true when the guard is disabled or the source window has expired.
+
+**Notes:**
+- security: Limits repeated same-block and short-window price walks.
+
+- validation: Uses checked arithmetic and source-specific anchors.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: None.
+
+- access: Internal.
+
+- oracle: None.
+
+
+```solidity
+function _midWithinDriftGuard(uint8 sourceId, uint128 lastMid, uint128 newMid, uint48 nowTs)
+    internal
+    view
+    returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`sourceId`|`uint8`|Price source identifier.|
+|`lastMid`|`uint128`|Previously stored mid price.|
+|`newMid`|`uint128`|Candidate mid price.|
+|`nowTs`|`uint48`|Current timestamp.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True when cumulative drift remains within the configured bound.|
+
+
 ### _midWithinGuards
 
 Whether a candidate midPrice passes the configured writer-side guards.
@@ -606,6 +714,42 @@ function _midWithinGuards(uint128 lastMid, uint128 newMid) internal view returns
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`bool`|True if the candidate is acceptable (or guards are disabled)|
+
+
+### _recordMidDrift
+
+Records a new rolling drift anchor when the current window expires.
+
+Disabled when either drift configuration value is zero.
+
+**Notes:**
+- security: Anchors only accepted writer prices.
+
+- validation: Ignores zero prices and disabled guards.
+
+- state-changes: Updates the source anchor mapping.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: None.
+
+- access: Internal.
+
+- oracle: None.
+
+
+```solidity
+function _recordMidDrift(uint8 sourceId, uint128 newMid, uint48 nowTs) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`sourceId`|`uint8`|Price source identifier.|
+|`newMid`|`uint128`|Accepted mid price.|
+|`nowTs`|`uint48`|Current timestamp.|
 
 
 ### pause
@@ -1018,3 +1162,14 @@ Used primarily for recovery testing to simulate accidental ETH deposits.
 receive() external payable;
 ```
 
+## Structs
+### MidDriftAnchor
+Per-source cumulative drift anchor.
+
+
+```solidity
+struct MidDriftAnchor {
+    uint128 anchorMid;
+    uint48 windowStart;
+}
+```

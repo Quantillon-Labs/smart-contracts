@@ -1,5 +1,5 @@
 # HedgerPoolLogicLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/HedgerPoolLogicLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/HedgerPoolLogicLibrary.sol)
 
 **Title:**
 HedgerPoolLogicLibrary
@@ -9,22 +9,11 @@ Quantillon Labs
 
 Logic functions for HedgerPool to reduce contract size
 
-Core P&L Calculation Formulas:
-1. TOTAL UNREALIZED P&L (mark-to-market of current position):
-totalUnrealizedPnL = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
-- Positive when price drops (hedger profits from short EUR position)
-- Negative when price rises (hedger loses from short EUR position)
-2. NET UNREALIZED P&L (after accounting for realized portions):
-netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-- Used when margin has been adjusted by realized P&L during redemptions
-- Prevents double-counting since margin already reflects realized P&L
-3. EFFECTIVE MARGIN (true economic value of position):
-effectiveMargin = margin + netUnrealizedPnL
-- Represents what the hedger would have if position closed now
-- Used for collateralization checks and available collateral calculations
-4. LIQUIDATION MODE (CR ≤ 101%):
-In liquidation mode, the entire hedger margin is considered at risk.
-unrealizedPnL = -margin, meaning effectiveMargin = 0
+Filled volume is the original USDC cost of the remaining QEURO backing.
+Unrealized P&L = filledVolume - qeuroBacked * currentPrice / 1e30.
+Effective margin = margin + unrealized P&L. Realized P&L is already in margin
+and never enters remaining-exposure valuation. Legacy argument positions are
+retained in public library signatures for ABI compatibility.
 
 
 ## Functions
@@ -118,12 +107,12 @@ Hedgers are SHORT EUR (they owe QEURO to users). When price rises, they lose.
 - Price UP → qeuroValueInUSDC increases → P&L becomes more negative → hedger loses
 - Price DOWN → qeuroValueInUSDC decreases → P&L becomes more positive → hedger profits
 This returns the TOTAL unrealized P&L for the current position state.
-To get NET unrealized P&L (after partial redemptions), subtract realizedPnL from this value.
+Historical realized P&L is already included in margin and must not be subtracted.
 
 **Notes:**
 - security: No security validations required for pure function
 
-- validation: Validates filledVolume and currentPrice are non-zero
+- validation: Returns zero for a zero price; callers validate oracle prices.
 
 - state-changes: None (pure function)
 
@@ -166,9 +155,8 @@ Calculates collateral-based capacity for a position
 Returns how much additional USDC exposure a position can absorb
 Formula breakdown:
 1. totalUnrealizedPnL = calculatePnL(filledVolume, qeuroBacked, currentPrice)
-2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-(margin already reflects realized P&L, so we use net unrealized to avoid double-counting)
-3. effectiveMargin = margin + netUnrealizedPnL
+2. Realized P&L is informational history already included in margin.
+3. effectiveMargin = margin + totalUnrealizedPnL
 4. requiredMargin = (qeuroBacked × currentPrice / 1e30) × minMarginRatio / 10000
 5. availableCollateral = effectiveMargin - requiredMargin
 6. capacity = availableCollateral × 10000 / minMarginRatio
@@ -199,7 +187,8 @@ function calculateCollateralCapacity(
     /* entryPrice */
     uint256 currentPrice,
     uint256 minMarginRatio,
-    int128 realizedPnL,
+    int128,
+    /* realizedPnL */
     uint128 qeuroBacked
 ) internal pure returns (uint256);
 ```
@@ -212,7 +201,7 @@ function calculateCollateralCapacity(
 |`<none>`|`uint256`||
 |`currentPrice`|`uint256`|Current EUR/USD oracle price (18 decimals)|
 |`minMarginRatio`|`uint256`|Minimum margin ratio in basis points (e.g., 500 = 5%)|
-|`realizedPnL`|`int128`|Cumulative realized P&L from partial redemptions (6 decimals, signed)|
+|`<none>`|`int128`||
 |`qeuroBacked`|`uint128`|Exact QEURO amount backed by this position (18 decimals)|
 
 **Returns**
@@ -229,9 +218,8 @@ Determines if a position is eligible for liquidation
 Checks if position margin ratio falls below the liquidation threshold
 Formula breakdown:
 1. totalUnrealizedPnL = calculatePnL(filledVolume, qeuroBacked, currentPrice)
-2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
-(margin already reflects realized P&L, so we use net unrealized to avoid double-counting)
-3. effectiveMargin = margin + netUnrealizedPnL
+2. Realized P&L is informational history already included in margin.
+3. effectiveMargin = margin + totalUnrealizedPnL
 4. qeuroValueInUSDC = qeuroBacked × currentPrice / 1e30
 5. marginRatio = effectiveMargin × 10000 / qeuroValueInUSDC
 6. liquidatable = marginRatio < liquidationThreshold
@@ -263,7 +251,7 @@ function isPositionLiquidatable(
     uint256 currentPrice,
     uint256 liquidationThreshold,
     uint128 qeuroBacked,
-    int128 realizedPnL
+    int128 /* realizedPnL */
 ) external pure returns (bool);
 ```
 **Parameters**
@@ -276,7 +264,7 @@ function isPositionLiquidatable(
 |`currentPrice`|`uint256`|Current EUR/USD oracle price (18 decimals)|
 |`liquidationThreshold`|`uint256`|Minimum margin ratio in basis points (e.g., 500 = 5%)|
 |`qeuroBacked`|`uint128`|Exact QEURO amount backed by this position (18 decimals)|
-|`realizedPnL`|`int128`|Cumulative realized P&L from partial redemptions (6 decimals, signed)|
+|`<none>`|`int128`||
 
 **Returns**
 
@@ -412,4 +400,3 @@ struct PositionValidationInput {
     uint256 currentTime;
 }
 ```
-

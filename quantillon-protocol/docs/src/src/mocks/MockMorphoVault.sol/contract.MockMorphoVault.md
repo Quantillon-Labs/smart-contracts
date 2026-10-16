@@ -1,5 +1,5 @@
 # MockMorphoVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/mocks/MockMorphoVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/mocks/MockMorphoVault.sol)
 
 **Title:**
 MockMorphoVault
@@ -93,4 +93,3 @@ event Withdrawn(address indexed caller, address indexed to, uint256 assets);
 ```solidity
 event YieldInjected(address indexed from, uint256 amount);
 ```
-

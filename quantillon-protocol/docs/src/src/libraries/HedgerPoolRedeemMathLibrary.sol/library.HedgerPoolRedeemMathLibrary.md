@@ -1,5 +1,5 @@
 # HedgerPoolRedeemMathLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/HedgerPoolRedeemMathLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/HedgerPoolRedeemMathLibrary.sol)
 
 **Title:**
 HedgerPoolRedeemMathLibrary
@@ -47,13 +47,10 @@ function version() external pure returns (string memory);
 
 Computes realized PnL delta for a redemption share.
 
-Derives the realized PnL portion corresponding to `qeuroAmount` being redeemed
-from a position with `currentQeuroBacked`, using filled volume and mark price.
-Works by:
-1. Converting `currentQeuroBacked` to USDC notionals using `price`.
-2. Computing total unrealized PnL relative to `filledBefore`.
-3. Subtracting `previousRealizedPnL` to get net unrealized.
-4. Allocating a proportional share of that PnL to `qeuroAmount`.
+Releases qeuroAmount / currentQeuroBacked of the original cost, rounded down,
+and subtracts the redemption payout, also rounded down to USDC units.
+The final redemption releases all remaining cost. The last argument is kept
+for ABI compatibility; historical realized P&L never changes this delta.
 
 **Notes:**
 - security: Pure math helper; no direct security impact.
@@ -80,7 +77,7 @@ function calculateRedeemPnL(
     uint256 filledBefore,
     uint256 price,
     uint256 qeuroAmount,
-    int128 previousRealizedPnL
+    int128 /* previousRealizedPnL */
 ) external pure returns (int256 realizedDelta);
 ```
 **Parameters**
@@ -91,7 +88,7 @@ function calculateRedeemPnL(
 |`filledBefore`|`uint256`|Total filled USDC notionals before redemption.|
 |`price`|`uint256`|Current EUR/USD price scaled as in `VaultMath.mulDiv` context (1e30 factor).|
 |`qeuroAmount`|`uint256`|QEURO amount being redeemed (share of the position).|
-|`previousRealizedPnL`|`int128`|Previously realized PnL stored on the position (signed, 128-bit).|
+|`<none>`|`int128`||
 
 **Returns**
 
@@ -165,4 +162,3 @@ struct MarginTransition {
     bool marginWiped;
 }
 ```
-

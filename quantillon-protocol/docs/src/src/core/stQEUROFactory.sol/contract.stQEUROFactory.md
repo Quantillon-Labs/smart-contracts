@@ -1,5 +1,5 @@
 # stQEUROFactory
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/core/stQEUROFactory.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/stQEUROFactory.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -126,6 +126,15 @@ mapping(bytes32 => bool) private _vaultNameHashUsed
 ```
 
 
+### vaultNameHashesMigrated
+Whether content-based hashes have been backfilled for all registered vault names.
+
+
+```solidity
+bool public vaultNameHashesMigrated
+```
+
+
 ## Functions
 ### version
 
@@ -239,6 +248,43 @@ function initialize(
 |`_treasury`|`address`|Treasury address used by deployed tokens.|
 |`_timelock`|`address`|Timelock contract used by SecureUpgradeable.|
 |`_oracle`|`address`|Oracle address referenced by the factory configuration.|
+
+
+### initializeVaultNameHashesV2
+
+Backfills content-based vault-name hashes after a factory implementation upgrade.
+
+Runs once through reinitializer(2), hashing each supplied registered name before enabling registration.
+
+**Notes:**
+- security: Governance-only migration; registration remains disabled until it completes.
+
+- validation: Requires every id to be registered and the list to be strictly increasing.
+
+- state-changes: Reserves each existing name hash and enables future registrations.
+
+- events: Emits initializer framework events where applicable.
+
+- errors: Reverts for an already completed migration, invalid ordering, or unknown vault ids.
+
+- reentrancy: No external calls.
+
+- access: Restricted to GOVERNANCE_ROLE.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function initializeVaultNameHashesV2(uint256[] calldata vaultIds)
+    external
+    onlyRole(GOVERNANCE_ROLE)
+    reinitializer(2);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultIds`|`uint256[]`|Complete, strictly increasing list of registered vault identifiers.|
 
 
 ### registerVault
@@ -874,4 +920,3 @@ event VaultRegistered(
 ```solidity
 event FactoryConfigUpdated(string indexed key, address oldValue, address newValue);
 ```
-

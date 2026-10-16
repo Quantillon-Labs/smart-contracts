@@ -1,5 +1,5 @@
 # ISlippageMidSource
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/oracle/HyperliquidEurUsdOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/HyperliquidEurUsdOracle.sol)
 
 Minimal read surface of SlippageStorage used by this adapter
 
@@ -53,5 +53,3 @@ function getSlippageBySource(uint8 sourceId)
 |Name|Type|Description|
 |----|----|-----------|
 |`snapshot`|`ISlippageStorage.SlippageSnapshot`|Latest snapshot; midPrice (18 decimals) and timestamp are used here|
-
-

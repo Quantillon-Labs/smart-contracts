@@ -1,5 +1,5 @@
 # YieldShiftCalculationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/059399894926436498d24b51d70a51b540785e21/src/libraries/YieldShiftCalculationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/YieldShiftCalculationLibrary.sol)
 
 **Title:**
 YieldShiftCalculationLibrary
@@ -142,5 +142,3 @@ function applyGradualAdjustment(uint256 currentShift, uint256 targetShift, uint2
 |Name|Type|Description|
 |----|----|-----------|
 |`newShift`|`uint256`|New yield shift after adjustment|
-
-

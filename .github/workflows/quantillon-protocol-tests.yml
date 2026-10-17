@@ -1,17 +1,17 @@
-name: Quantillon Protocol Tests
+name: Quantillon Protocol Tests (production)
 
 on:
   push:
     branches:
       - main
       - feat/signed-quotes-migration
-      - feat/signed-quotes-preprod
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"
   pull_request:
     branches:
       - main
+      - feat/signed-quotes-migration
     paths:
       - "quantillon-protocol/**"
       - ".github/workflows/quantillon-protocol-tests.yml"

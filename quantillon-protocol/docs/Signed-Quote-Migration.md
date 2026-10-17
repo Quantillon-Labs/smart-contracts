@@ -1,10 +1,25 @@
-# Signed quote migration (candidate)
+# Signed Quotes in Production
 
-This page describes the candidate implementation on `feat/signed-quotes-migration`. On 12 October 2026, the candidate was installed in preproduction only using the dedicated `feat/signed-quotes-preprod` integration branch. The isolated fork runs vault 1.6.0, UserPool 1.3.0 and HedgerPool 1.5.0, with signed execution and reference modules. Dev and Base mainnet remain unchanged. The production publisher remains necessary until its consumers and release gates have migrated. This preproduction installation is not a production activation record.
+Signed quotes were activated on **Base mainnet (8453) on 17 October 2026**. The [confirmed governance execution](https://basescan.org/tx/0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7) is recorded at block **52,720,621**. The production dapp reopened at **10:08 UTC** after the coordinated contract and service cutover. The recurring market publisher is retired.
+
+Versions and active bindings below were read at finalized Base block **52,727,379** on 17 October. These are dated observations; read the live contracts before integration.
+
+| Contract | Proxy or direct module address | Version |
+| --- | --- | --- |
+| QuantillonVault | `0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07` | 1.6.0 |
+| UserPool | `0x712bCc77e7aa53C79870A40d044D440Ad2901bF2` | 1.3.0 |
+| HedgerPool | `0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A` | 1.6.0 |
+| HyperliquidEurUsdOracle | `0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43` | 1.0.7 |
+| SignedExecutionPricing | `0x076F86a591258957665b65c04F04B706D00EaEBa` | 1.1.0 |
+| SignedReferenceSource | `0xFd059ed44959a6a7979e1485a825CE36Dc95cCB1` | 1.0.0 |
+
+`QuantillonVault.executionPricing()` points to SignedExecutionPricing and `signedExecutionEnabled()` is true. The pricing module's `referenceSource()` and the market adapter's legacy-named `slippageStorage()` getter both point to SignedReferenceSource. OracleRouter still selects market slot 1. The pricing mode is **NORMAL** and the non-renewing **emergency budget is 0 QEURO**. The pricing module's `active()` getter describes a temporary settlement context, not whether signed execution is enabled.
+
+See [Production Protocol Reference](Production-Protocol-Reference.md) for dated economic settings and [Quick Start](Quick-Start.md) for the current integration path.
 
 ## Three separate responsibilities
 
-| Data | Candidate authority | Onchain consumer |
+| Data | Authority | Onchain consumer |
 | --- | --- | --- |
 | Exact execution amounts | Execution quote signer | `SignedExecutionPricing` and the existing vault accounting |
 | EUR/USD valuation | Reference signer, checked against an independent reference | `SignedReferenceSource`, market oracle and router |
@@ -14,9 +29,9 @@ A trade's size-dependent execution rate must never revalue all outstanding QEURO
 
 Normal minting buys EUR exposure using asks. Redemption reduces that exposure using bids. The quote engine retains the reference clamps, walks the book with integer arithmetic and includes the configured execution buffer. The venue hedge follows Base settlement and remains non-atomic.
 
-## Candidate contracts
+## Contracts and entrypoints
 
-`SignedExecutionPricing` and `SignedReferenceSource` are new non-upgradeable modules. QuantillonVault, UserPool and HedgerPool require governed implementation upgrades. Linked settlement libraries must be included in deployment verification and bytecode-size checks.
+`SignedExecutionPricing` and `SignedReferenceSource` are new non-upgradeable modules. QuantillonVault, UserPool and HedgerPool received governed implementation upgrades in this release. Linked settlement libraries must be included in deployment verification and bytecode-size checks.
 
 The vault's existing `configureExecutionPricing(address)` detects the signed module. It still requires a paused vault, correct vault binding and no outstanding exposure in the previous module. The appended `signedExecutionEnabled` flag closes the old unquoted conversion paths. UserPool adds an appended route guard; existing deposit and withdrawal accounting runs with the original user.
 
@@ -27,7 +42,7 @@ The vault's existing `configureExecutionPricing(address)` detects the signed mod
 | `HedgerPool.executeWithReference(bytes,bytes)` | Atomic reference delivery with enter, exit, remove-margin or emergency-close |
 | `QuantillonVault.emergencyRedeemQEURO(uint256,uint256)` | Explicitly governed, budgeted emergency redemption |
 
-The HedgerPool wrapper does not change ownership or roles. Add-margin stays available directly without a quote or reference signer. Safe and Zodiac policies must explicitly support the bounded wrapper before callers switch; generic arbitrary-call permission is not a substitute.
+The HedgerPool wrapper does not change ownership or roles. Add-margin stays available directly without a quote or reference signer. Delegated Safe/Zodiac callers use the typed `removeMarginWithReference(uint256,uint256,bytes)` route with scoped permissions. A signature does not grant caller authority.
 
 ## Signature and calldata binding
 
@@ -62,29 +77,29 @@ Out-of-order capacity delivery retains the latest accepted margin limit, origina
 
 Exact output stays signed, while backing and reference-valued fees use the latest accepted reference. A quote can therefore fail current collateral or impact checks before its deadline; the deadline is an expiry bound, not an unconditional execution guarantee.
 
-The candidate counts unresolved buys plus unresolved sells toward its gross admission limit. They do not cancel each other merely because their net exposure is zero. This is more conservative than the previous directional policy and must be included in capacity calibration.
+The signed module counts unresolved buys plus unresolved sells toward its gross admission limit. They do not cancel each other merely because their net exposure is zero. This is more conservative than the previous directional policy and must be included in capacity calibration.
 
 Offchain reservations serialize all quote workers sharing a deployment. Reserved public order-book depth represents Quantillon's risk budget; it does not reserve liquidity on Hyperliquid. Release requires canonical nonce, epoch, time and settlement evidence. Unknown consumed nonces and reorganized settlements retain their budget.
 
 ## Expiration and failure behavior
 
-SignedExecutionPricing 1.1.0 enforces a forty-five-second maximum, measured from the original market observation. The matching API defaults to forty-five seconds. Deploy the matching contract before increasing an existing environment beyond thirty seconds; preprod enables forty-five seconds in this release. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
+SignedExecutionPricing 1.1.0 enforces a forty-five-second maximum, measured from the original market observation. The matching API defaults to forty-five seconds. Production uses this forty-five-second limit. The module and reference source separately enforce a 60-second report-age limit; that does not extend a quote deadline. Issue age is bounded; the interface requires enough remaining time before opening the wallet. A quote can still expire during wallet interaction or inclusion. Approval precedes executable quote issuance.
 
 Normal signed settlement fails closed on stale market data, invalid reference, exhausted capacity, bad signatures, expired authorization or pause. Emergency redemption is a separate mode, with a non-renewing budget and independent-reference checks. Switching modes alone does not replenish that budget. The existing market adapter's freshness policy also applies; emergency behavior must be rehearsed against the actual router and adapter.
 
 Keeper yield conversion uses a distinct bounded-rate authorization because the exact harvested amount is known only during the transaction. The signed maximum must not be exceeded. Zero-harvest behavior, role checks, staking allocation and vesting must remain unchanged. Public quote issuance does not grant keeper authority.
 
-## Release and rollback requirements
+## Operations after activation
 
-Complete keeper, margin/Safe, liquidation, indexer, rewards, dashboard, watchdog and reset integrations before retiring the periodic writer. Test operations after inactivity beyond every former freshness window. Dev and preproduction resets must restore candidate implementations, links, roles, bindings and isolated durable state.
+The paired dapp, quote/reference/capacity services, hedging engine, watchdog, dashboard and keeper consumers use the signed deployment. Required backend migrations and the reconciliation baseline were applied during maintenance before reopening. Fresh signed delivery is checked with read-only simulations; an idle cache alone does not require a paid publication transaction.
 
-Updated user decision (13 October 2026): validate the preprod-to-production candidate before scheduling the upgrade. There is no mandatory seven-day shadow window or minimum real-hedge sample quota. Finish code, real-fill attribution, permissions, review, rehearsal and staging first. After the requested 12-hour governance delay, execute the governed activation and coordinate the prepared Dapp/backend switch against confirmed onchain bindings in the same cutover. Elapsed timelock time does not execute the upgrade automatically. Brief admission pause, reconciliation and immediate validation remain part of cutover; no additional observation period is imposed. Stop the recurring publisher once its replaced consumers pass those checks. Keep admissions closed if versions or bindings do not match. Dev rollout is separate. Update deployment addresses and versions from actual receipts, never from planned values. Generate contract reference pages from NatSpec with `make docs`.
+For a future upgrade, stage against actual deployed addresses, respect the controller's 12-hour delay and pause admission for binding changes and reconciliation. Timelock expiry does not execute an upgrade automatically. Keep admission closed if versions, signer authorization, references or hedge readiness do not match the reviewed release.
 
-Before any signed settlement, rollback may restore verified legacy bindings with fresh reports. After signed settlements, stop issuance, invalidate outstanding quotes and reconcile real venue fills and onchain admission before replacing the module. Restoring an old database does not undo a settlement.
+After signed settlements, a rollback must preserve transaction journals and reconcile real venue fills, consumed quotes and cumulative onchain admission. Restoring an old database or pointing to a legacy pricing module does not undo settlement.
 
 Eliminating idle periodic publication removes its recurring gas expense. User settlement, governance, emergency actions and necessary operational acknowledgments still require transactions. No cross-chain fill guarantee is created by a signature.
 
-## Inactive module deployment
+## Deploying a future inactive module
 
 `scripts/deployment/DeploySignedQuoteModules.s.sol` deploys the reference and execution modules without changing any proxy, oracle binding or active pricing module. It requires the explicit environment/chain pair (`dev`/31337, `preprod`/31338, `prod`/8453), existing vault and independent-reference contracts, governance, reserve recipient and all risk bounds. Both modules are owned by governance from construction; the broadcaster receives no role. Execution remains paused and there are no authorized signing keys until governance configures them.
 
@@ -92,12 +107,12 @@ Before activation, governance must grant the reference signer on the source, gra
 
 The deployment script logs module addresses, not public Safe import payloads. Keep broadcaster receipts and any governed transaction staging artifacts in private operator storage. Do not run `--broadcast` as part of unit tests or documentation builds.
 
-## Preproduction validation
+## Historical preproduction validation (12 October 2026)
 
 The integration passed direct mint/redemption, UserPool deposit/withdrawal, mint-and-stake share issuance, replay rejection, expiry rejection, signed keeper harvesting and a coordinated reset with fresh quote domains. Reference-backed dashboard and keeper previews use read-only simulation. A 70-second idle check confirmed no publisher transaction and no persistent reference update while valuation remained available. Hedge capacity remains simulated; no real Hyperliquid fill or production risk calibration is implied. Private installation receipts and keys are not published.
 
 
-## Production activation authority and rehearsal
+## Historical production rehearsal and authority
 
 The dedicated production candidate was rehearsed on a private Base fork pinned
 to block 52,554,188. The deployed TimelockController requires 43,200 seconds;
@@ -131,7 +146,7 @@ The encrypted `scripts/deployment/DeploySignedQuoteModules.s.sol` entrypoint inh
 
 ## Emergency freshness compatibility
 
-The signed candidate requires HyperliquidEurUsdOracle **1.0.7**. Its ordinary
+The production release includes HyperliquidEurUsdOracle **1.0.7**. Its ordinary
 market snapshot window is unchanged. In the governed signed source's explicit
 emergency mode it accepts that source's independent-reference age policy up to
 8100 seconds. Original observation timestamps are preserved. Invalid or expired
@@ -139,8 +154,4 @@ independent rounds still fail at the source; adapter bounds, reference compariso
 USDC checks and circuit breakers still apply. A legacy source lacking the signed
 emergency getters cannot extend its snapshot window.
 
-Upgrade the adapter through its existing authority before activating the signed
-source. Rehearse redemption through the actual source, adapter, router and vault
-with fresh, old-but-valid and expired independent rounds. Merely rebinding an
-older adapter is insufficient. No deployed address/version manifest is updated
-until the corresponding governed deployment has actually occurred.
+The configured emergency reference-age ceiling is 8100 seconds, subject to the independent oracle's own validity checks. This does not enable emergency redemption: the current emergency budget is zero. Any future activation requires governed configuration and validation through the source, adapter, router and vault. Normal quotes do not use this extended emergency window.

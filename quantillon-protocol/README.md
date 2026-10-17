@@ -1,12 +1,12 @@
 # Quantillon Protocol Smart Contracts
 
-Candidate architecture: [Signed Quote Migration](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html). Activation is subject to the coordinated release gates.
+Production update, **17 October 2026**: [Signed Quotes in Production](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html). Signed execution is active on Base; the periodic publisher is retired and the emergency-redemption budget is zero.
 
 Current production behavior and settings: [Production Protocol Reference](https://smartcontracts.quantillon.money/Production-Protocol-Reference.html).
 
 
-Base deployment addresses and active versions (22 September 2026):
-[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-23-september-2026) ·
+Base deployment addresses and active versions (17 October 2026):
+[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-17-october-2026) ·
 [API address reference](https://smartcontracts.quantillon.money/API-Reference.html#contract-addresses).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -66,10 +66,12 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **MetaMorphoStakingVaultAdapter** | Live external vault adapter | Non-upgradeable `IExternalStakingVault` adapter over the MetaMorpho USDC vault on Base (vaultId 2); `AaveStakingVaultAdapter` / `MorphoStakingVaultAdapter` wrap mock vaults for localhost |
 | **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period; allocation uses holding-period-filtered eligible-pool sizes with gradual adjustment (TWAP helpers exist but inform historical metrics, not the binding shift) |
 | **OracleRouter** | Oracle routing | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (**active**), slot 0 ChainlinkOracle (fallback) |
-| **HyperliquidEurUsdOracle** | Active EUR/USD oracle | Hyperliquid EUR perp mid-price read from SlippageStorage; 15 min staleness (1 h hard cap), circuit breakers |
+| **HyperliquidEurUsdOracle** | Active EUR/USD oracle | Signed reference valuation via SignedReferenceSource; independent-reference, freshness and circuit-breaker checks |
 | **ChainlinkOracle** | Fallback price feeds | EUR/USD (2 h staleness) and USDC/USD (25 h staleness) via Chainlink, circuit breakers |
 | **StorkOracle** | Stork price feeds (parked) | EUR/USD and USDC/USD via Stork Network; replaced in the router slot by HyperliquidEurUsdOracle |
-| **SlippageStorage** | On-chain price store | Written by the off-chain publisher, read by HyperliquidEurUsdOracle |
+| **SignedExecutionPricing** | Exact execution | Transaction-bound quotes, expiry, nonce and hedge-capacity validation |
+| **SignedReferenceSource** | Reference valuation | Authenticated reports delivered with transactions and independently checked |
+| **SlippageStorage** | Legacy price store | Retained deployment; no longer the active market source |
 | **LighterEurUsdOracle** | Inert oracle (historical) | Deployed 2026-07-17 for a second hedge venue that was not adopted (2026-09-01); no router slot |
 | **TimeProvider** | Time utilities | Centralized `block.timestamp` wrapper for consistent time management |
 
@@ -309,4 +311,4 @@ Yield crediting uses an independent solvency gate above `max(101%, criticalColla
 
 ### Staking yield distribution 1.5.0
 
-Production QuantillonVault 1.5.0 was activated on 30 September 2026. It allocates harvested yield by the staked/total QEURO ratio, with haircut-only hedger compensation and no separate staking yield fee. Yield credit vests through the share price; allocation remains snapshot-weighted. See the [economics and confirmed activation record](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). The capital-weighted 1.4 guide is historical.
+Production QuantillonVault 1.5.0 was activated on 30 September 2026. Vault 1.6.0, activated on 17 October, preserves that policy and allocates harvested yield by the staked/total QEURO ratio, with haircut-only hedger compensation and no separate staking yield fee. Yield credit vests through the share price; allocation remains snapshot-weighted. See the [economics and confirmed activation record](https://smartcontracts.quantillon.money/Yield-Distribution-1.5.0.html). The capital-weighted 1.4 guide is historical.

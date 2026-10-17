@@ -1,7 +1,7 @@
 # Smart Contracts - Quantillon Protocol
 
-Base deployment addresses and active versions (22 September 2026):
-[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-23-september-2026) ·
+Base deployment addresses and active versions (17 October 2026):
+[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-17-october-2026) ·
 [API address reference](https://smartcontracts.quantillon.money/API-Reference.html#contract-addresses).
 
 <div align="center">
@@ -14,6 +14,8 @@ Base deployment addresses and active versions (22 September 2026):
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Quantillon-Labs/smart-contracts)
 
 > **Smart Contracts Repository for Quantillon Protocol - Euro-pegged stablecoin ecosystem with dual-pool architecture**
+
+Signed quotes are active on Base since **17 October 2026**. See [the production integration guide](https://smartcontracts.quantillon.money/Signed-Quote-Migration.html) for verified versions, addresses and signed transaction requirements.
 
 ## 📁 Repository Structure
 
@@ -61,7 +63,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 - **stQEUROFactory / stQEUROToken**: One ERC-4626 yield-bearing stQEURO token per external staking vault
 - **FeeCollector**: Protocol fee aggregation and 60/25/15 distribution (treasury / dev / community)
 - **YieldShift**: Dynamic yield allocation between UserPool and HedgerPool
-- **OracleRouter + HyperliquidEurUsdOracle (active) / ChainlinkOracle (fallback)**: EUR/USD pricing aligned with the hedge venue; **SlippageStorage** holds the published venue mid
+- **OracleRouter + HyperliquidEurUsdOracle (active) / ChainlinkOracle (fallback)**: EUR/USD pricing aligned with the hedge venue; **SignedReferenceSource** accepts signed valuation reports; **SignedExecutionPricing** validates exact execution and capacity
 - **MetaMorphoStakingVaultAdapter**: Live external yield adapter (MetaMorpho USDC vault on Base, vaultId 2)
 - **TimeProvider**: Centralized `block.timestamp` wrapper
 
@@ -132,7 +134,7 @@ forge doc --serve
 | **OracleRouter** | Price entry point (two switchable slots) | `quantillon-protocol/src/oracle/OracleRouter.sol` |
 | **HyperliquidEurUsdOracle** | Active EUR/USD oracle | `quantillon-protocol/src/oracle/HyperliquidEurUsdOracle.sol` |
 | **ChainlinkOracle** | Fallback EUR/USD + USDC/USD | `quantillon-protocol/src/oracle/ChainlinkOracle.sol` |
-| **SlippageStorage** | On-chain venue-mid store | `quantillon-protocol/src/oracle/SlippageStorage.sol` |
+| **SlippageStorage** | Legacy venue-mid store | `quantillon-protocol/src/oracle/SlippageStorage.sol` |
 | **TimeProvider** | Timestamp wrapper | `quantillon-protocol/src/libraries/TimeProviderLibrary.sol` |
 
 ## 🧪 Testing

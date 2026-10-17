@@ -1,180 +1,50 @@
 # Oracle Architecture
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+## Valuation and execution
 
-The reference-price path for QEURO valuation: a dual-source `OracleRouter` whose **active** EUR/USD source
-is the Hyperliquid `xyz:EUR` perpetual mid (the venue where the protocol hedge executes), with the
-`ChainlinkOracle` retained as a one-transaction fallback. Live on Base mainnet since 2026-06-25.
+Since 17 October 2026, signed reference reports supply the EUR/USD valuation path. **SignedReferenceSource 1.0.0** checks the report signature, original observation time, sequence, epoch and independent Chainlink reference. **HyperliquidEurUsdOracle 1.0.7** consumes that source in OracleRouter's active market slot **1**. ChainlinkOracle in slot **0** remains a manual governance fallback and the USDC/USD source.
 
-## Why hedge-aligned pricing
-
-The protocol neutralizes the EUR/USD leg with a hedge on Hyperliquid. Pricing QEURO mint/redeem off a
-generic *spot* feed while the hedge fills at the *venue* price leaves a persistent basis between the
-QEURO liability and its hedge. Reading the venue mid aligns valuation more closely with the hedge, but does not eliminate basis, spreads, funding, timing or execution risk. Normal user amounts additionally come from directional depth and buffers in ExecutionPricing.
-Chainlink spot is kept as a safety reference and fallback, not as the primary valuation source.
-
-## Components
-
-| Contract | Source | Role |
-|---|---|---|
-| `OracleRouter` | `src/oracle/OracleRouter.sol` | Routes `IOracle` reads to the active oracle; `switchOracle` |
-| `HyperliquidEurUsdOracle` | `src/oracle/HyperliquidEurUsdOracle.sol` | **Active** EUR/USD source (router slot 1) |
-| `ChainlinkOracle` | `src/oracle/ChainlinkOracle.sol` | Fallback EUR/USD (slot 0) + USDC/USD validation |
-| `StorkOracle` | `src/oracle/StorkOracle.sol` | Legacy/parked (slot 1 now holds the Hyperliquid oracle) |
-| `LighterEurUsdOracle` | `src/oracle/LighterEurUsdOracle.sol` | Deployed 2026-07-17 (`0xcd53182a430d48Be0f414CCA022ABA5d05903536`), inert: no router slot; the Lighter venue was not adopted (2026-09-01) |
-| `SlippageStorage` | `src/oracle/SlippageStorage.sol` | On-chain store the off-chain publisher writes the mid into |
-| `IOracle` / `IHyperliquidOracle` | `src/interfaces/` | Oracle-agnostic interface + adapter extensions |
-
-### Live addresses (Base, chain 8453)
-
-```
-OracleRouter             0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0
-HyperliquidEurUsdOracle  0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43
-ChainlinkOracle          0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7
-SlippageStorage          0x0fde0ff2566be3c24af6d654012dddb4f1da099b
-TimeProvider             0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7
-QuantillonVault          0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07
-Safe (Multisig)          0x1d7fF432a93d0085Fb69474c7E567f859829e6cd
-```
-
-All contracts are verified on Basescan. Proxy addresses are the stable reference; deployment records are tracked in `deployments/8453/versions.json`, but can lag subsequent upgrades. Read live `version()` and active module bindings; see [Production Protocol Reference](Production-Protocol-Reference.md).
-
-The active publication route uses ReportPublicationBatcher v1.0.0 at
-`0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB`, bound to SlippageStorage and
-ExecutionPricing v1.3.2 at `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897`.
-Its immutable writer is the existing publisher account. The batcher itself needs
-SlippageStorage `WRITER_ROLE` plus ExecutionPricing `WRITER_ROLE` and `REPORTER_ROLE`.
-Price, depth and reconciled capacity are independently accepted; check each target's
-events and timestamps. Depth/capacity have a 60-second maximum age, separate from
-the market oracle's price-staleness limit. See [Deployment](./Deployment.md#current-base-release-23-september-2026).
-
-### Independent reference configuration
-
-Hyperliquid remains the live EUR/USD pricing source. `setReferenceCheck` adds an
-independent Chainlink divergence bound; it does not switch execution pricing to
-Chainlink and does not impose a calendar-based weekend shutdown. The off-hours
-setting selects a divergence limit, not an open/closed flag. The reference must
-still pass round, sequencer, timestamp and absolute-price checks.
-
-The strict reference check has been active since 23 September 2026. A stale,
-unavailable, invalid or excessively divergent Chainlink EUR/USD reference makes
-the market oracle invalid and blocks minting and normal redemption, including on
-weekends. This availability tradeoff is intentional. Initial release settings are
-200 bps normal divergence, 300 bps off-hours divergence and 8,100 seconds maximum
-reference age; the independent probe's own checks remain authoritative. These settings were verified after activation; read live getters for subsequent
-governance changes.
-
-Configure the reference only after the Chainlink implementation exposes
-`peekEurUsdPrice()`. Read `maxReferenceDivergenceBps`,
-`maxReferenceDivergenceOffHoursBps`, and `maxReferenceAge` on chain: zero normal
-divergence disables the check. Chainlink's independent probe also enforces its
-own freshness ceiling, so increasing the market adapter's age limit cannot
-bypass it. Validate the actual configured feed across weekday and weekend
-observations before activation. Historical continuity does not guarantee future
-feed availability; invalid reference data must not silently disable the bound.
-
-Likewise, SlippageStorage's `setMidDriftGuard` requires both a nonzero basis-point
-limit and a nonzero window to activate cumulative drift protection. Test accepted
-price events through the real report batcher after changing either configuration.
+Reference valuation is separate from an exact execution quote. SignedExecutionPricing 1.1.0 validates transaction-specific execution authorization and signed hedge-capacity reports. A trade's size-dependent price does not change the valuation of all outstanding QEURO.
 
 ## Data flow
 
+```text
+Hyperliquid observation -> reference signer -> signed reference report
+                                                | delivered with a transaction
+                                                v
+Chainlink independent reference ----------> SignedReferenceSource
+                                                |
+                                                v
+                                      HyperliquidEurUsdOracle
+                                                |
+                                                v
+                                           OracleRouter
+                                                |
+                                    Vault / HedgerPool accounting
+
+Exact execution quote + capacity report -> SignedExecutionPricing -> settlement
 ```
-Hyperliquid info API (allMids xyz:EUR)
-   │  off-chain Slippage Monitor (separate backend repo)
-   ▼
-SlippageStorage.getSlippageBySource(SOURCE_HYPERLIQUID=1) → { midPrice (1e18), timestamp }
-   │  on-chain read
-   ▼
-HyperliquidEurUsdOracle   (EUR/USD ← SlippageStorage; USDC/USD ← ChainlinkOracle)
-   │  slot 1 of the router
-   ▼
-OracleRouter (activeOracle = 1)   ◄── ChainlinkOracle (slot 0, fallback)
-   │  IOracle.getEurUsdPrice()
-   ▼
-QuantillonVault (mint/redeem)   +   off-server watchdog (freezes on stale / breaker / basis blow-out)
-```
 
-## HyperliquidEurUsdOracle
+SlippageStorage and the publication batchers are historical deployments; they no longer feed the active signed reference path. The adapter's `slippageStorage()` getter retains its legacy name but now returns SignedReferenceSource. The periodic publisher is retired.
 
-`is IOracle` (interface `IHyperliquidOracle`), modelled on `StorkOracle`. UUPS, `AccessControl`,
-`Pausable`, `TimeProvider`-based time.
+## Freshness and validity
 
-- **EUR/USD**: `slippageStorage.getSlippageBySource(sourceId)` → `midPrice` (already 18 decimals) +
-  `timestamp` (on-chain write time = staleness anchor). No scaling.
-- **USDC/USD**: delegated to `usdcSource` (the `ChainlinkOracle`) via `getUsdcUsdPrice()`, in a
-  try/catch so a USDC-feed failure can never block an EUR/USD read (falls back to `(1e18, false)`).
-- **Validation**: `maxPriceStaleness` (state var, default 900s, ≤ 3600 hard cap), bounds
-  `minEurUsdPrice`/`maxEurUsdPrice` (default 0.80–1.40e18), `MAX_PRICE_DEVIATION` 5% circuit breaker,
-  `lastValidEurUsdPrice` fallback, pausable.
-- **`getEurUsdPrice()`** returns `(price, isValid)`. On circuit-breaker / paused / stale / out-of-bounds
-  / over-deviation it returns `(lastValidEurUsdPrice, false)`; a valid read advances the baseline. A
-  `false` flag is a hard stop for the vault (mint/redeem revert) — never a stale price used for valuation.
-- **Router compatibility**: implements the four management selectors the router delegates to the active
-  oracle (`updatePriceBounds`, `updateUsdcTolerance`, `resetCircuitBreaker`, `triggerCircuitBreaker`), so
-  it slots into the (formerly Stork) slot 1 with **no `OracleRouter` change**.
-- **Source swap-ready**: `updateSlippageSource(addr, sourceId)` (ORACLE_MANAGER) repoints the EUR/USD
-  source without touching the vault or router.
+Normal reference and capacity reports have a **60-second** maximum age in the verified configuration. Execution quotes have a separate **45-second** maximum measured from the original market observation. The adapter's 900-second market snapshot limit is an additional check, not permission to use an expired signed report or quote.
 
-## OracleRouter
+Report delivery preserves the original observation timestamp. Replaying an identical report cannot refresh it; an older report cannot overwrite a newer cached reference. Price bounds, independent-reference comparison, USDC validation and circuit breakers remain applicable. A rejected price is not made usable by returning a cached value with `isValid = false`.
 
-Two slots: `OracleType.CHAINLINK = 0`, `OracleType.MARKET = 1` (slot 1 = the swappable market oracle, currently Hyperliquid). Slot 1 was named `STORK` before router v1.1.0; the old `storkOracle()` getter remains as a deprecated alias of `marketOracle()`.
-`_getActiveOracle()` casts the active slot to `IOracle` and delegates all reads. Management:
-`switchOracle(type)` and `updateOracleAddresses(chainlink, slot1)` — both `ORACLE_MANAGER_ROLE`.
-`QuantillonVault.oracle` is the router, so the vault prices off whichever slot is active.
+The adapter supports the signed source's explicit emergency reference policy, with a configured age ceiling of 8100 seconds and the independent oracle's own validity checks. **Emergency redemption has zero budget and is disabled in the current production configuration.** Ordinary signed quotes cannot use this emergency age window.
 
-## Role model
+## Readiness during inactivity
 
-The Safe holds every governance role on each oracle (`DEFAULT_ADMIN`, `ORACLE_MANAGER`, `EMERGENCY`,
-`UPGRADER`); the deployer holds none. By design of the deployment scripts, `OracleRouter` additionally
-holds `ORACLE_MANAGER_ROLE` and `EMERGENCY_ROLE` on the **market oracle** — the active
-`HyperliquidEurUsdOracle` (and the inert `LighterEurUsdOracle`, granted 2026-07-20) — which is what lets
-the router's management passthroughs (`updatePriceBounds`, `updateUsdcTolerance`,
-`triggerCircuitBreaker`, `resetCircuitBreaker`) work; it holds no role on `ChainlinkOracle`. Admin
-operations are nevertheless normally done by the Safe **directly on the oracle**, not through the
-router. Verified with `hasRole` reads on 2026-09-05.
+A stored observation may age while no transaction needs it. Dashboards, keepers and the watchdog can obtain fresh signed reports and simulate their delivery with the relevant read or operation. Those simulations do not persist state and do not spend publication gas. An idle cache alone does not establish that signed delivery is unavailable.
 
-| Holder | DEFAULT_ADMIN | ORACLE_MANAGER | EMERGENCY | UPGRADER |
-|---|---|---|---|---|
-| Safe `0x1d7f…` | ✓ | ✓ | ✓ | ✓ |
-| OracleRouter | — | ✓ (market oracle only) | ✓ (market oracle only) | — |
-| Deployer `0x8DAD…` | — | — | — | — |
+The watchdog monitors fresh delivery and hedge health. Slow but successful probes are distinct from failed readiness checks. A valid signature establishes authorization, not economic accuracy or a completed Hyperliquid fill. Current state can still change between simulation and settlement.
 
-`SlippageStorage`: Safe holds `DEFAULT_ADMIN_ROLE` / `MANAGER_ROLE`; `WRITER_ROLE` is held by the
-off-chain publisher wallet and, currently, also by the deployer EOA. Treasury on all oracles + vault is
-`0x8DAD…098d1` (used only by emergency recovery).
+## Fallback and governance
 
-## Deployment & wiring
+OracleRouter selects one source; it does not automatically fail over. Switching to Chainlink is a governance action and does not, by itself, restore execution quotes, hedge capacity or a paused vault. Normal signed settlement fails closed when required data or authorization is unavailable.
 
-`scripts/deployment/DeployHyperliquidOracle.s.sol`:
+Oracle proxies retain their peripheral administration and upgrade paths. The core controller and Safe have different responsibilities; a signed report grants no administrative role. Confirm live roles before constructing governance calls.
 
-- `HL_ORACLE_ACTION=deploy-only` deploys the impl + ERC1967 proxy and runs `initialize(admin,
-  slippageStorage, sourceId, usdcSource, treasury)`. Set `ORACLE_ADMIN` to the Safe so the new oracle
-  matches the existing oracles' governance (Safe = all roles). `SLIPPAGE_STORAGE` is required.
-- Go-live (Safe txs): `updateOracleAddresses(chainlink, hlOracle)` to set slot 1, then `switchOracle(1)`.
-- Fallback any time: Safe `switchOracle(0)` → ChainlinkOracle.
-
-Verification (forge 1.7.1 + Etherscan v2) needs the chainid in the verifier URL:
-`forge verify-contract <impl> src/oracle/HyperliquidEurUsdOracle.sol:HyperliquidEurUsdOracle --chain 8453
---verifier-url "https://api.etherscan.io/v2/api?chainid=8453" --etherscan-api-key $ETHERSCAN_API_KEY
---constructor-args $(cast abi-encode "constructor(address)" <TimeProvider>)`.
-
-## Tests
-
-- `test/HyperliquidEurUsdOracle.t.sol` — unit (read, staleness, bounds, deviation, circuit breaker,
-  pause, USDC delegation, source-revert fail-safe, config/access control).
-- `test/HyperliquidOracleRouterIntegration.t.sol` — proves the adapter drops into the router's slot 1
-  unchanged (routing, bounds/circuit-breaker delegation, USDC pass-through, Chainlink fallback).
-
-## Safety summary
-
-Every failure mode is fail-safe: a stale/invalid/out-of-band read returns `isValid=false` (vault
-reverts), the off-server watchdog pauses the vault on staleness / circuit-break / a basis blow-out vs
-Chainlink, and governance can fall back to Chainlink with one `switchOracle(0)`.
-## Independent reference checks
-
-The active market oracle can compare its publication with a fresh Chainlink EUR/USD probe. Reference age, normal-hours divergence, and the Friday 21:00 UTC through Sunday 21:00 UTC off-hours bound are governance parameters; invalid or stale references fail closed. Emergency baseline reseeding requires a fresh reference that passes the same checks and emits an on-chain event.
-
-## Execution and fallback boundaries
-
-The router mid is a valuation reference, not a normal executable user quote. ExecutionPricing checks directional depth, observed capacity and source compatibility. Switching to Chainlink alone does not reopen minting. Its degraded redemption path still needs a valid reference, remains bounded by the last reporter-certified net directional capacity, and cannot bypass pause, liquidity or minimum-output checks. The dapp can apply stricter quote-availability gates than the contract fallback.
+See [Signed Quotes](Signed-Quote-Migration.md), [Execution Pricing](API-Reference.md) and [Deployment Status](Production-Protocol-Reference.md) for the verified release and user-facing behavior.

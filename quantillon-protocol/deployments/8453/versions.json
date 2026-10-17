@@ -33,44 +33,30 @@
     "implementationDeploymentTransactionHash": "0x520494155c1dde64e8db38a84a110b1ed453f6274ce726ed81455432492e8b88"
   },
   "HedgerPool": {
-    "implementation": "0xEFc876ebC390F11c45D82b3e01258479CAf5FA51",
-    "version": "1.4.1",
-    "gitCommit": "6452d9fe89743ed71f6fc854bd690a3a5cc6fff7",
-    "runtimeCodeHash": "0xa4e4c0521bb453129d1255a970ec08ece15c8f8fe63a8ebfab64d77bc9f68844",
-    "deployedAt": 1790110503,
-    "activatedAt": 1790160815,
-    "activationBlock": 51685734,
-    "activationTransactionHash": "0xd59f656b2f6e1663af7131d39024150af7bffafb92ee7120ae07f5d2e70eb08e",
-    "runtimeVerifiedAt": 1790161199,
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "implementationDeployedAt": 1790110503,
-    "implementationDeploymentBlock": 51660578,
-    "implementationDeploymentTransactionHash": "0x44a62d96f84e63a50bd71153cda121b7e00c9491dfb45c81a3e0a9857e66def8",
-    "linkedLibraries": {
-      "AdminFunctionsLibrary": "0x3a2e247279238CA83c695B77dF680efAb6739097",
-      "HedgerPoolAccountingLibrary": "0xbD997edec6C7963FDC218979B6678A463B739968",
-      "HedgerPoolLogicLibrary": "0x5483e73a4214F1D4c751cbd429dFb0DDFdbF2574",
-      "HedgerPoolMigrationLibrary": "0x4fD35f9E5d1881Bfd741D9838DeAfDf6FB68007b",
-      "HedgerPoolRedeemMathLibrary": "0x74924303FF6cBCC563BBFD9543103705C6B1A5bf",
-      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b"
-    },
-    "legacyMarginCorrection": {
-      "correctionId": "0x4d353c548ff5cedda8e117a58e6381a5d9ac9e500fda1750b12433c6012eae4c",
-      "beneficiary": "0x1d7fF432a93d0085Fb69474c7E567f859829e6cd",
-      "amountUsdcUnits": 388448,
-      "appliedAt": 1789886843,
-      "block": 51548748,
-      "transactionHash": "0x5fd056f9c7f48dd36e6b158a749d6a483e0137882279e3540f1e4d778c9c41c9"
-    }
+    "implementation": "0x854EFB8473A37D5b583c763FfD59F65150c41cDe",
+    "version": "1.6.0",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0xe60f21c58b198e26e141aa5fa3ef9eff2706bbb6c72d6112e75590406c709a44",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Upgraded event and finalized binding. Verification time is the finalized observation, not the implementation deployment time."
   },
   "HyperliquidEurUsdOracle": {
     "proxy": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
-    "implementation": "0xd1fbdfc4a755b59f47fdb50e3f560d50eee92c84",
-    "version": "1.0.6",
-    "sourceReferenceCommit": "99b07596382536430815378b783a8835adf10fbc",
-    "runtimeCodeHash": "0x0c5bf084299d12e64670fe8771d5408c04be0229716cf82bec2fe5dfbfe01af8",
-    "runtimeRecordedAtBlock": 52032759,
-    "note": "Current proxy implementation, version and runtime hash verified on Base at the recorded block."
+    "implementation": "0x3273AAf4D5eC5115F28359Ba3BE5721809E718E1",
+    "version": "1.0.7",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0xec89857ae62544cb89540894d45bfcab36be5a7445b8e2b85c8f517825506d3f",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Upgraded event and finalized binding. Verification time is the finalized observation, not the implementation deployment time."
   },
   "LighterEurUsdOracle": {
     "implementation": "0xC361f1f12C06d37821E8DA3aE47D5B796de9A5f4",
@@ -152,27 +138,17 @@
     "selfGovernanceRoleGrantTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27"
   },
   "QuantillonVault": {
-    "implementation": "0xb3d4aF7093f4C69013a974a99d9b7dfC9B65bAd3",
-    "version": "1.5.1",
-    "gitCommit": "885076d37a2727de68703c9756d9387e1103ac1b",
-    "runtimeCodeHash": "0x8f0e2014df8cdd877a0d9fefc9fbba39f44f7c79fb9807b07665fe20852281c7",
-    "deployedAt": 1791559433,
-    "activatedAt": 1791787785,
-    "activationBlock": 52499219,
-    "activationTransactionHash": "0x973e8dbb910b8c2fc7665f7751ee6aa943bbef642db47d07a37452d092eeca27",
-    "runtimeVerifiedAt": 1791787967,
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "hedgerYieldRecipient": "0x1d7fF432a93d0085Fb69474c7E567f859829e6cd",
-    "implementationDeployedAt": 1791559433,
-    "implementationDeploymentBlock": 52385043,
-    "implementationDeploymentTransactionHash": "0xdd364c564f246e7fdebc63c276f3ea567e200542a15d5d0b4cab73a3dea2d869",
-    "linkedLibraries": {
-      "ExecutionPricingLibrary": "0x21049b609d283fC50D3C5E0F87F8A3f40B0c5125",
-      "SecureUpgradeLibrary": "0x88eC9B417bd2e945945A535f145Fc99045C2a0fE",
-      "TreasuryRecoveryLibrary": "0x508AE6807E85CAE22B8F834124615B2BDEDE7B3D",
-      "StakingYieldLibrary": "0xcf5987582db052c3aA7793fb912Fb7133a6f16Bf"
-    },
-    "runtimeRecordedAtBlock": 52499310
+    "implementation": "0xF6c61AcA100Ce07320aAf1B71c191606e48AF094",
+    "version": "1.6.0",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0x34442ed583bbbb06af262d7a56a346558636556bcd117b52eb753a9d1fb923df",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Upgraded event and finalized binding. Verification time is the finalized observation, not the implementation deployment time."
   },
   "SlippageStorage": {
     "implementation": "0xc21711cC8340d2Cd2Dbc059F039f753a0e478d05",
@@ -210,25 +186,16 @@
   },
   "UserPool": {
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "implementation": "0x0C5e613f996d94efe1Ec3e2e7a7432ff7554a444",
-    "version": "1.0.7",
-    "gitCommit": "31ed3d8c962cb89fd54d7551659b469824e42499",
-    "deployedAt": 1790783109,
-    "implementationDeployedAt": 1790783109,
-    "implementationDeploymentBlock": 51996881,
-    "implementationDeploymentTransactionHash": "0xfe8eb2937cb36597be6e0df4b46a40183a515e8666cf688b1ae1b2e9a14d28e6",
-    "activationBlock": 52027751,
-    "activationTransactionHash": "0xd4c57bb6f630799782aef91f30b7980fc56184cba73a2113f13a634188dca3d6",
-    "activatedAt": 1790844849,
-    "runtimeCodeHash": "0x419e707482f1302f72db65405529487da191aa89d808ffe7389105c0ee5b0ebc",
-    "runtimeVerifiedAt": 1790844849,
-    "runtimeRecordedAtBlock": 52032759,
-    "linkedLibraries": {
-      "AdminFunctionsLibrary": "0x3a2e247279238CA83c695B77dF680efAb6739097",
-      "SecureUpgradeLibrary": "0xa36fdAa7FfE14e58a5Bbf7E543Fd712A6ecFC24b",
-      "UserPoolStakingLibrary": "0x1a39B55c5aF624809071b75d9F90689E9b24eE7f"
-    },
-    "note": "Current proxy implementation, version and runtime hash verified on Base at the recorded block."
+    "implementation": "0xE0C6EACEE5B5f2d71617A476bC2a87A260dc0663",
+    "version": "1.3.0",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0x8c8f44c68d6809b5a8528ab290652d037116de6be4a2b72d0628146bd773248d",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Upgraded event and finalized binding. Verification time is the finalized observation, not the implementation deployment time."
   },
   "YieldShift": {
     "implementation": "0x7e08d3E01B65d026311331C8431162cE5402347c",
@@ -324,7 +291,7 @@
     "activatedAt": 1790844849,
     "runtimeCodeHash": "0x62c15960f9174e7edebcd4158701ddb923e6e865abfba43340d888de88c225e5",
     "runtimeRecordedAtBlock": 52032759,
-    "note": "Current Vault binding, version and runtime hash verified on Base at the recorded block."
+    "note": "Historical deployment; superseded by the signed-quote production activation on 17 October 2026. This entry preserves the earlier release record."
   },
   "ExecutionPricingLibrary": {
     "implementation": "0x21049b609d283fC50D3C5E0F87F8A3f40B0c5125",
@@ -412,7 +379,7 @@
     "activatedAt": 1790844849,
     "runtimeCodeHash": "0x3d47ea3bae7947e9e67bf87ba944356a5835f5b6001ca32f1cf16d3ab64d2f8c",
     "runtimeRecordedAtBlock": 52032759,
-    "note": "Current publication route, version and runtime hash verified on Base at the recorded block."
+    "note": "Historical deployment; superseded by the signed-quote production activation on 17 October 2026. This entry preserves the earlier release record."
   },
   "ReportPublicationBatcher": {
     "implementation": "0x2efA498B9Fa9903A371A9fbE561555AD10589EeA",
@@ -425,7 +392,7 @@
     "activatedAt": 1790844849,
     "runtimeCodeHash": "0x94630295039397d9f2bfc8a40e6f9dff01965e5bc0f71eb0c9a08ec906a7dd7b",
     "runtimeRecordedAtBlock": 52032759,
-    "note": "Current publication route, version and runtime hash verified on Base at the recorded block."
+    "note": "Historical deployment; superseded by the signed-quote production activation on 17 October 2026. This entry preserves the earlier release record."
   },
   "StakingYieldLibrary": {
     "implementation": "0xcf5987582db052c3aA7793fb912Fb7133a6f16Bf",
@@ -560,5 +527,31 @@
     "implementationDeploymentTransactionHash": "0x29c1f27cbb497bdf6da6fce17d095e8905f4383c0726ad5d180d9e24ac78820d",
     "address": "0x248746CaF445a83Fd5351E9caf9e3661F3efCd7C",
     "deploymentType": "direct"
+  },
+  "SignedExecutionPricing": {
+    "address": "0x076F86a591258957665b65c04F04B706D00EaEBa",
+    "implementation": "0x076F86a591258957665b65c04F04B706D00EaEBa",
+    "version": "1.1.0",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0xfa79b0b5c4bf644205bfba97548208fa22649e950da2d77dd9e758c9c3268cec",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Finalized active binding. Verification time is the finalized observation, not the implementation deployment time."
+  },
+  "SignedReferenceSource": {
+    "address": "0xFd059ed44959a6a7979e1485a825CE36Dc95cCB1",
+    "implementation": "0xFd059ed44959a6a7979e1485a825CE36Dc95cCB1",
+    "version": "1.0.0",
+    "sourceReferenceCommit": "5e72c1315edfdaf68253bf84c5bcaa24dbd0a4fe",
+    "runtimeCodeHash": "0xfd64dbedb38902352d9e84ab36937b0e5d54efe46dbfc2e5d68a443092180461",
+    "runtimeRecordedAtBlock": 52727379,
+    "runtimeVerifiedAt": 1792244105,
+    "activationBlock": 52720621,
+    "activationTransactionHash": "0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7",
+    "activatedAt": 1792230589,
+    "note": "Production signed-quote release. Finalized active binding. Verification time is the finalized observation, not the implementation deployment time."
   }
 }

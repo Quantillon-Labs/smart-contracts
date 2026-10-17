@@ -1,10 +1,10 @@
 # Quantillon Protocol Architecture
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> Signed quotes are active on Base since 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md) for verified bindings, transaction wrappers and emergency-mode limits.
 
 ## Current production controls
 
-See [Production Protocol Reference](Production-Protocol-Reference.md) for the dated configuration. The oracle supplies valuation; ExecutionPricing supplies directional quotes, buffers and hedge admission. Its spread reserve is excluded from backing. A valid oracle mid alone is not an executable mint/redeem quote. Core role administration belongs to the TimelockController; peripheral administration remains with the Safe.
+See [Production Protocol Reference](Production-Protocol-Reference.md) for the dated configuration. The oracle supplies valuation; SignedExecutionPricing verifies exact transaction-bound quotes and signed hedge admission; SignedReferenceSource supplies independently checked valuation reports. Its spread reserve is excluded from backing. A valid oracle mid alone is not an executable mint/redeem quote. Core role administration belongs to the TimelockController; peripheral administration remains with the Safe.
 
 ## Overview
 
@@ -209,15 +209,17 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 **Purpose**: EUR/USD pricing with freshness checks, price bounds, and deviation circuit breakers. All implement `IOracle`, so the router (and thus the protocol) is source-agnostic.
 
 **Key Features**:
-- **HyperliquidEurUsdOracle** (active): mirrors the Hyperliquid `xyz:EUR` perpetual mid — the venue where the protocol's EUR/USD hedge executes — so QEURO mint/redeem aligns with the hedge. Reads the mid from `SlippageStorage` (published on-chain by the off-chain Slippage Monitor) and delegates USDC/USD to the `ChainlinkOracle`. Configurable staleness (default 900s), bounds (0.80–1.40e18), 5% deviation circuit breaker, last-valid fallback.
+- **HyperliquidEurUsdOracle** (active): mirrors the Hyperliquid `xyz:EUR` perpetual mid — the venue where the protocol's EUR/USD hedge executes — so QEURO mint/redeem aligns with the hedge. Reads signed valuation from `SignedReferenceSource` (reports delivered with transactions) and delegates USDC/USD to the `ChainlinkOracle`. Configurable staleness (default 900s), bounds (0.80–1.40e18), 5% deviation circuit breaker, last-valid fallback.
 - **ChainlinkOracle** (fallback): Chainlink AggregatorV3 EUR/USD + USDC/USD; 2-hour EUR/USD staleness (25h for USDC/USD, matching its daily heartbeat), 5% deviation circuit breaker. Also the protocol's USDC/USD validation source.
 - **StorkOracle**: Stork Network `TemporalNumericValue` feeds (legacy/parked; the slot-1 position is now occupied by `HyperliquidEurUsdOracle`).
 - Mock versions available (`MockChainlinkOracle`, `MockStorkOracle`) for local/testnet.
 - Full design: **[Oracle Architecture](Oracle-Architecture.md)**.
 
-### 9b. SlippageStorage
+### 9b. Signed reference and execution modules
 
-**Purpose**: On-chain store written by the off-chain Slippage Monitor; holds the published Hyperliquid `xyz:EUR` mid per source, which `HyperliquidEurUsdOracle` reads. `WRITER_ROLE`-gated writes with an on-chain minimum-interval rate limit.
+**SignedReferenceSource 1.0.0** accepts authenticated reports with their original observation time and an independent-reference check. **SignedExecutionPricing 1.1.0** validates exact execution authorizations and cumulative hedge-capacity reports. The production maximum quote lifetime is 45 seconds; the separate normal report-age limit is 60 seconds.
+
+SlippageStorage and publication batchers remain historical deployments. The recurring publisher is retired. See [Signed Quotes in Production](Signed-Quote-Migration.md) for binding addresses and the zero emergency budget.
 
 ### 10. TimeProvider
 
@@ -304,31 +306,19 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 ### QEURO Minting Flow
 
-```
-QEURO Minting Flow:
-┌─────────┐    ┌──────────────┐    ┌─────────────────┐    ┌─────────────┐
-│  User   │    │QuantillonVault│    │ OracleRouter    │    │QEUROToken   │
-└────┬────┘    └──────┬───────┘    └────────┬────────┘    └──────┬──────┘
-     │                │                      │                    │
-     │ approve()      │                      │                    │
-     ├───────────────▶│                      │                    │
-     │ mintQEURO()    │                      │                    │
-     ├───────────────▶│                      │                    │
-     │                │ getEurUsdPrice()     │                    │
-     │                ├─────────────────────▶│ → active slot      │
-     │                │ price, isValid       │ (HyperliquidEurUsdOracle)
-     │                │◀─────────────────────┤                    │
-     │                │ validatePrice()      │                    │
-     │                │ previewMint() via module│                    │
-     │                │ transferFrom()       │                    │
-     │                │ mint()               │                    │
-     │                ├─────────────────────────────────────────▶│
-     │                │ emit QEUROminted()   │                    │
-     │ success        │                      │                    │
-     │◀───────────────┤                      │                    │
+```text
+User approves USDC to the chosen Vault or UserPool target
+  -> quote service returns exact execution + reference + capacity authorizations
+  -> user reviews amount, output and expiry
+  -> executeWithQuote(callData, authorization)
+  -> signature, call binding, nonce, epoch and freshness checks
+  -> reference delivery and current collateral/capacity checks
+  -> USDC transfer, backing/spread accounting and QEURO mint
+  -> receipt confirms Base settlement
+  -> hedge engine reconciles and executes the separate venue hedge
 ```
 
-`OracleRouter` forwards `getEurUsdPrice()` to its active slot (HyperliquidEurUsdOracle since 2026-06-25; ChainlinkOracle as fallback). The read is non-`view` — a fresh valid price refreshes the deviation baseline — and `isValid = false` reverts the mint with `InvalidOraclePrice`.
+All Base-side effects revert together if a settlement check fails. The later Hyperliquid operation is not atomic with Base. `OracleRouter` forwards valuation reads to HyperliquidEurUsdOracle and its signed reference source. A rejected price with `isValid = false` blocks the operation. The non-`view` oracle read can update its deviation baseline; simulations do not persist that update.
 
 ### Yield Distribution Flow
 
@@ -420,7 +410,7 @@ Governance Flow (live):
 **Oracle System (OracleRouter + HyperliquidEurUsdOracle + ChainlinkOracle)**:
 - OracleRouter implements `IOracle` — all protocol contracts use this interface
 - Active oracle is switchable by governance (`switchOracle`: Hyperliquid ↔ Chainlink) without contract changes; HyperliquidEurUsdOracle has been the active slot since 2026-06-25
-- HyperliquidEurUsdOracle: Hyperliquid `xyz:EUR` perp mid read from SlippageStorage (published on-chain by the off-chain Slippage Monitor); 900 s staleness (1 h hard cap); 5% deviation circuit breaker; USDC/USD delegated to ChainlinkOracle
+- HyperliquidEurUsdOracle: signed Hyperliquid reference read from SignedReferenceSource; normal signed age and additional adapter checks; independent Chainlink reference and USDC/USD validation
 - ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 2 h EUR/USD staleness check (25 h USDC/USD); 5% deviation circuit breaker; Base L2 sequencer-uptime feed check
 - StorkOracle: parked (former slot-1 oracle, still deployed). LighterEurUsdOracle: deployed 2026-07-17 and inert — the Lighter venue was not adopted (2026-09-01)
 - MockChainlinkOracle + MockStorkOracle available for local/testnet development

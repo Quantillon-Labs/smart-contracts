@@ -3,8 +3,8 @@
 Current production behavior and settings: [Production Protocol Reference](https://smartcontracts.quantillon.money/Production-Protocol-Reference.html).
 
 
-Base deployment addresses and active versions (22 September 2026):
-[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-23-september-2026) ·
+Base deployment addresses and active versions (17 October 2026):
+[Deployment guide](https://smartcontracts.quantillon.money/Deployment.html#current-base-release-17-october-2026) ·
 [API address reference](https://smartcontracts.quantillon.money/API-Reference.html#contract-addresses).
 
 Welcome to the comprehensive documentation for the Quantillon Protocol - a next-generation DeFi ecosystem featuring a euro-pegged stablecoin, advanced yield management, and sophisticated risk management tools.

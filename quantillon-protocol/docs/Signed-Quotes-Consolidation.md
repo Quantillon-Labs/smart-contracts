@@ -1,6 +1,8 @@
-# Signed quotes: consolidated candidate for production
+# Signed Quotes: Historical Consolidation Record
 
-## Production branch promotion — 13 October 2026
+> Production activation completed on 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md). The dated candidate and rehearsal evidence below describes the preparation stage, not current deployment status.
+
+## Historical branch promotion — 13 October 2026
 
 `feat/signed-quotes-migration` now contains the source and test changes validated
 on preprod through `08387433`. The promotion preserves the original candidate

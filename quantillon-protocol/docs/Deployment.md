@@ -1,9 +1,15 @@
 # Quantillon Protocol — Deployment Guide
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> Signed quotes are active on Base since 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md) for verified bindings, transaction wrappers and emergency-mode limits.
 
 For the current deployed behavior, versions and role ownership, use [Production Protocol Reference](Production-Protocol-Reference.md). Dated release sections below describe their respective upgrade bundles, not the latest state after subsequent upgrades.
 
+
+## Current Base release: 17 October 2026
+
+The signed-quote migration is active. The [confirmed governance execution](https://basescan.org/tx/0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7) upgraded the core implementations and configured the signed deployment. At finalized block **52,727,379**, the live versions are Vault **1.6.0**, UserPool **1.3.0**, HedgerPool **1.6.0**, HyperliquidEurUsdOracle **1.0.7**, SignedExecutionPricing **1.1.0** and SignedReferenceSource **1.0.0**. The current emergency budget is **0 QEURO**.
+
+The production dapp and affected services were cut over during maintenance and reopened at **10:08 UTC**. The periodic publisher is retired. See [Signed Quotes in Production](Signed-Quote-Migration.md) for active addresses, bindings and integration requirements. September release sections below are historical records; their publisher commands and addresses do not describe the current signed deployment.
 
 ## Overview
 
@@ -23,7 +29,7 @@ Every core contract implements `IVersioned.version()` — a `pure` semver getter
 
 This is enforced in CI by `make check-version-bump`: it hashes each versioned unit's **import closure** (deterministic, build-independent) and **fails** if a source dependency changed without a `version()` bump — comment and NatSpec edits count as changes. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
 
-**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` scripts after a completed proxy upgrade (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse HEAD)` to the upgrade scripts so the commit is recorded.
+**Deployed-version manifest.** `deployments/{chainId}/versions.json` records verified deployments. Upgrade scripts write receipt-backed entries after a completed proxy upgrade; a later reconciliation can record finalized implementations, versions and runtime hashes without claiming an unverified deployment timestamp. Live implementation slots, `version()` values and bindings are authoritative. Candidate-only actions (`deploy-only`, `propose`, and `approve`) leave it unchanged. Pass `GIT_COMMIT=$(git rev-parse HEAD)` to the upgrade scripts so the commit is recorded.
 
 **Answering "what is deployed / what needs upgrading?"**
 
@@ -392,7 +398,7 @@ Use `scripts/deployment/setup-external-vaults.sh` for post-core onboarding.
 | Base Sepolia | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Mock | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
 | Base Mainnet | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `0x647DFd812BC1e116c6992CB2bC353b2112176fD6` | `0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F` |
 
-> **Production oracle stack.** `DeployQuantillon.s.sol` deploys `ChainlinkOracle`, `StorkOracle` and `OracleRouter`. The live market oracle on Base — `SlippageStorage` + `HyperliquidEurUsdOracle` (router slot 1, active since 2026-06-25) — is deployed by its dedicated scripts under `scripts/deployment/` (`DeployHyperliquidOracle.s.sol` for the oracle) and wired into the router by the Safe (`updateOracleAddresses`, then `switchOracle(1)`). `StorkOracle` is parked on mainnet. See [Oracle Architecture](./Oracle-Architecture.md).
+> **Production oracle stack.** `DeployQuantillon.s.sol` deploys `ChainlinkOracle`, `StorkOracle` and `OracleRouter`. The market oracle originally used `SlippageStorage` + `HyperliquidEurUsdOracle` (router slot 1, active since 2026-06-25); since 17 October 2026 its source is SignedReferenceSource. The original components were deployed by dedicated scripts under `scripts/deployment/` (`DeployHyperliquidOracle.s.sol` for the oracle) and wired into the router by the Safe (`updateOracleAddresses`, then `switchOracle(1)`). `StorkOracle` is parked on mainnet. See [Oracle Architecture](./Oracle-Architecture.md).
 
 ---
 

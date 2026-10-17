@@ -1,6 +1,6 @@
 # Quantillon Protocol API Reference
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> Signed quotes are active on Base since 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md) for verified bindings, transaction wrappers and emergency-mode limits.
 
 ## Technical API Reference
 
@@ -35,26 +35,25 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The machine-readable 
 | ChainlinkOracle | `0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7` | fallback (router slot 0); USDC/USD source |
 | StorkOracle | `0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC` | parked (replaced in slot 1 by HyperliquidEurUsdOracle) |
 | LighterEurUsdOracle | `0xcd53182a430d48Be0f414CCA022ABA5d05903536` | deployed 2026-07-17, inert: holds no router slot and the Lighter venue was not adopted (decision of 2026-09-01) |
-| SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` | on-chain price store feeding HyperliquidEurUsdOracle |
+| SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` | legacy price store; not the active signed reference source |
 | TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` | timestamp wrapper (deployed directly, not proxied) |
 
 > Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). The router has two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0; the live router is v1.1.2) — switchable in one governance transaction via `switchOracle`. Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the active production oracle** (`activeOracle = 1`); read it via `marketOracle()` (the pre-1.1.0 `storkOracle()` getter remains as a deprecated alias). Slot 0 (`ChainlinkOracle`) is the fallback and remains the USDC/USD source.
 
-### Execution pricing and publication (Base, 22 September 2026)
+### Signed execution and reference (Base, 17 October 2026)
 
-These contracts are deployed directly; use `QuantillonVault.executionPricing()`
-to resolve the active pricing module. The two batchers have immutable destination
-addresses and cannot be repointed to another pricing deployment.
+Verified at finalized block **52,727,379**. Both modules are deployed directly and are non-upgradeable. Resolve `QuantillonVault.executionPricing()` and the module's `referenceSource()` before integration.
 
 | Contract | Address | Version / role |
 | --- | --- | --- |
-| ExecutionPricing | `0xFA894CD2e0C8030c95925FfF3b8206F397e0D897` | 1.3.2; active execution module |
-| PublicationBatcher | `0xFB9C8Bb7003e8b4E2F158ee8F72eCdA38A81c9AE` | 1.0.0; price/depth route |
-| ReportPublicationBatcher | `0xBdd672FB97ecC9f5c8eBcD783a2Fe1234cA1a5FB` | 1.0.0; active price/depth/capacity route |
+| SignedExecutionPricing | `0x076F86a591258957665b65c04F04B706D00EaEBa` | 1.1.0; active signed execution |
+| SignedReferenceSource | `0xFd059ed44959a6a7979e1485a825CE36Dc95cCB1` | 1.0.0; active signed valuation source |
 
-The active report batcher holds `WRITER_ROLE` on SlippageStorage and ExecutionPricing,
-and `REPORTER_ROLE` on ExecutionPricing. See the [deployment guide](./Deployment.md#current-base-release-23-september-2026)
-for configuration and freshness checks. At finalized Base block 51,985,907 (30 September 2026), QuantillonVault is 1.5.0, vaultId-2 stQEUROToken is 1.2.5 and HyperliquidEurUsdOracle is 1.0.6. See [Production Protocol Reference](Production-Protocol-Reference.md).
+QuantillonVault is **1.6.0**, UserPool **1.3.0**, HedgerPool **1.6.0**, HyperliquidEurUsdOracle **1.0.7** and vaultId-2 stQEUROToken **1.3.0**. The [production integration guide](Signed-Quote-Migration.md) records the activation and binding checks.
+
+Normal conversions use `QuantillonVault.executeWithQuote(bytes,bytes)` or `UserPool.executeWithQuote(bytes,bytes)`. Existing conversion selectors below describe the inner operations; bare unquoted calls are rejected while signed execution is enabled. Hedger reference operations use `executeWithReference(bytes,bytes)` or the typed `removeMarginWithReference(uint256,uint256,bytes)` and retain caller permissions. Add-margin remains directly available to authorized callers.
+
+The previous ExecutionPricing module (`0x4338c6C9A912d51487cc0bf3b20162fdb25eFc03`), PublicationBatcher (`0x0E7a3df68D527249fB3A2e66dC307ed1F119172d`) and ReportPublicationBatcher (`0x2efA498B9Fa9903A371A9fbE561555AD10589EeA`) are historical. The periodic publication route is retired.
 
 ### Governance & infrastructure
 

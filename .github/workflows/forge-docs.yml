@@ -130,7 +130,7 @@ jobs:
               echo "- [Integration Examples](Integration-Examples.md)"
               echo "- [Architecture Overview](Architecture.md)"
               echo "- [Oracle Architecture](Oracle-Architecture.md)"
-              echo "- [Signed Quote Migration (Candidate)](Signed-Quote-Migration.md)"
+              echo "- [Signed Quotes in Production](Signed-Quote-Migration.md)"
               echo "- [Signed Quotes Consolidation](Signed-Quotes-Consolidation.md)"
               echo "- [Security Guide](Security.md)"
               echo "- [Deployment Guide](Deployment.md)"

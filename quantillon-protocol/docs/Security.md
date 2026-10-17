@@ -1,6 +1,6 @@
 # Quantillon Protocol Security Guide
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> Signed quotes are active on Base since 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md) for verified bindings, transaction wrappers and emergency-mode limits.
 
 ## Overview
 

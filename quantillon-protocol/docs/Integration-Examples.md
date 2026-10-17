@@ -4,20 +4,16 @@ Use the **ethers v6** setup and contract objects from [Quick Start](Quick-Start.
 
 ## Normal redemption
 
+Approve the input QEURO to the same UserPool target used in Quick Start:
+
 ```javascript
-const assets = parseUnits('10', 18);
-await (await qeuro.approve(vaultAddress, assets)).wait();
-const [liquidation] = await vault.shouldTriggerLiquidationLive.staticCall();
-if (liquidation) throw new Error('Use the liquidation-specific payout flow');
-const quote = await pricing.previewRedeem(assets);
-const minUsdc = minimum(quote.amountOut, 50n); // user-selected tolerance
-await vault.redeemQEURO.staticCall(assets, minUsdc);
-await (await vault.redeemQEURO(assets, minUsdc)).wait();
+const inputQeuro = parseUnits('10', 18);
+await (await qeuro.approve(poolAddress, inputQeuro)).wait();
 ```
 
-The pricing preview includes redemption fees and may return the module's degraded reference-price quote. It does not include the protocol liquidation-mode formula. The current dapp applies additional quote freshness/capacity gating and may not offer every fallback the contract can execute.
+Then request an executable quote with `action: 'REDEEM'`, `amountIn: inputQeuro.toString()`, `chainId: 8453` and `route: 'USER_POOL'`. Display its exact USDC output and expiry. After review, pass the envelope and the reviewed values to `settleReviewedPoolQuote` from Quick Start, record the returned transaction hash and await its receipt. The function validates that the inner call is precisely `withdraw([inputQeuro], [reviewedUsdcOutput])`.
 
-Liquidation redemption distributes proportional backing when the computed ratio is positive and at or below the critical threshold. Build that preview from the current backing and supply, account for the redemption fee, and simulate the actual vault call from the user's account. Never substitute a normal execution quote for a liquidation payout or set a zero minimum merely to bypass a failed quote. Pauses, invalid prices and liquidity limitations still apply.
+Normal signed redemption does not use the retired module's degraded-reference fallback. The current emergency-redemption budget is **0 QEURO**, so missing quotes do not automatically open an alternative exit. Protocol liquidation mode uses a separate proportional-backing payout rule, still subject to signed settlement and current contract guards. Never set a zero minimum to bypass an unavailable quote.
 
 ## Unstake shares into QEURO
 
@@ -38,9 +34,9 @@ The provider's APY, UserPool's configured accounting APY, a realized share-price
 
 ## Optional and privileged interfaces
 
-* **UserPool:** batch deposit/withdraw/stake methods accept arrays. Its bookkeeping and unstaking cooldown are not the direct stQEURO flow.
-* **HedgerPool:** opening and managing positions requires the designated single hedger. Client-side visibility does not grant that authority. HedgerPool and Hyperliquid margin are separate balances.
-* **Yield keeper:** harvesting requires the configured distributor role and valid strategy/liquidity/collateral conditions. Daily scheduling is an operated service, not an autonomous Solidity timer.
+* **UserPool:** deposit and withdrawal inner methods accept arrays and must use the signed wrapper for conversion; optional staking methods have their own accounting. Its bookkeeping and unstaking cooldown are not the direct stQEURO flow.
+* **HedgerPool:** reference-dependent position operations use `executeWithReference` or scoped `removeMarginWithReference`, retaining their existing ownership and role checks. Client-side visibility does not grant that authority. HedgerPool and Hyperliquid margin are separate balances.
+* **Yield keeper:** harvest conversion uses its bounded signed authorization as well as the configured distributor role and valid strategy/liquidity/collateral conditions. Daily scheduling is an operated service, not an autonomous Solidity timer.
 * **QTI:** supply is zero and governance is dormant. Examples of lock/propose/vote are API descriptions, not currently usable public governance.
 * **Administration:** core default-admin operations require the controller; retained Safe roles and peripheral administration have different paths. Resolve current roles before constructing calls.
 

@@ -1,6 +1,6 @@
 # Multi-Vault Staking Runtime Flow
 
-> Candidate migration: [signed execution and pull-delivered reference reports](Signed-Quote-Migration.md). This does not change the deployment status described below.
+> Signed quotes are active on Base since 17 October 2026. See [Signed Quotes in Production](Signed-Quote-Migration.md) for verified bindings, transaction wrappers and emergency-mode limits.
 
 This note describes the current `vaultId`-based runtime behavior for staking, minting, redemption, and hedger liquidity flows.
 
@@ -17,6 +17,8 @@ This note describes the current `vaultId`-based runtime behavior for staking, mi
 - `totalUsdcInExternalVaults`
 
 ## Mint and Stake Flows
+
+The conversion selectors below are inner operations. In production signed mode, submit the permitted operation through `executeWithQuote(bytes,bytes)` with its exact authorization; bare unquoted conversion calls are rejected.
 
 ### 1) Mint (default routing)
 - `mintQEURO(usdcAmount, minQeuroOut)` calls internal mint flow with `defaultStakingVaultId`.
@@ -38,7 +40,7 @@ This note describes the current `vaultId`-based runtime behavior for staking, mi
 
 ## Yield Distribution to Stakers
 
-QuantillonVault 1.5.0 allocates realized strategy yield by the harvest-time ratio of raw staked QEURO to total QEURO supply. Stakers receive their gross allocation after the configured haircut; treasury receives the unstaked allocation. The hedger receives only that haircut, with no base allocation for hedger collateral. There is no additional staking yield fee on vault credits; conversion costs and admission checks remain.
+QuantillonVault 1.6.0 preserves the allocation introduced in 1.5.0 and allocates realized strategy yield by the harvest-time ratio of raw staked QEURO to total QEURO supply. Stakers receive their gross allocation after the configured haircut; treasury receives the unstaked allocation. The hedger receives only that haircut, with no base allocation for hedger collateral. There is no additional staking yield fee on vault credits; conversion costs and admission checks remain.
 
 The release accepts one funded strategy and one outstanding staking series; registered empty strategies are allowed. It rejects unsupported simultaneous allocation. Raw staked QEURO includes unvested credit, while `totalAssets()` excludes yield not yet redeemable. Shareholders participate pro rata as yield vests; this does not make allocation time-weighted.
 

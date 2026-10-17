@@ -1,49 +1,110 @@
 # Quantillon Protocol Quick Start
 
-This example targets the current Base deployment and **ethers v6**, using integer arithmetic and a wallet signer. It mints QEURO and deposits QEURO into the direct ERC-4626 stQEURO series. The optional UserPool contract is a different staking path.
+Signed quotes are active on Base since **17 October 2026**. Normal mint and redemption must use `executeWithQuote(bytes,bytes)` on the authorized Vault or UserPool target. Bare conversion calls and the legacy pricing module's previews are not the current integration path.
 
-Install `ethers@6` in your integration project. Obtain current ABIs from the compiled `out/<Contract>.sol/<Contract>.json` artifact's `abi` field; signature baseline files are not JSON ABIs. Use the [address inventory](API-Reference.md#contract-addresses) and check [Production Protocol Reference](Production-Protocol-Reference.md) before integrating. Library syntax follows the [ethers v6 guide](https://docs.ethers.org/v6/getting-started/).
+This **ethers v6** example uses the UserPool conversion route. It does not use UserPool's optional staking accounting. The later staking example deposits QEURO directly into the ERC-4626 series. Use the [address inventory](API-Reference.md) and [production guide](Signed-Quote-Migration.md), and test with an isolated fork before integration.
 
-## Connect and resolve the active contracts
+## Connect and pin the intended deployment
 
 ```javascript
-import { BrowserProvider, Contract, parseUnits, ZeroAddress } from 'ethers';
+import { BrowserProvider, Contract, Interface, keccak256, parseUnits, ZeroAddress } from 'ethers';
 
-// Browser wallet must be configured for Base. Production server-side reads use
-// https://app.quantillon.money/api/rpc/base, not a public Base RPC fallback.
 const provider = new BrowserProvider(window.ethereum);
 if ((await provider.getNetwork()).chainId !== 8453n) throw new Error('Select Base');
 const signer = await provider.getSigner();
 const owner = await signer.getAddress();
 const vaultAddress = '0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07';
+const poolAddress = '0x712bCc77e7aa53C79870A40d044D440Ad2901bF2';
+const moduleAddress = '0x076F86a591258957665b65c04F04B706D00EaEBa';
 const qeuroAddress = '0x69aD4e6c49d6275D0e11b5515D98a89f029869AA';
 const usdcAddress = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const factoryAddress = '0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53';
-
 const tokenAbi = [
   'function approve(address spender,uint256 amount) returns (bool)',
   'function balanceOf(address owner) view returns (uint256)',
 ];
-const vault = new Contract(vaultAddress, [
-  'function executionPricing() view returns (address)',
-  'function paused() view returns (bool)',
-  'function mintQEURO(uint256 usdcAmount,uint256 minQeuroOut)',
-  'function redeemQEURO(uint256 qeuroAmount,uint256 minUsdcOut)',
-  'function shouldTriggerLiquidationLive() returns (bool shouldLiquidate,uint256 collateralizationRatio)',
-], signer);
-const pricingAddress = await vault.executionPricing();
-if (pricingAddress === ZeroAddress) throw new Error('No execution pricing configured');
-const pricing = new Contract(pricingAddress, [
-  'function previewMint(uint256 input) view returns ((uint256 amountOut,uint256 executionRate,uint256 referenceRate,uint256 capacityQeuro,uint256 observedAt,uint256 sequence) quote)',
-  'function previewRedeem(uint256 input) view returns ((uint256 amountOut,uint256 executionRate,uint256 referenceRate,uint256 capacityQeuro,uint256 observedAt,uint256 sequence) quote)',
-], provider);
 const usdc = new Contract(usdcAddress, tokenAbi, signer);
 const qeuro = new Contract(qeuroAddress, tokenAbi, signer);
+const vault = new Contract(vaultAddress, [
+  'function executionPricing() view returns (address)',
+  'function signedExecutionEnabled() view returns (bool)',
+], provider);
+const pool = new Contract(poolAddress, [
+  'function executeWithQuote(bytes callData,bytes authorization) returns (bytes)',
+], signer);
+const route = new Interface([
+  'function deposit(uint256[] amounts,uint256[] minimums)',
+  'function withdraw(uint256[] amounts,uint256[] minimums)',
+]);
+```
+
+## Approval, quote and review
+
+For a mint, approve USDC to the selected target **before** requesting an executable quote:
+
+```javascript
+const inputUsdc = parseUnits('100', 6); // illustrative user-selected amount
+await (await usdc.approve(poolAddress, inputUsdc)).wait();
+```
+
+The dapp's authenticated gateway accepts `POST /api/quotes` with a JSON body such as `{"action":"MINT","amountIn":"100000000","chainId":8453,"route":"USER_POOL"}` and the wallet identity associated with the authenticated session. The frontend supplies `credentials: 'include'` and `x-wallet-address`; a header alone does not establish a login session. Integrators must arrange access to the quote service. `POST /api/quotes/preview` returns a preview, not an executable authorization.
+
+An executable envelope contains `chainId`, `module`, `target`, `callData`, `authorization` and a `quote` with wallet/caller, action, exact input/output, observation time, validity times, nonce, epoch and hashes. Display the output and deadline for user review. Use integer base units: USDC has 6 decimals and QEURO has 18.
+
+## Submit the reviewed UserPool quote
+
+The function below accepts an envelope already obtained from the quote service, plus the exact action, input and output reviewed by the user. It checks the deployment and allowed inner call before sending anything. The contract validates the signatures and remaining protocol guards.
+
+```javascript
+async function settleReviewedPoolQuote(envelope, reviewed) {
+  const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+  if (!['MINT', 'REDEEM'].includes(reviewed.action)) throw new Error('Invalid action');
+  if (reviewed.amountIn <= 0n || reviewed.amountOut <= 0n) throw new Error('Invalid amount');
+  if ((await provider.getNetwork()).chainId !== 8453n ||
+      !same(await signer.getAddress(), owner)) throw new Error('Wallet or chain changed');
+  if (!await vault.signedExecutionEnabled() ||
+      !same(await vault.executionPricing(), moduleAddress)) throw new Error('Deployment changed');
+  const q = envelope.quote;
+  const action = reviewed.action === 'MINT' ? 0 : 1;
+  const functionName = action === 0 ? 'deposit' : 'withdraw';
+  const expectedCall = route.encodeFunctionData(functionName, [
+    [reviewed.amountIn], [reviewed.amountOut],
+  ]);
+  if (envelope.chainId !== 8453 || !same(envelope.target, poolAddress) ||
+      !same(envelope.module, moduleAddress) || !same(q.user, owner) ||
+      !same(q.caller, poolAddress) || q.action !== action ||
+      BigInt(q.amountIn) !== reviewed.amountIn || BigInt(q.amountOut) !== reviewed.amountOut ||
+      envelope.callData.toLowerCase() !== expectedCall.toLowerCase() ||
+      q.callHash.toLowerCase() !== keccak256(envelope.callData).toLowerCase()) {
+    throw new Error('Quote differs from the reviewed operation');
+  }
+  const checkTime = () => {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    if (BigInt(q.validAfter) > now || BigInt(q.observedAt) > now ||
+        BigInt(q.validUntil) < now + 10n ||
+        BigInt(q.validUntil) - BigInt(q.observedAt) > 45n) {
+      throw new Error('Request and review a fresh quote');
+    }
+  };
+  checkTime();
+  await pool.executeWithQuote.staticCall(envelope.callData, envelope.authorization);
+  checkTime();
+  const tx = await pool.executeWithQuote(envelope.callData, envelope.authorization);
+  // Persist tx.hash immediately; reconcile its receipt before any retry.
+  return tx;
+}
+```
+
+The 10-second remaining-time check is a client convenience, not an inclusion guarantee. The onchain maximum is **45 seconds from the market observation**. Simulation does not reserve public liquidity, and state changes or wallet delays can still cause a revert. Never modify the signed calldata or silently refresh the user's accepted output.
+
+## Stake QEURO directly
+
+```javascript
 const factory = new Contract(factoryAddress, [
   'function getStQEUROByVaultId(uint256 vaultId) view returns (address)',
 ], provider);
 const seriesAddress = await factory.getStQEUROByVaultId(2n);
-if (seriesAddress === ZeroAddress) throw new Error('No series for this vault');
+if (seriesAddress === ZeroAddress) throw new Error('No staking series');
 const series = new Contract(seriesAddress, [
   'function asset() view returns (address)',
   'function previewDeposit(uint256 assets) view returns (uint256)',
@@ -55,30 +116,6 @@ const series = new Contract(seriesAddress, [
 if ((await series.asset()).toLowerCase() !== qeuroAddress.toLowerCase()) {
   throw new Error('Unexpected staking asset');
 }
-const minimum = (output, toleranceBps) => {
-  if (toleranceBps < 0n || toleranceBps >= 10_000n) throw new Error('Invalid tolerance');
-  return output * (10_000n - toleranceBps) / 10_000n;
-};
-```
-
-## Mint with a current execution quote
-
-```javascript
-if (await vault.paused()) throw new Error('Vault paused');
-const inputUsdc = parseUnits('100', 6);
-await (await usdc.approve(vaultAddress, inputUsdc)).wait();
-// Quote after approval is mined; its amountOut already includes the mint fee.
-const quote = await pricing.previewMint(inputUsdc);
-const minQeuro = minimum(quote.amountOut, 50n); // illustrative 0.5%; user chooses
-await vault.mintQEURO.staticCall(inputUsdc, minQeuro);
-await (await vault.mintQEURO(inputUsdc, minQeuro)).wait();
-```
-
-Simulation does not reserve capacity. A later state change can make the transaction revert. Do not derive output by dividing USDC by an oracle mid or use the retired `calculateMintAmount` helper.
-
-## Stake QEURO directly
-
-```javascript
 const assets = parseUnits('10', 18); // user-selected amount, must be available
 if (await qeuro.balanceOf(owner) < assets) throw new Error('Insufficient QEURO');
 await (await qeuro.approve(seriesAddress, assets)).wait();
@@ -90,8 +127,8 @@ const shares = await series.balanceOf(owner);
 const vestedAssets = await series.convertToAssets(shares);
 ```
 
-Standard ERC-4626 `deposit` does not accept a minimum-share argument: a preview is informational, not slippage protection. The vault's `mintAndStakeQEURO` path has an explicit minimum-share parameter for a combined mint/stake. Yield increases the assets represented by shares as it vests; no separate staking-reward claim is needed. See [Yield Distribution 1.5.0](Yield-Distribution-1.5.0.md).
+Standard ERC-4626 `deposit` does not accept a minimum-share argument: a preview is informational, not slippage protection. The vault's signed `mintAndStakeQEURO` inner operation has an explicit minimum-share parameter for a combined mint/stake. Yield increases the assets represented by shares as it vests; no separate staking-reward claim is needed. See [Yield Distribution 1.5.0](Yield-Distribution-1.5.0.md).
 
 ## Next steps
 
-[Integration Examples](Integration-Examples.md) covers normal redemption, unstaking and transaction recovery. The [API Reference](API-Reference.md) documents optional UserPool, hedger and dormant QTI interfaces. No mainnet transactions are required to validate an integration: use an isolated fork and funded test accounts.
+[Integration Examples](Integration-Examples.md) covers redemption, unstaking and transaction recovery. [Dapp Compatibility](Dapp-Compatibility.md) lists release checks. Use the compiled ABI matching each active implementation, including library errors.

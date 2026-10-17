@@ -1,6 +1,8 @@
 # Production Deployment Status
 
-Verified on **30 September 2026**, using finalized Base block **51,985,907** for contract settings. These are dated observations, not immutable defaults. Governance can change settings; read the contracts and obtain a fresh quote before transacting.
+**Signed quotes are active on Base since 17 October 2026.** Versions, signed-module bindings, oracle routing, zero mint/redemption fees, the 102.5% mint floor, the 101% critical threshold and zero QTI supply were rechecked at finalized Base block **52,727,379**. The signed module is in **NORMAL** mode with an **emergency budget of 0 QEURO**. See [Signed Quotes](Signed-Quote-Migration.md) and the [confirmed activation](https://basescan.org/tx/0xd2945ee2bc1357ec6503e1a374cca9adf841168d4c78739ff6a78a0088aa06f7).
+
+The broader parameter, role and availability review below was performed on **30 September 2026**, using finalized Base block **51,985,907**. Settings not listed in the October recheck retain that earlier verification date. These are dated observations, not immutable defaults; read current state and obtain a fresh quote before transacting.
 
 ## Deployment and availability
 
@@ -10,7 +12,7 @@ QTI is deployed but has **zero supply**. Its vote-escrow and proposal machinery 
 
 ## User flows and backing
 
-* Users mint QEURO with USDC through QuantillonVault. Normal mint/redeem amounts use directional **execution quotes**, including depth, spread and buffer constraints, rather than simply multiplying by the oracle mid. Zero protocol fees do not mean zero execution cost.
+* Users mint QEURO with USDC through QuantillonVault. Normal mint/redeem amounts use transaction-specific **signed execution quotes**, valid for at most 45 seconds from the market observation, including depth, spread and buffer constraints, rather than simply multiplying by the oracle mid. Zero protocol fees do not mean zero execution cost.
 * The dapp stakes QEURO directly into an ERC-4626 stQEURO series. The optional UserPool batch contract has separate accounting and a cooldown; these are not the direct stQEURO staking rules.
 * The current external strategy is the MetaMorpho USDC vault, registered as **vaultId 2**. QEURO backing can be deployed there; hedger margin is not part of its yield-bearing principal. External backing is counted conservatively, capped by tracked principal and current underlying value; the execution-spread reserve is excluded from backing.
 * Minting has a **102.5% collateralization floor**, plus oracle, execution-capacity, token, pause and liquidity checks. Protocol liquidation mode applies when the computed ratio is **positive and at or below 101%**. A zero ratio is not an automatic liquidation signal. Redemptions remain subject to validation and available liquidity.
@@ -25,7 +27,7 @@ See [Execution Pricing](Architecture.md), [Liquidation Mode](Architecture.md) an
 | Morpho allocation | Harvest-time staked-QEURO fraction to stakers; unstaked fraction to treasury |
 | Hedger staking-yield haircut | 0 bps; no base allocation for hedger collateral |
 | stQEURO vesting | 24 hours; allocation remains snapshot-weighted |
-| Legacy stQEURO yield fee | Ignored by the vault 1.5.0 credit path |
+| Legacy stQEURO yield fee | Ignored by the credit path introduced in vault 1.5.0 and preserved in 1.6.0 |
 | Vault `hedgerRewardFeeSplit` | 20% of collected vault fees routed to the hedger reward reserve; not a reward-claim tax |
 | HedgerPool entry / exit / margin fees | 0 |
 | HedgerPool `rewardFeeSplit` | 0; separate routing setting for fees collected by HedgerPool |
@@ -38,7 +40,7 @@ UserPool's configured accounting rates are not Morpho's realized return or the d
 
 The single designated hedger maintains a Base HedgerPool position and a Hyperliquid `xyz:EUR` position. HedgerPool's minimum margin is **2.5%** and its configured maximum leverage is **40x**. Configured EUR/USD annual interest inputs are **3.5% / 4.5%**; they are not promises of realized hedger profit. Order preparation inside Hyperliquid and movement of capital between venues are distinct operations.
 
-OracleRouter slot **1** uses HyperliquidEurUsdOracle; slot **0** is the manually selected Chainlink fallback. The market oracle also checks an independent Chainlink reference on-chain. A stale reference can block operations even when the venue is trading. Switching to Chainlink does not by itself restore minting: execution pricing also checks source compatibility and admitted hedge capacity.
+OracleRouter slot **1** uses HyperliquidEurUsdOracle; slot **0** is the manually selected Chainlink fallback. HyperliquidEurUsdOracle 1.0.7 reads SignedReferenceSource, which accepts authenticated reference reports delivered with transactions and checks an independent Chainlink reference. The periodic publisher is retired. A stale reference can block operations even when the venue is trading. Switching to Chainlink does not by itself restore minting: execution pricing also checks source compatibility and admitted hedge capacity.
 
 ## Governance and security
 
@@ -56,6 +58,6 @@ The [contract inventory](API-Reference.md) records addresses and versions. [Core
 
 ## Evidence and maintenance
 
-This reference describes the current deployment, not an audit certification. Contract versions, settings and core role bindings were read at finalized Base block 51,985,907. User flows were checked against contract source and deployed ABIs. Runtime routing and Rewards availability were checked separately on 30 September 2026. Future launch, distribution and entity plans remain organizational intentions.
+This reference describes the current deployment, not an audit certification. The broader settings and role review used finalized Base block 51,985,907; the October versions and signed bindings listed above were independently read at finalized block 52,727,379. User flows were checked against contract source and deployed ABIs. Runtime routing and Rewards availability were checked separately on 30 September 2026. Future launch, distribution and entity plans remain organizational intentions.
 
 Deployment manifests record upgrade history and can lag live state; use `version()`, role reads and the active vault bindings for current integration. Do not infer the active implementation from a historical release section alone.

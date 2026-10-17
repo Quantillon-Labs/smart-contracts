@@ -128,8 +128,8 @@ FeeCollector (60/25/15 treasury/dev/community)
 | **stQEUROToken** | Yield-bearing wrapper, exchange rate increases as yield accrues (similar to stETH) |
 | **YieldShift** | Dynamic yield split between UserPool/HedgerPool, 7-day holding period; binding allocation uses holding-period-filtered eligible-pool sizes + gradual adjustment (TWAP helpers feed historical metrics only) |
 | **OracleRouter** | Single price entry point with two switchable slots; slot 1 currently hosts HyperliquidEurUsdOracle (active), slot 0 ChainlinkOracle (fallback) |
-| **HyperliquidEurUsdOracle** | ACTIVE EUR/USD oracle: Hyperliquid EUR perp mid-price read from SlippageStorage (900 s staleness, 1 h hard cap); USDC/USD delegated to ChainlinkOracle |
-| **SlippageStorage** | On-chain price store written by the off-chain publisher (dapp slippage-monitor), read by HyperliquidEurUsdOracle |
+| **HyperliquidEurUsdOracle** | ACTIVE EUR/USD oracle: signed Hyperliquid reference read from SignedReferenceSource (normal signed freshness plus adapter checks); USDC/USD delegated to ChainlinkOracle |
+| **SlippageStorage** | Legacy on-chain price store; the active adapter now reads SignedReferenceSource and the periodic publisher is retired |
 | **LighterEurUsdOracle** | Deployed 2026-07-17 for a second hedge venue that was ruled out on 2026-09-01; inert (no router slot), kept as a historical record — do not propose Lighter work |
 | **TimeProvider** | Centralized `block.timestamp` wrapper used across contracts |
 
@@ -142,7 +142,7 @@ Hedgers are SHORT EUR (they owe QEURO to users):
 
 ### Oracle Architecture
 
-`OracleRouter` implements `IOracle` and routes to one of two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0, and the old `storkOracle()` getter survives as a deprecated ABI-compatible alias of `marketOracle()`). Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the ACTIVE production oracle** (`activeOracle = 1`, live since 2026-06-25); slot 0 is `ChainlinkOracle` (fallback and USDC/USD source); `StorkOracle` is parked. The live router is v1.1.2 (activated 2026-09-23; v1.1.0 went live 2026-07-05); implementation addresses are tracked in `deployments/8453/versions.json`. All protocol contracts depend only on `IOracle` (oracle-agnostic). HyperliquidEurUsdOracle reads the Hyperliquid EUR perp mid-price from `SlippageStorage` (published on-chain by the dapp's slippage-monitor; 900 s staleness default, 1 h hard cap); ChainlinkOracle validates EUR/USD and USDC/USD feeds with staleness checks (2h EUR/USD, 25h USDC/USD). Both enforce 0.80-1.40 price bounds and 5% deviation circuit breakers.
+`OracleRouter` implements `IOracle` and routes to one of two slots — `enum OracleType { CHAINLINK, MARKET }` (slot 1 was named `STORK` before router v1.1.0, and the old `storkOracle()` getter survives as a deprecated ABI-compatible alias of `marketOracle()`). Slot 1 currently hosts **`HyperliquidEurUsdOracle`, the ACTIVE production oracle** (`activeOracle = 1`, live since 2026-06-25); slot 0 is `ChainlinkOracle` (fallback and USDC/USD source); `StorkOracle` is parked. The live router is v1.1.2 (activated 2026-09-23; v1.1.0 went live 2026-07-05); implementation addresses are tracked in `deployments/8453/versions.json`. All protocol contracts depend only on `IOracle` (oracle-agnostic). Since 17 October 2026, HyperliquidEurUsdOracle 1.0.7 reads `SignedReferenceSource` (normal signed report freshness plus the adapter's additional 900 s limit); ChainlinkOracle validates EUR/USD and USDC/USD feeds with staleness checks (2h EUR/USD, 25h USDC/USD). Both enforce 0.80-1.40 price bounds and 5% deviation circuit breakers.
 
 - **`getEurUsdPrice()` is non-`view` by design**: on a fresh valid read it commits the price into the deviation-baseline cache (`lastValidEurUsdPrice`/`lastPriceUpdateTime`/`lastPriceUpdateBlock`) and emits `PriceUpdated`. So every price read is a state write, and consumers such as `QuantillonVault.shouldTriggerLiquidationLive()` are non-`view` too. Integrators that only need a cheap read should use the cached getters rather than `getEurUsdPrice()`.
 - **Failover is manual**: `OracleRouter` routes to a single `activeOracle` with no automatic fallback or disagreement handling. If the active oracle returns `isValid=false`, callers revert; switching is a deliberate governance action via `switchOracle` (`ORACLE_MANAGER_ROLE`). Operate a monitor/alert on oracle health.
@@ -195,6 +195,10 @@ contract MyContract is Initializable, SecureUpgradeable {
 6. **Emergency Pause**: `PausableUpgradeable` with `PAUSER_ROLE`
 7. **Adapter Pattern**: Non-upgradeable `IExternalStakingVault` adapters — `MetaMorphoStakingVaultAdapter` (the live mainnet adapter, vaultId 2, over the MetaMorpho USDC vault) plus `AaveStakingVaultAdapter` / `MorphoStakingVaultAdapter` wrapping mock vaults for localhost
 8. **Versioning (`IVersioned`)**: Every core contract implements `IVersioned.version()` — a `pure` semver getter (no storage slot; read through the proxy it reflects the deployed implementation). Linked libraries expose `version()`; inlined libraries carry a `VERSION` constant. **Rule: ANY change to a deployed contract/library — correction, bug fix, update, or upgrade — MUST be traced through a semver bump of its `version()`** (PATCH = bugfix/internal, MINOR = new function/behavior; storage/ABI breaks are disallowed by the gates). Enforced by `make check-version-bump`. Deployed versions live in `deployments/{chainId}/versions.json` (written by the `UpgradeBase` scripts on every upgrade); `make check-deployed-versions` reports which contracts are out of date.
+
+## Signed production integration
+
+The signed deployment is active on Base since 17 October 2026: Vault 1.6.0, UserPool 1.3.0, HedgerPool 1.6.0, HyperliquidEurUsdOracle 1.0.7, SignedExecutionPricing 1.1.0 and SignedReferenceSource 1.0.0. Normal conversion uses the signed wrappers, with a maximum quote lifetime of 45 seconds. The emergency-redemption budget is zero. Use `docs/Signed-Quote-Migration.md` for verified bindings and distinguish historical release records from current state.
 
 ## Deployment Strategy
 

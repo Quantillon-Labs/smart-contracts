@@ -1,5 +1,7 @@
 # Staking-ratio yield distribution — 1.5.0 release
 
+> This policy was introduced in vault 1.5.0 and is preserved by the signed-quote production release, vault 1.6.0, activated on 17 October 2026. Harvest conversion uses its bounded signed authorization. See [Signed Quotes in Production](Signed-Quote-Migration.md).
+
 The Base candidate contracts were deployed and source-verified on 29 September 2026.
 The production proxy was upgraded to 1.5.0 on 30 September 2026 at 09:21:13 UTC (11:21:13 Paris time), in Base block 51,985,363.
 QuantillonVault and its linked StakingYieldLibrary change from capital-weighted allocation to

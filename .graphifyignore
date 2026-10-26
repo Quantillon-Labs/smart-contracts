@@ -1,0 +1,22 @@
+# Keep the knowledge graph focused on first-party source and hand-written docs.
+# Solidity source is deliberately not ignored; the installed Graphify release
+# does not yet classify .sol files, but future Solidity support should include it.
+graphify-out/
+quantillon-protocol/graphify-out/
+
+# Third-party and local runtime environments.
+quantillon-protocol/lib/
+quantillon-protocol/node_modules/
+quantillon-protocol/venv/
+
+# Foundry and analysis outputs; these are generated or may contain transaction data.
+quantillon-protocol/out/
+quantillon-protocol/cache/
+quantillon-protocol/broadcast/
+quantillon-protocol/deployments/
+quantillon-protocol/results/
+quantillon-protocol/scripts/results/
+
+# Generated documentation trees. The hand-written docs remain indexed.
+quantillon-protocol/docs/book/
+quantillon-protocol/docs/src/

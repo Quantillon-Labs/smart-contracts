@@ -67,7 +67,7 @@ jobs:
             | tee scripts/results/gas-shards/shard-${{ matrix.shard }}.txt
       - name: Upload gas report
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gas-report-shard-${{ matrix.shard }}
           path: quantillon-protocol/scripts/results/gas-shards/shard-${{ matrix.shard }}.txt
@@ -203,7 +203,7 @@ jobs:
           node-version: 24
 
       - name: Download gas reports from passing test shards
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: gas-report-shard-*
           path: ${{ runner.temp }}/gas-shards

@@ -225,25 +225,16 @@
     "reason": "A zero-share deposit must revert. The neighboring redeem-value check bounds ERC4626 rounding loss; donation and inflation regression tests verify rejection."
   },
   {
-    "id": "5a27efc1abd0fa872aa613eb6aea68a24db29d75542ca4ba85b7e8e8b33c7960",
     "check": "arbitrary-send-erc20",
-    "file": "src/core/QuantillonVault.sol",
-    "function": "_mintQEUROCommit",
-    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
+    "file": "src/libraries/VaultTransferLibrary.sol",
+    "function": "mint",
+    "reason": "The linked transfer helper is delegatecalled only by QuantillonVault._mintQEUROCommit. That commit entrypoint is onlySelf, and its nonReentrant public parent binds payer to msg.sender before the explicit self-call. Moving the transfer into a linked library did not make payer externally selectable; signed protocol settlement tests exercise the complete guarded path."
   },
   {
-    "id": "addd01bffa135a4d7f2cfd35aa8cdcd6939a8ce42d5a8959c9739c20b43213c0",
     "check": "arbitrary-send-erc20",
     "file": "src/core/HedgerPool.sol",
     "function": "_enterHedgePositionCommit",
-    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
-  },
-  {
-    "id": "d4da9811cbd4a59e09f5823fc05a2d3da0b86497cdcd82dd8941c4c15f4c3044",
-    "check": "arbitrary-send-erc20",
-    "file": "src/core/HedgerPool.sol",
-    "function": "_enterHedgePositionCommit",
-    "reason": "The commit helper is onlySelf. Its guarded public caller binds payer/hedger to msg.sender before the explicit self-call, so an external caller cannot choose another allowance owner."
+    "reason": "The two reported transfers share one onlySelf commit helper. Its nonReentrant public caller binds hedger to msg.sender before the explicit self-call, so an external caller cannot select another allowance owner. HedgerPool position tests cover both the net-margin transfer and the separately routed entry fee."
   },
   {
     "id": "45e2a5c3cc753f61c238f9551f6d9da293b06a9ea7ba96179e4a03242845b162",
@@ -317,9 +308,141 @@
   },
   {
     "check": "unused-return",
-    "file": "src/core/QuantillonVault.sol",
-    "function": "_creditVaultYield",
+    "file": "src/libraries/VaultYieldSettlementLibrary.sol",
+    "function": "prepare",
     "reason": "Yield credits pass a literal zero feeRate to ExecutionPricingLibrary.mint, so its first return (Math.mulDiv(input, feeRate, 1e18)) is always zero. Net backing and QEURO output are both consumed, and the execution spread is paid separately. Yield fee and execution-spread tests cover this path."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/libraries/VaultTransferLibrary.sol",
+    "function": "_deploy",
+    "reason": "The helper needs the configured adapter, active flag and already-tracked principal for validation and its event. Current underlying is a monitoring value and is intentionally irrelevant to a new deposit; depositUnderlying's returned shares are checked for zero. External-vault mint settlement tests cover accounting and rollback."
+  },
+  {
+    "check": "unused-return",
+    "file": "src/libraries/ReferenceSettlementLibrary.sol",
+    "function": "_execute",
+    "reason": "SignedReferenceSource.submit authenticates the report, validates freshness and independent-price bounds, and reverts on any invalid report. Its returned digest is only an informational copy of the already verified report hash; the atomic margin operation needs the resulting cached reference state, not a second copy of that digest. TypedReferenceWithdrawal tests cover valid delivery, invalid signatures and rollback."
+  },
+  {
+    "check": "low-level-calls",
+    "file": "src/libraries/SignedUserPoolLibrary.sol",
+    "function": "execute",
+    "reason": "The delegatecall deliberately preserves the original pool user and storage. The library accepts only deposit or withdraw selectors, binds the complete calldata to a signed quote before dispatch, and those two pool entrypoints retain nonReentrant. UserPool's signedRouteActive guard remains set across prepare, dispatch and finish, so recursive quote execution fails atomically."
+  },
+  {
+    "check": "low-level-calls",
+    "file": "src/libraries/ExecutionPricingLibrary.sol",
+    "function": "validateConfiguration",
+    "reason": "The staticcall is a read-only feature probe for supportsSignedExecution on a proposed module after its vault binding is verified. Failure, fallback execution or malformed return data all produce false; no authority or state is transferred. Execution-pricing configuration tests cover legacy and signed modules."
+  },
+  {
+    "check": "low-level-calls",
+    "file": "src/libraries/ReferenceSettlementLibrary.sol",
+    "function": "_execute",
+    "reason": "The delegatecall is restricted to four explicitly enumerated HedgerPool selectors and preserves the original hedger identity. A signed reference is validated first, and each dispatched pool operation retains its existing authorization and reentrancy checks. Revert data is propagated and the reference update rolls back with a failed operation."
+  },
+  {
+    "check": "low-level-calls",
+    "file": "src/libraries/SignedSettlementLibrary.sol",
+    "function": "_dispatch",
+    "reason": "The private dispatcher is reached only after SignedExecutionPricing binds the caller and complete calldata to an authorized quote, or after the library constructs the fixed emergency-redeem selector itself. Delegatecall preserves the vault storage and original user, while the target vault entrypoints keep nonReentrant; failures bubble and roll back the quote context."
+  },
+  {
+    "check": "weak-prng",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "_validateIndependent",
+    "reason": "The timestamp arithmetic determines weekday and time-of-day solely to choose between two governance-bounded reference-divergence tolerances. It is not randomness, does not select a winner or transfer value, and a small timestamp shift can only switch between the configured normal and off-hours validation bounds. SignedReferenceSource tests cover both windows."
+  },
+  {
+    "check": "reentrancy-no-eth",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "redeemQEURO",
+    "reason": "The public redemption entrypoint holds nonReentrant across the oracle read, signed liquidation consumption, adapter withdrawals, fee routing, burn and payout. Every reported state write is inside that guard, and the configured module and adapter callbacks cannot reenter any guarded settlement path. Signed liquidation and external-collateral redemption tests exercise these interactions."
+  },
+  {
+    "check": "reentrancy-no-eth",
+    "file": "src/core/UserPool.sol",
+    "function": "executeWithQuote",
+    "reason": "signedRouteActive is set before the external vault preparation and remains set through the delegatecalled deposit or withdraw and finalization; recursive quote execution therefore reverts. The only permitted dispatched selectors are the pool's own nonReentrant deposit and withdraw entrypoints, and any downstream failure rolls the guard back with the transaction. Signed staking settlement tests cover both routes."
+  },
+  {
+    "check": "reentrancy-no-eth",
+    "file": "src/oracle/SignedExecutionPricing.sol",
+    "function": "prepare",
+    "reason": "prepare is callable only by the immutable vault. Its immutable reference source validates the independent price through view/static calls; neither the reference source nor the independent source can satisfy onlyVault, and a state-changing callback under static context reverts. Nonce and active-context writes occur before vault settlement and the whole operation is atomic. SignedExecutionPricing tests cover replay and active-context rejection."
+  },
+  {
+    "check": "reentrancy-benign",
+    "file": "src/oracle/SignedExecutionPricing.sol",
+    "function": "prepare",
+    "reason": "The same immutable-source and onlyVault boundaries make the reported post-submit bookkeeping unreachable from a callback. Capacity updates, nonce consumption and active quote initialization are atomic; a failed callback or validation reverts all earlier reference work. SignedExecutionPricing tests exercise stale reports, nonce replay and overlapping contexts."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "_validateIndependent",
+    "reason": "Weekday and time-of-day intentionally select the normal or off-hours independent-reference divergence limit. Timestamp is used for market-hours policy, not randomness or authorization, and both limits remain capped by constructor validation."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "getSlippageBySource",
+    "reason": "The comparison deliberately returns an empty snapshot for a future, missing or expired signed/independent observation. It enforces freshness and cannot grant authority or improve an execution price."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedExecutionPricing.sol",
+    "function": "prepare",
+    "reason": "The quote's observedAt, validAfter and validUntil checks intentionally enforce a maximum 45-second signed execution window and reject future, inverted or expired authorizations. Timestamp is used only for freshness; calldata, user, nonce and signatures provide authorization."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "_independent",
+    "reason": "The independent reference must have a nonzero, nonfuture observation no older than maxReferenceAge. This is an explicit freshness gate and is not used for randomness or access control."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "submit",
+    "reason": "Signed reference reports deliberately reject zero, future and older-than-maxAge observations. The original timestamp is signed and replay never refreshes it; sequence and signature checks independently bind authorization."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedExecutionPricing.sol",
+    "function": "_admit",
+    "reason": "Capacity observations intentionally expire after maxAge before new mint, redeem or yield exposure may be admitted. The timestamp can only make admission fail; signed capacity, acknowledgements and the hard maxOutstanding bound determine the limit."
+  },
+  {
+    "check": "timestamp",
+    "file": "src/oracle/SignedExecutionPricing.sol",
+    "function": "submitCapacity",
+    "reason": "Capacity reports deliberately reject zero, future and expired observations. Their signed original timestamp cannot be refreshed by replay, while monotonic sequence, acknowledgement and canonical-block checks independently prevent rollback."
+  },
+  {
+    "check": "incorrect-return",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "executeWithQuote",
+    "reason": "The private assembly trampoline intentionally terminates the outer wrapper with the exact returndata from the statically linked SignedSettlementLibrary delegatecall. This is return-data forwarding, not an accidental early return; the library validates quote mode, binding and selector before dispatch. Signed protocol settlement tests decode and assert the forwarded results."
+  },
+  {
+    "check": "incorrect-equality",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_canMintAtPrice",
+    "reason": "lastValidEurUsdPrice == 0 is the explicit uninitialized-cache sentinel. Valid EUR/USD prices are bounded far above zero, and minting stays disabled until governance or a validated oracle flow bootstraps the cache. Mint eligibility and price-cache initialization tests cover the sentinel."
+  },
+  {
+    "check": "incorrect-equality",
+    "file": "src/oracle/SignedReferenceSource.sol",
+    "function": "_validateIndependent",
+    "reason": "Exact weekday comparisons classify UTC market-hours buckets; they do not compare a manipulable asset balance or decide authorization. Both normal and off-hours divergence limits are governance-bounded and the report remains signature- and freshness-checked."
+  },
+  {
+    "check": "incorrect-equality",
+    "file": "src/core/QuantillonVault.sol",
+    "function": "_planExternalVaultWithdrawal",
+    "reason": "totalUsdcInExternalVaults == 0 is an empty-collateral sentinel used only after liquid USDC is insufficient. It fails closed with InsufficientBalance; positive deficits are separately bounded by the tracked external principal. External-collateral redemption tests cover empty, partial and insufficient balances."
   },
   {
     "check": "reentrancy-balance",

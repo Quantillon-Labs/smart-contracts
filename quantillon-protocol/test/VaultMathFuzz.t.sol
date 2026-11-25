@@ -16,7 +16,6 @@ import {VaultMath} from "../src/libraries/VaultMath.sol";
  *      - Fuzz testing for yield distribution
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract VaultMathFuzz is Test {

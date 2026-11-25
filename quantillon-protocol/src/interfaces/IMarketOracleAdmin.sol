@@ -11,7 +11,6 @@ pragma solidity 0.8.24;
  *      all expose these four selectors with identical signatures; this interface lets
  *      the router address them without coupling to a concrete implementation name.
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IMarketOracleAdmin {

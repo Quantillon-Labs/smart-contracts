@@ -139,7 +139,6 @@ import {MockAggregatorV3} from "../../src/mocks/MockAggregatorV3.sol";
  *   * Realized P&L
  *   * Entry price, leverage
  * 
- * @author Quantillon Labs
  */
 contract StateTrackerScenario1 is Script {
     // Contract addresses (deployed fresh each run)

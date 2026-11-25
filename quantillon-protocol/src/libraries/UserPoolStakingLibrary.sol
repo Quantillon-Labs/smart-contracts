@@ -8,7 +8,6 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @title UserPoolStakingLibrary
  * @notice Staking and reward calculation functions for UserPool to reduce contract size
  * @dev Extracted from UserPool to reduce bytecode size and improve maintainability
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library UserPoolStakingLibrary {

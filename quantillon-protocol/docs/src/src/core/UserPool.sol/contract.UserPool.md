@@ -1,14 +1,11 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4b0ba41d0f77c5b737916e7f78951237651c4bdb/quantillon-protocol/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 UserPool
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Manages QEURO user deposits, staking, and yield distribution
 

@@ -13,7 +13,6 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  *      - Slippage protection validations
  *      - Yield distribution validations
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library YieldValidationLibrary {

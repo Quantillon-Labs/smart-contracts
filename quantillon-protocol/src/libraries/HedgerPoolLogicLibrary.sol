@@ -16,7 +16,6 @@ import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
  *      and never enters remaining-exposure valuation. Legacy argument positions are
  *      retained in public library signatures for ABI compatibility.
  *
- * @author Quantillon Labs
  */
 library HedgerPoolLogicLibrary {
     /**

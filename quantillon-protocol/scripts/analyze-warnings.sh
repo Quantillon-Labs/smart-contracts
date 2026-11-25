@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Quantillon Protocol - Build Warnings Analysis Script
-# @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 # @notice Analyzes and isolates build warnings for better code quality
 
 set -e

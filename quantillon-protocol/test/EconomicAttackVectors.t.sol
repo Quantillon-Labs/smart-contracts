@@ -35,7 +35,6 @@ contract FlashLoanProtectionHarness {
  *      - MEV extraction scenarios
  *      - Fee extraction attacks
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract EconomicAttackVectors is Test {

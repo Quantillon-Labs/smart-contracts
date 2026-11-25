@@ -43,7 +43,6 @@ import {ReferenceSettlementLibrary} from "../libraries/ReferenceSettlementLibrar
  * into margin. realizedPnL is cumulative history only; it does not value remaining exposure.
  * Liquidation redemptions reduce margin and remaining cost proportionally.
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPool is 

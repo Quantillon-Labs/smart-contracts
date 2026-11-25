@@ -26,7 +26,6 @@ interface IQEUROMint {
  *      BASE_FORK_RPC_URL=https://live.quantillon.money/rpc/base \
  *        forge test --match-contract StQEUROSweepForkTest -vv
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract StQEUROSweepForkTest is Test {

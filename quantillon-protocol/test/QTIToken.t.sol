@@ -77,7 +77,6 @@ contract QTITokenTestHelper is QTIToken {
  *      - Edge Cases and Security
  *      - Integration Tests
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QTITokenTestSuite is Test {

@@ -101,7 +101,6 @@ import {PriceValidationLibrary} from "../libraries/PriceValidationLibrary.sol";
  *      - Chainlink oracle for EUR/USD price feeds
  *      - Vault math library for precise calculations
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QuantillonVault is 

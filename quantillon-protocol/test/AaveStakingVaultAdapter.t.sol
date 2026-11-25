@@ -45,7 +45,6 @@ contract MockUSDCForAdapter {
  * @title AaveStakingVaultAdapterTest
  * @notice Unit tests for AaveStakingVaultAdapter.
  * @dev Covers deposit, withdraw, harvestYieldToVault, totalUnderlying, and governance functions.
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract AaveStakingVaultAdapterTest is Test {

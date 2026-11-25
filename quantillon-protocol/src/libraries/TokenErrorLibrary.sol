@@ -11,7 +11,6 @@ pragma solidity 0.8.24;
  *      - Blacklist and whitelist errors
  *      - Supply and cap management errors
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library TokenErrorLibrary {

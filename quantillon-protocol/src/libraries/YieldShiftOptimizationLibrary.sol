@@ -10,7 +10,6 @@ import {IUserPool} from "../interfaces/IUserPool.sol";
  * @title YieldShiftOptimizationLibrary
  * @notice Library for YieldShift pool metrics, historical data, and utility functions
  * @dev Extracts utility functions from YieldShift to reduce contract size
- * @author Quantillon Labs
  */
 library YieldShiftOptimizationLibrary {
     /**

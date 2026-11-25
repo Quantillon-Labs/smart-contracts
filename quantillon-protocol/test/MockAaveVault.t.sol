@@ -43,7 +43,6 @@ contract MockUSDCSimple {
  * @title MockAaveVaultTest
  * @notice Unit tests for the simple MockAaveVault (localhost mock).
  * @dev Verifies deposit/withdraw share accounting, yield injection, and totalUnderlyingOf.
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract MockAaveVaultTest is Test {

@@ -244,7 +244,6 @@ Live contract versions are recorded in [`deployments/8453/versions.json`](../dep
 
 ---
 
-*This documentation is maintained by Quantillon Labs and updated regularly.*
 
 **Quantillon Protocol** - Building the future of decentralized finance with euro-pegged stability and intelligent yield management.
 

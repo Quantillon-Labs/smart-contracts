@@ -1,11 +1,8 @@
 # IMarketOracleAdmin
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IMarketOracleAdmin.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4b0ba41d0f77c5b737916e7f78951237651c4bdb/quantillon-protocol/src/interfaces/IMarketOracleAdmin.sol)
 
 **Title:**
 IMarketOracleAdmin
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Minimal admin surface shared by every oracle that can occupy the router's
 MARKET slot (slot 1)

@@ -30,7 +30,6 @@ import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.so
  *      it has been closed (e.g. via emergencyClosePosition) the reproduction step will
  *      fail and this file documents the scenario rather than gating CI.
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPoolDustDeadlockForkTest is Test {

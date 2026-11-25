@@ -17,7 +17,6 @@ import {YieldShiftCalculationLibrary} from "../src/libraries/YieldShiftCalculati
  *      - Parameter validation
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract YieldShiftCalculationLibraryTest is Test {

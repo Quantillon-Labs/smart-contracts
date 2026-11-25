@@ -24,7 +24,6 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
  * 
  * @dev Tests time manipulation, block-based logic, and temporal edge cases.
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract TimeBlockEdgeCases is Test {

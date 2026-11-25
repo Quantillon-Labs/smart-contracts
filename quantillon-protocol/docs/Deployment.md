@@ -677,7 +677,6 @@ Set `USDC=<mock_address>` in `.env.localhost` after deploying MockUSDC, or let d
 
 ---
 
-*Maintained by Quantillon Labs.*
 
 ### Reviewed release bindings and controller administration
 

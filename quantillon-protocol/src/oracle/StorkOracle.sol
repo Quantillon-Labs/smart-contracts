@@ -124,7 +124,6 @@ import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
  *      - GitHub: https://github.com/Stork-Oracle/stork-external
  *      - This would allow using Chainlink's familiar interface with Stork data
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract StorkOracle is 

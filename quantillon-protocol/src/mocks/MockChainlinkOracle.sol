@@ -12,7 +12,6 @@ import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol"
  * @title MockChainlinkOracle
  * @notice Mock oracle that implements IChainlinkOracle interface but uses mock feeds
  * @dev Used for localhost testing - provides same interface as ChainlinkOracle
- * @author Quantillon Labs
  */
 contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     

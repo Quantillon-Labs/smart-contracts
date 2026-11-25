@@ -47,7 +47,6 @@ import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
  *      - Fallbacks in case of oracle outage
  *      - Data freshness checks
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract ChainlinkOracle is 

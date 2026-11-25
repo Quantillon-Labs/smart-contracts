@@ -1,11 +1,8 @@
 # PriceValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/PriceValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4b0ba41d0f77c5b737916e7f78951237651c4bdb/quantillon-protocol/src/libraries/PriceValidationLibrary.sol)
 
 **Title:**
 PriceValidationLibrary
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Library for price validation and deviation checks
 

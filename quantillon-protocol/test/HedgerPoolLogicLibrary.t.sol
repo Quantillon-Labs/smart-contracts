@@ -18,7 +18,6 @@ import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.so
  *      - Margin operations validation
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPoolLogicLibraryTest is Test {

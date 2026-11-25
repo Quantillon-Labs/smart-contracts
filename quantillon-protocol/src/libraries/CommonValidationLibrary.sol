@@ -13,7 +13,6 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  *      - Uses custom errors for gas efficiency
  *      - Maintains same validation logic
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library CommonValidationLibrary {

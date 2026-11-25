@@ -17,7 +17,6 @@ import {HedgerPoolLogicLibrary} from "../src/libraries/HedgerPoolLogicLibrary.so
  *      - Reward accumulation mechanics
  *      - Edge cases with extreme values
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPoolFuzz is Test {

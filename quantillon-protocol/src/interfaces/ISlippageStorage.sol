@@ -6,7 +6,6 @@ pragma solidity 0.8.24;
  * @notice Interface for the Quantillon SlippageStorage contract
  * @dev Stores on-chain slippage data published by an off-chain service.
  *      Provides rate-limited writes via WRITER_ROLE and config management via MANAGER_ROLE.
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface ISlippageStorage {

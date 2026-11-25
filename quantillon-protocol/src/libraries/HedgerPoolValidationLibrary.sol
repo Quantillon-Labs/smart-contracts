@@ -15,7 +15,6 @@ import {VaultErrorLibrary} from "./VaultErrorLibrary.sol";
  *      - Liquidation system validations
  *      - Margin and leverage validation functions
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library HedgerPoolValidationLibrary {

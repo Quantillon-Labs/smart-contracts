@@ -18,9 +18,19 @@ env FOUNDRY_PROFILE=docs RUST_MIN_STACK=50331648 GIT_CONFIG_COUNT=1 GIT_CONFIG_K
 # Forge adds blank lines at EOF. Normalize its output as part of generation so
 # checked-in reference pages remain reproducible and pass whitespace checks.
 python3 - <<'PY'
+import re
 from pathlib import Path
-for page in Path("docs/src").rglob("*.md"):
-    page.write_text(page.read_text().rstrip() + "\n")
+
+# Forge resolves source paths relative to the Foundry root inside the repository.
+source = re.compile(r"(https://github.com/Quantillon-Labs/smart-contracts)(?:/quantillon-protocol)?/blob/([a-f0-9]+)/src/")
+for directory, pattern in [("docs/src", "*.md"), ("docs/book", "*.html")]:
+    for page in Path(directory).rglob(pattern):
+        original = page.read_text()
+        normalized = source.sub(r"\1/blob/\2/quantillon-protocol/src/", original)
+        if pattern == "*.md":
+            normalized = normalized.rstrip() + "\n"
+        if normalized != original:
+            page.write_text(normalized)
 PY
 
 # Copy our custom favicon files to override the default forge icons
@@ -38,29 +48,5 @@ if [ -f "docs/favicon.ico" ]; then
 else
     echo "Warning: favicon.ico not found in docs directory"
 fi
-
-echo "Post-processing GitHub URLs in generated HTML files..."
-
-# Find all HTML files in the docs/book directory and fix GitHub URLs
-find docs/book -name "*.html" -type f | while read -r file; do
-    echo "Processing: $file"
-    
-    # Create a temporary file
-    temp_file=$(mktemp)
-    
-    # Replace incorrect GitHub URLs with correct ones
-    # This replaces URLs like:
-    # https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/.../src/...
-    # with:
-    # https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/src/...
-    
-    sed 's|https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/[^"]*/src/|https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/src/|g' "$file" > "$temp_file"
-    
-    # Also fix URLs that don't have the commit hash
-    sed 's|https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/src/|https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/src/|g' "$temp_file" > "$file"
-    
-    # Clean up temporary file
-    rm "$temp_file"
-done
 
 echo "Documentation built successfully with correct GitHub links!"

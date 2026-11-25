@@ -5,7 +5,6 @@ pragma solidity 0.8.24;
  * @title IQEUROToken
  * @notice Read-only interface for the QEURO token
  * @dev Exposes ERC20 metadata and helper views used by integrators
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IQEUROToken {

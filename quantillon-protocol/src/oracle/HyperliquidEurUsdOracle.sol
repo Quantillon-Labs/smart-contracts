@@ -92,7 +92,6 @@ interface IReferencePriceSource {
  *      updatePriceBounds / updateUsdcTolerance / resetCircuitBreaker / triggerCircuitBreaker, all of
  *      which are implemented here with matching selectors. No OracleRouter change is required.
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HyperliquidEurUsdOracle is

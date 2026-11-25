@@ -15,7 +15,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  * @title HedgerVaultIntegrationTest
  * @notice Comprehensive test suite for hedger USDC integration with QuantillonVault
  * @dev Tests the unified USDC liquidity management between HedgerPool and QuantillonVault
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerVaultIntegrationTest is Test {

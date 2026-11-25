@@ -1,14 +1,11 @@
 # StorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/StorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4b0ba41d0f77c5b737916e7f78951237651c4bdb/quantillon-protocol/src/oracle/StorkOracle.sol)
 
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 StorkOracle
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 EUR/USD and USDC/USD price manager for Quantillon Protocol using Stork Network
 

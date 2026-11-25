@@ -9,7 +9,6 @@ import {IOracle} from "./IOracle.sol";
  * @notice Interface for the Quantillon Chainlink-based oracle
  * @dev Extends IOracle with Chainlink-specific functions
  *      This interface is specific to ChainlinkOracle implementation
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IChainlinkOracle is IOracle {

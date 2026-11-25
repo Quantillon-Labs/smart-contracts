@@ -59,7 +59,6 @@ contract MockQTITokenV2 is QTIToken {
  *      - Rollback scenarios
  *      - Version tracking
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract UpgradeTests is Test {

@@ -4,7 +4,6 @@ pragma solidity 0.8.24;
 /**
  * @title IUserPool
  * @notice Interface for the UserPool managing deposits, staking, and yield
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IUserPool {

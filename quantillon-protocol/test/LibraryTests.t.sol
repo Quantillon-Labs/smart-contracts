@@ -108,7 +108,6 @@ contract TreasuryRecoveryWrapper {
  *      - Edge cases and boundary conditions
  *      - Error conditions and reverts
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract LibraryTests is Test {

@@ -46,7 +46,6 @@ import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol"
  *      - Implements IOracle interface (generic, oracle-agnostic)
  *      - Protocol contracts use IOracle interface for oracle-agnostic integration
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract OracleRouter is 

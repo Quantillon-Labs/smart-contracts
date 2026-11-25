@@ -530,7 +530,6 @@ make security
 
 ---
 
-*This security guide is maintained by Quantillon Labs and updated regularly.*
 ## Operational invariants for minting and yield
 
 Public minting continues to use the configured mint floor. Yield conversion is independent and is permitted only when current collateralization is strictly above `max(101%, criticalCollateralizationRatio)` and projected collateralization is at least 100%. The final QEURO token mint remains authoritative for pause, killswitch, cap, whitelist, blacklist, and rate-limit checks; failed token or hedger checks revert atomically, preserving the harvest for retry.

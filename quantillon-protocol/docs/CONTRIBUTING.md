@@ -416,5 +416,3 @@ Thank you for contributing to the Quantillon Protocol documentation! Your contri
 Every contribution, no matter how small, makes a difference. We appreciate your time and effort in helping improve our documentation.
 
 ---
-
-*This contributing guide is maintained by Quantillon Labs and updated regularly.*

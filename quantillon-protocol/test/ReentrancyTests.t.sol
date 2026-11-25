@@ -237,7 +237,6 @@ contract MaliciousQEURO is IERC20 {
  *      - Read-only reentrancy
  *      - ERC777 hook reentrancy patterns
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract ReentrancyTests is Test {

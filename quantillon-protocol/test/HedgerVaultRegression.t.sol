@@ -23,7 +23,6 @@ contract MockUserPool {
  * @title HedgerVaultRegressionTest
  * @notice Regression tests to ensure existing functionality remains intact after hedger-vault integration
  * @dev Tests that all existing features work correctly with the new unified USDC liquidity system
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerVaultRegressionTest is Test {

@@ -7,7 +7,6 @@ import {VaultMath} from "./VaultMath.sol";
  * @title YieldShiftCalculationLibrary
  * @notice Calculation functions for YieldShift to reduce contract size
  * @dev Extracted from YieldShift to reduce bytecode size
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library YieldShiftCalculationLibrary {

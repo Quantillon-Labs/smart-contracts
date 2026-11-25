@@ -96,7 +96,6 @@ import {SecureUpgradeable} from "../SecureUpgradeable.sol";
  *      - stQEURO token for user yield distribution
  *      - USDC for yield payments and transfers
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract YieldShift is 

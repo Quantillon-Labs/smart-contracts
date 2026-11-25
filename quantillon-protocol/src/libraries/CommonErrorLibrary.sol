@@ -11,7 +11,6 @@ pragma solidity 0.8.24;
  *      - Replaces require statements with custom errors for gas efficiency
  *      - Used by 15+ contracts
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library CommonErrorLibrary {

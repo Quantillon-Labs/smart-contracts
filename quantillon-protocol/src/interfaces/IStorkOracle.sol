@@ -9,7 +9,6 @@ import {IOracle} from "./IOracle.sol";
  * @notice Interface for the Quantillon Stork-based oracle
  * @dev Extends IOracle with Stork-specific functions
  *      This interface is specific to StorkOracle implementation
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IStorkOracle is IOracle {

@@ -16,7 +16,6 @@ import {IOracle} from "./IOracle.sol";
  *      The OracleRouter stores the active oracle as `IStorkOracle` and casts it unchecked, so an
  *      implementation only needs to expose the IOracle reads plus the four delegated management
  *      selectors above to slot into the Stork position via updateOracleAddresses + switchOracle.
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IHyperliquidOracle is IOracle {

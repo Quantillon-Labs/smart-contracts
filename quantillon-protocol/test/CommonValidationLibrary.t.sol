@@ -20,7 +20,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Slippage validation
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract CommonValidationLibraryTest is Test {

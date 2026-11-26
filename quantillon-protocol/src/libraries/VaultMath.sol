@@ -12,7 +12,6 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  *      - Min/max value selection for safe boundaries
  *      - Decimal scaling utilities for different token precisions
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library VaultMath {

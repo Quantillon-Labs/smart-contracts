@@ -11,7 +11,6 @@ pragma solidity 0.8.24;
  *      - Liquidation system errors
  *      - Margin and leverage validation errors
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library HedgerPoolErrorLibrary {

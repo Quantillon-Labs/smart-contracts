@@ -19,7 +19,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Pool metrics packing/unpacking
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract UserPoolStakingLibraryTest is Test {

@@ -25,7 +25,6 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
  * @dev Tests gas limit scenarios, resource exhaustion attacks,
  *      and optimization edge cases for protocol efficiency.
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract GasResourceEdgeCases is Test {

@@ -26,7 +26,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  *      - updateSlippageBatch (write, skip-disabled, rate-limit, deviation bypass, events)
  *      - getSlippageBySource and getSlippageAgeBySource (per-source reads)
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract SlippageStorageTest is Test {

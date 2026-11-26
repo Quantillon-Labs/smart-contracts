@@ -79,7 +79,6 @@ contract MockSecureUpgradeableV2 is SecureUpgradeable {
  *      - Access control validations
  *      - Edge cases and security scenarios
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract SecureUpgradeableTest is Test {

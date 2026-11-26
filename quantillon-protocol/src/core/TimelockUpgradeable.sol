@@ -13,7 +13,6 @@ import {ISecureUpgradeable} from "../interfaces/ISecureUpgradeable.sol";
 
 /**
  * @title TimelockUpgradeable
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  * @notice Secure upgrade mechanism with timelock and multi-sig requirements
  * @dev Replaces unrestricted upgrade capability with governance-controlled upgrades

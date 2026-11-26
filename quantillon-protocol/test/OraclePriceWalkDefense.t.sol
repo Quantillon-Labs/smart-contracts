@@ -34,7 +34,6 @@ import {MockUsdcOracle, HLGate} from "./HyperliquidEurUsdOracle.t.sol";
  *      of individually-legal steps is still bounded by the tighter write-side band rather than the
  *      wider read-side bounds.
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract OraclePriceWalkDefenseTest is Test {

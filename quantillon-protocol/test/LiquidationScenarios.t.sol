@@ -23,7 +23,6 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
  * @title LiquidationScenarios
  * @notice End-to-end tests for liquidation mode (CR <= 101%): redemption, events, paused revert
  * @dev Uses a minimal setup with small hedger deposit to trigger liquidation mode
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract LiquidationScenarios is IntegrationTests {

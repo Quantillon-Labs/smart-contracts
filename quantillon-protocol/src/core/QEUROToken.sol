@@ -63,7 +63,6 @@ import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
  *      - Decimals: 18 (standard for ERC20 tokens)
  *      - Peg: 1:1 with Euro (managed by vault operations)
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QEUROToken is 

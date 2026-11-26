@@ -6,7 +6,6 @@ pragma solidity 0.8.24;
  * @notice Generic interface for Quantillon Protocol oracle contracts
  * @dev This interface is oracle-agnostic and can work with Chainlink, Stork, or any other oracle implementation
  *      The OracleRouter implements this interface and delegates to the active oracle (Chainlink or Stork)
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IOracle {

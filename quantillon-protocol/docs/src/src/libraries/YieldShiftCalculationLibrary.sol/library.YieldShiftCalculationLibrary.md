@@ -1,11 +1,8 @@
 # YieldShiftCalculationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/YieldShiftCalculationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/8d2039e2823d486678a185b0e5630b0a7677bddc/quantillon-protocol/src/libraries/YieldShiftCalculationLibrary.sol)
 
 **Title:**
 YieldShiftCalculationLibrary
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Calculation functions for YieldShift to reduce contract size
 

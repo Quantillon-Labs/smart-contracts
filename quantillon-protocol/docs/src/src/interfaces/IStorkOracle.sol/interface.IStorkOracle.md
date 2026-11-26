@@ -1,14 +1,11 @@
 # IStorkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/interfaces/IStorkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/8d2039e2823d486678a185b0e5630b0a7677bddc/quantillon-protocol/src/interfaces/IStorkOracle.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)
 
 **Title:**
 IStorkOracle
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Interface for the Quantillon Stork-based oracle
 

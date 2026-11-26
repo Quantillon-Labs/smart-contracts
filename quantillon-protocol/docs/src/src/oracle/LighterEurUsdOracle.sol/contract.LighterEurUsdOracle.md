@@ -1,14 +1,11 @@
 # LighterEurUsdOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/LighterEurUsdOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/8d2039e2823d486678a185b0e5630b0a7677bddc/quantillon-protocol/src/oracle/LighterEurUsdOracle.sol)
 
 **Inherits:**
 [IHyperliquidOracle](/src/interfaces/IHyperliquidOracle.sol/interface.IHyperliquidOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 LighterEurUsdOracle
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 EUR/USD oracle for Quantillon that mirrors the Lighter EURUSD (market_id 96) mid used to
 execute the protocol hedge, so QEURO mint/redeem prices align with the hedge venue.

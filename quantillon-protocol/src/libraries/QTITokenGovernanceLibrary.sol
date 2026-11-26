@@ -8,7 +8,6 @@ import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
  * @title QTITokenGovernanceLibrary
  * @notice Library for QTIToken governance calculations and validations
  * @dev Extracts calculation logic from QTIToken to reduce contract size
- * @author Quantillon Labs
  */
 library QTITokenGovernanceLibrary {
     /**

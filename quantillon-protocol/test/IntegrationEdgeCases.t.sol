@@ -25,7 +25,6 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
  * @dev Tests complex integration scenarios, cross-contract dependencies,
  *      and edge cases in protocol interactions.
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract IntegrationEdgeCases is Test {

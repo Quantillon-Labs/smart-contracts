@@ -31,7 +31,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Edge Cases and Security
  *      - Integration Tests
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QEUROTokenTestSuite is Test {

@@ -12,7 +12,6 @@ import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
  * @title MockStorkOracle
  * @notice Mock oracle that implements IStorkOracle interface but uses mock data
  * @dev Used for localhost testing - provides same interface as StorkOracle
- * @author Quantillon Labs
  */
 contract MockStorkOracle is IStorkOracle, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     

@@ -14,7 +14,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  * @notice Full-branch coverage for the Morpho adapter (was 0% — audit SC1-6 test-gap).
  * @dev Exercises the deposit / withdraw / harvest / setVault paths, every revert branch,
  *      the withdraw principal cap, and access control on each role-gated entrypoint.
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract MockUSDCForMorphoAdapter is ERC20 {

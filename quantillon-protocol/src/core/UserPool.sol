@@ -91,7 +91,6 @@ import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
  *      - Yield shift mechanism for yield management
  *      - Vault math library for calculations
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract UserPool is 

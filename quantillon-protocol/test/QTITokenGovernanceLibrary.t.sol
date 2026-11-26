@@ -18,7 +18,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Decentralization level calculations
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract QTITokenGovernanceLibraryTest is Test {

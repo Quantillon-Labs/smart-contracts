@@ -24,7 +24,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
  *      - Access control validations
  *      - Edge cases and security scenarios
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract TimelockUpgradeableTest is Test {

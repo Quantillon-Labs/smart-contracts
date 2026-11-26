@@ -10,7 +10,6 @@ pragma solidity 0.8.24;
  *      - Block-based validation for price freshness
  *      - Reduces code duplication across contracts
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library PriceValidationLibrary {

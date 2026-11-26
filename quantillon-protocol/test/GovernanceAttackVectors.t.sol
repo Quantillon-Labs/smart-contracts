@@ -24,7 +24,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Voting power gaming through lock/unlock timing
  *      - Cross-contract governance manipulation
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract GovernanceAttackVectors is Test {

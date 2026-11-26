@@ -14,7 +14,6 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
  * @dev Tests extreme oracle conditions, price manipulation scenarios, and failure modes
  *      that could impact protocol security and stability.
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract OracleEdgeCases is Test {

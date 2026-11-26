@@ -9,7 +9,6 @@ pragma solidity 0.8.24;
  *      - Errors specific to vault operations
  *      - Fee validation errors
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library VaultErrorLibrary {

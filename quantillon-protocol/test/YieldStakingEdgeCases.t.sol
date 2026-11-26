@@ -23,7 +23,6 @@ import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
  * 
  * @dev Tests yield distribution, staking mechanisms, and reward edge cases.
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract YieldStakingEdgeCases is Test {

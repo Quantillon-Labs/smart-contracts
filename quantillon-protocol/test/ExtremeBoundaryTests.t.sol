@@ -19,7 +19,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Overflow prevention mechanisms
  *      - Rounding behavior at boundaries
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract ExtremeBoundaryTests is Test {

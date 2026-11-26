@@ -12,7 +12,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  * @title CombinedAttackVectors
  * @notice Multi-step attack tests that chain flash loans, oracle manipulation, and governance timing
  * @dev Reuses IntegrationTests setup (vault, oracle, userPool, mocks, roles) for fresh setUp per test
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract CombinedAttackVectors is IntegrationTests {

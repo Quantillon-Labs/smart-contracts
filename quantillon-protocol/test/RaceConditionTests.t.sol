@@ -24,7 +24,6 @@ import {IQuantillonVault} from "../src/interfaces/IQuantillonVault.sol";
  *      - Price update races
  *      - Block timestamp manipulation
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract RaceConditionTests is Test {

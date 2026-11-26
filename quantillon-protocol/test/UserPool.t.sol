@@ -25,7 +25,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *      - Administrative functions
  *      - Edge cases and security scenarios
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract UserPoolTestSuite is Test {
@@ -2440,7 +2439,6 @@ contract MockQuantillonVault {
  *      - Edge case handling
  *      - Multi-user tracking independence
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract UserPoolTrackingTestSuite is Test {

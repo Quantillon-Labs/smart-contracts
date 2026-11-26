@@ -1448,11 +1448,10 @@ qti.vote(proposalId, true); // Vote yes
 For technical support and questions:
 - **Email**: team@quantillon.money
 - **Documentation**: [Quantillon Protocol Docs](https://docs.quantillon.money)
-- **GitHub**: [Quantillon Labs](https://github.com/Quantillon-Labs)
+- **GitHub**: [Protocol repositories](https://github.com/Quantillon-Labs)
 
 ---
 
-*This technical reference is maintained by Quantillon Labs and updated with each protocol version.*
 ### Yield and collateralization gates
 
 The public mint floor remains the governance value read from `minCollateralizationRatioForMinting`; clients must read this value on-chain rather than use a frontend default. Yield crediting uses a separate gate: current collateralization must be strictly greater than `max(101%, criticalCollateralizationRatio)`, projected collateralization must remain at least 100%, and the cached oracle, active hedger, execution book, QEURO token state, and hedger capacity must all pass. A failed harvest reverts the entire transaction so adapter yield remains available for a later retry.

@@ -6,7 +6,6 @@ import {ITimelockUpgradeable} from "./ITimelockUpgradeable.sol";
 /**
  * @title ISecureUpgradeable
  * @notice Interface for the SecureUpgradeable base contract
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface ISecureUpgradeable {

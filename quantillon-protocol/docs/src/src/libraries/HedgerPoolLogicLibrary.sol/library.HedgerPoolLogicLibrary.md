@@ -1,11 +1,8 @@
 # HedgerPoolLogicLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/libraries/HedgerPoolLogicLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/8d2039e2823d486678a185b0e5630b0a7677bddc/quantillon-protocol/src/libraries/HedgerPoolLogicLibrary.sol)
 
 **Title:**
 HedgerPoolLogicLibrary
-
-**Author:**
-Quantillon Labs
 
 Logic functions for HedgerPool to reduce contract size
 

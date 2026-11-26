@@ -35,7 +35,6 @@ import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
  *      - Pausable by EMERGENCY_ROLE
  *      - UUPS upgradeable
  *
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract SlippageStorage is

@@ -15,7 +15,6 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
  *      - Maintains same API and behavior
  *      - Uses custom errors for gas efficiency
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library AdminFunctionsLibrary {

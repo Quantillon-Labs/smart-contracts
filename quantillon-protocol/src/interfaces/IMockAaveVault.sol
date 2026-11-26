@@ -5,7 +5,6 @@ pragma solidity 0.8.24;
  * @title IMockAaveVault
  * @notice Interface for the MockAaveVault (Aave V3 USDC yield vault)
  * @dev Mirrors the external/public API of `src/core/vaults/MockAaveVault.sol`
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IMockAaveVault {

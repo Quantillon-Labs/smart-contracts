@@ -8,7 +8,6 @@ const parser = require('@solidity-parser/parser');
  * @title NatSpec Validation Script
  * @notice Comprehensive NatSpec documentation validator for Quantillon Protocol
  * @dev Validates that all functions have complete NatSpec documentation including @custom tags
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 

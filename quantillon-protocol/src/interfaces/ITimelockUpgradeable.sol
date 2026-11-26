@@ -3,7 +3,6 @@ pragma solidity 0.8.24;
 
 /**
  * @title ITimelockUpgradeable
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  * @notice Interface for the secure upgrade mechanism with timelock and multi-sig requirements
  */

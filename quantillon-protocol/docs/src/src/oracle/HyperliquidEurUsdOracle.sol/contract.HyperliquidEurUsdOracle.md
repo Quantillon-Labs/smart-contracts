@@ -1,14 +1,11 @@
 # HyperliquidEurUsdOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/083874330beb67c980851f48832ef5faa68973d3/src/oracle/HyperliquidEurUsdOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/8d2039e2823d486678a185b0e5630b0a7677bddc/quantillon-protocol/src/oracle/HyperliquidEurUsdOracle.sol)
 
 **Inherits:**
 [IHyperliquidOracle](/src/interfaces/IHyperliquidOracle.sol/interface.IHyperliquidOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
 
 **Title:**
 HyperliquidEurUsdOracle
-
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 EUR/USD oracle for Quantillon that mirrors the Hyperliquid xyz:EUR perp mid used to
 execute the protocol hedge, so QEURO mint/redeem prices align with the hedge venue.
@@ -401,7 +398,9 @@ function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
 Validates the published mid timestamp against future-dating and staleness
 
 SlippageStorage timestamps are on-chain write times, so they cannot be in the future
-except under clock skew; rejects zero (never published) and anything older than maxPriceStaleness.
+except under clock skew; rejects zero and future observations. Normal snapshots use maxPriceStaleness.
+An explicitly emergency SignedReferenceSource uses its independent age policy, capped at 8100 seconds.
+This does not refresh timestamps or bypass price, independent-reference or circuit-breaker checks.
 
 **Notes:**
 - security: Bounds acceptable data age for valuation reads

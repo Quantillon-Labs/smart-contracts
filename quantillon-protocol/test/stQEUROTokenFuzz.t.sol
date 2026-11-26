@@ -16,7 +16,6 @@ import {VaultMath} from "../src/libraries/VaultMath.sol";
  *      - Virtual shares/assets protection
  *      - Edge cases and boundary conditions
  *
- * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
 contract stQEUROTokenFuzz is Test {

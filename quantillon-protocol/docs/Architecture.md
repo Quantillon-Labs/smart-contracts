@@ -494,5 +494,3 @@ Governance Flow (live):
 5. **Security Audits**: Regular security assessments
 
 ---
-
-*This architecture document is maintained by Quantillon Labs and updated with each protocol version.*

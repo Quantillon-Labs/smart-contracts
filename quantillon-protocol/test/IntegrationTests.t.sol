@@ -39,7 +39,6 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  *         - User redeems QEURO back to USDC
  *      4. Validates actual on-chain balances and protocol state
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract IntegrationTests is Test {

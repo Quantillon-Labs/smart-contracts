@@ -69,7 +69,6 @@ import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
  *      - Decimals: 18 (standard for ERC20 tokens)
  *      - Governance power: Based on locked amount and duration
  * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QTIToken is 
